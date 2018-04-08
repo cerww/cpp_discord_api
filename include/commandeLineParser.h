@@ -1,0 +1,119 @@
+#pragma once
+#include "randomThings.h"
+
+using namespace std::string_literals;
+
+class commandLineParser {
+public:
+	using functionType = std::function<void(const std::vector<std::string_view>&)>;
+	using defaultFunctionType = std::function<void(std::string_view)>;
+
+	commandLineParser& parseLine(const std::string& data){
+		m_line.reserve(data.size());
+		for (char i : data) {			
+			if((i == '\t' || i == '\n' || i==' ') && m_line.back() != ' ')
+				m_line.push_back(' ');
+			else
+				m_line.push_back(i);			
+		}parse_impl(split(std::string_view(m_line)));
+		return *this;
+	}
+	commandLineParser& parseLine(const std::vector<std::string_view>& data){
+		parse_impl(data);
+		return *this;
+	}
+	commandLineParser& parseLine(const std::vector<std::string>& data){
+		std::vector<std::string_view> stuffs;
+		stuffs.reserve(data.size());
+		for(const auto& i:data)
+			stuffs.emplace_back(i);		
+		parse_impl(stuffs);
+		return *this;
+	}
+	commandLineParser& parseLine(const char** argv, const int argc){
+		std::vector<std::string_view> stuffs;
+		stuffs.resize(argc);
+		for (int i = 0; i < argc; ++i) 
+			stuffs[i] = argv[i];		
+		parse_impl(stuffs);
+		return *this;
+	}
+
+	void callThings(){
+		for (auto& param : m_defaultFn.second)
+			m_defaultFn.first(param);
+		for(auto& [funs, param_set]:m_fns)
+			for(auto& params: param_set)
+				funs(params);
+	}
+	commandLineParser& addOption(std::string op, functionType fn,int n, const bool required = false){
+		m_options.insert({std::move(op), std::make_pair(m_fns.size(), n)});
+		m_required |= static_cast<size_t>(required) << m_fns.size();
+		m_fns.emplace_back().first = std::move(fn);
+		return *this;
+	}
+	commandLineParser& setDefaultfun(defaultFunctionType fn) {
+		m_defaultFn.first = std::move(fn);
+		return *this;
+	}
+	commandLineParser& setFirstFn(functionType fn, const size_t argc) {
+		m_firstFn.first = std::move(fn);
+		m_firstFnNum = argc;		
+		return *this;
+	}
+private:
+	void parse_impl(const std::vector<std::string_view>& argv){
+		size_t used = 0;
+		if(m_firstFn.first) {
+			m_firstFn.second.resize(m_firstFnNum);
+			std::copy(argv.begin(), argv.begin() + m_firstFnNum, m_firstFn.second.begin());
+		}
+		for (auto argv_it = argv.begin() + m_firstFnNum; argv_it != argv.end(); ) {
+			const auto[it, is_option] = is_in_map(*argv_it);
+			if(!is_option){
+				if (!add_default_arg(*argv_it++))
+					throw std::runtime_error("invalid flag");
+				continue;
+			}
+			const auto numArgs = it->second.second; 
+			auto& vec = m_fns[it->second.first].second.emplace_back();
+			const auto end_it = [&](){
+				if (numArgs == -1) return std::find_if(argv_it, argv.end(), [&](std::string_view& item) {return is_in_map(item).second; });					
+				else return argv_it + it->second.second + 1;				
+			}();
+			vec.resize(std::distance(argv_it + 1, end_it));
+			std::copy(argv_it + 1, end_it, vec.begin());
+			argv_it = end_it;
+			used |= 1 << it->second.first;
+		}
+		if((m_required & used) != m_required)
+			throw std::runtime_error("thingy needs the required options");
+	}
+	bool add_default_arg(const std::string_view arg) {
+		if(m_defaultFn.first)
+			m_defaultFn.second.push_back(arg);
+		else return false;
+		return true;
+	}
+	std::pair<std::map<std::string, std::pair<int, int>, genericComp>::iterator,bool> is_in_map(const std::string_view thing){
+		const auto it = m_options.find(thing);
+		return { it,it != m_options.end() };
+	}
+	
+	std::vector<std::pair<functionType, std::vector<std::vector<std::string_view>>>> m_fns;
+	std::map<std::string, std::pair<int, int>, genericComp> m_options;//first is index,second is number of things needed after
+	std::string m_line;
+	size_t m_required = 0;
+	std::pair<defaultFunctionType, std::vector<std::string_view>> m_defaultFn;
+	std::pair<functionType, std::vector<std::string_view>> m_firstFn;
+	size_t m_firstFnNum = 0;
+};
+
+
+struct command_thingy{
+	bool add_command(std::string command_name, commandLineParser command) {
+		return m_commands.insert(std::make_pair(std::move(command_name), std::move(command))).second;
+	}
+
+	std::map<std::string, commandLineParser> m_commands;
+};
