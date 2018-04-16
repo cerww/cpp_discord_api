@@ -82,15 +82,15 @@ struct id_equal_to{
 	bool operator()(const T& thing){
 		return thing.id() == id;
 	}
-	snowflake id;
+	const snowflake id;
 };
-
+//just use auto
 template<typename T>
-struct thing{//i need a better name
-	thing(std::unordered_map<snowflake,T>& a,const std::vector<snowflake>& b):m_wat(a),m_waty(b){};
+struct rename_later_3{//i need a better name
+	rename_later_3(std::unordered_map<snowflake,T>& a,const std::vector<snowflake>& b):m_wat(a),m_waty(b){};
 
 	struct iterator{
-		iterator(thing* t_parent,std::vector<snowflake>::const_iterator t_it):
+		iterator(rename_later_3* t_parent,std::vector<snowflake>::const_iterator t_it):
 		m_parent(t_parent),
 		it(t_it){}
 		iterator& operator++() {
@@ -141,11 +141,11 @@ struct thing{//i need a better name
 			return retVal -= i;
 		}
 	private:
-		thing * m_parent;
+		rename_later_3 * m_parent;
 		std::vector<snowflake>::const_iterator it;
 	};
 	struct const_iterator {
-		const_iterator(thing* t_parent, std::vector<snowflake>::const_iterator t_it) :
+		const_iterator(rename_later_3* t_parent, std::vector<snowflake>::const_iterator t_it) :
 			m_parent(t_parent),
 			it(t_it) {}
 		const_iterator& operator++() {
@@ -184,16 +184,16 @@ struct thing{//i need a better name
 			it += i;
 			return *this;
 		}
-		const_iterator operator+(size_t i) {
+		const_iterator operator+(const size_t i) {
 			const_iterator retVal = *this;
 			return retVal += i;
 		}
-		const_iterator operator-(size_t i) {
+		const_iterator operator-(const size_t i) {
 			const_iterator retVal = *this;
 			return retVal -= i;
 		}
 	private:
-		thing * m_parent;
+		rename_later_3 * m_parent;
 		std::vector<snowflake>::const_iterator it;
 	};
 	

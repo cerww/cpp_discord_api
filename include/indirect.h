@@ -19,14 +19,30 @@ struct indirect {
 		m_allocator(std::forward<Ts>(args)...),
 		m_data(new(m_allocator.allocate(1)) T()){}
 
+	template<typename... Ts, std::enable_if_t<std::is_constructible_v<_Alloc, Ts...> && !std::is_constructible_v<T, Ts...>, int> = 0>
+	indirect(defer_construction,Ts&&... args) :
+		m_allocator(std::forward<Ts>(args)...){}
+
 	template<typename... Ts, std::enable_if_t<std::is_constructible_v<T, Ts...>, int> = 0>
-	indirect(Ts&&... args) :
+	indirect(Ts&&... args):
 		m_data(new(m_allocator.allocate(1)) T(std::forward<Ts>(args)...)){}
 
 	template<typename ...Ts1, typename ...Ts2>
-	indirect(std::tuple<Ts1...>&& alloc_args,std::tuple<Ts2...>& T_args):
+	indirect(std::tuple<Ts1...> alloc_args,std::tuple<Ts2...> T_args):
 		m_allocator() {
 		
+	}
+
+	template<typename U>
+	indirect(std::initializer_list<U> li):
+	m_data(new(m_allocator.allocate(1)) T(li)) {
+		
+	}
+
+	template<typename U>
+	indirect& operator=(std::initializer_list<U> li) {
+		*m_data = T(li);
+		return *this;
 	}
 
 	indirect(T stuff,_Alloc al = _Alloc()):
@@ -54,7 +70,7 @@ struct indirect {
 		return *this;
 	}
 	indirect& operator=(indirect&& other) noexcept{
-		~indirect();
+		this->~indirect();
 		m_allocator = std::move(other.m_allocator);
 		m_data = std::exchange(other.m_data, nullptr);
 		return *this;
@@ -80,6 +96,7 @@ struct indirect {
 		if(m_data)
 			m_allocator.deallocate(m_data,1);
 	}
+	
 	T& value() noexcept{ return *m_data; }
 	const T& value()const noexcept { return *m_data; }
 
@@ -90,16 +107,14 @@ struct indirect {
 		return *m_data;	
 	}
 	
-	/*
-	template<typename U, typename A, std::enable_if_t<std::is_convertible_v<T, U>, int> = 0>
-	operator indirect<U,A>(){
+	operator const T&() const{
 		return *m_data;
 	}
-	*/
+
 	T& operator*() { return *m_data; }
-	T& operator*()const { return *m_data; }
+	const T& operator*()const { return *m_data; }
 	T& operator->() { return *m_data; }
-	T& operator->()const { return *m_data; }
+	const T& operator->()const { return *m_data; }
 	
 	template<typename U>
 	bool operator==(U&& other) {
@@ -132,14 +147,19 @@ struct indirect {
 	const _Alloc& get_allocator() const{
 		return m_allocator;
 	}
+	template<typename ...args>
+	void construct(args&&... Args) {
+		m_data = new(m_allocator.allocate(1)) T(std::forward<args>(Args)...);
+	}
 
 private:
-	_Alloc m_allocator;
+	_Alloc m_allocator{};
 	T* m_data = nullptr;
 	template<typename,typename> friend struct indirect;
 };
 
 #include "allocatey.h"
+#include <unordered_map>
 
 inline void qwettrsffdh() {
 	auto lamby = [](int& c) {std::cout << c << std::endl; };
@@ -160,6 +180,32 @@ inline void qwettrsffdh() {
 	int i = a;
 	indirect<double> d = a;
 	auto qwert  = a == d;
+	auto qwea = d == y;
+
+	std::unordered_map<int, indirect<int>> mapu;
+	mapu[2] = d;
+	mapu[2] = 9;
+	mapu.insert(std::make_pair(1, 2));
+	mapu[3] = qwe;
+	mapu[qwe] = aab;
+	mapu.insert(std::make_pair(65, aa));
+
+	std::vector<indirect<int>> vecy;
+	vecy.push_back(d);
+	vecy.emplace_back(3);
+	int& lastu = vecy.emplace_back();
+	vecy.erase(vecy.begin());
+	std::vector<indirect<std::vector<int>>> rawrland;
+
+	rawrland.emplace_back().value().emplace_back();
+	std::vector<int> weutyhf = std::move(rawrland.back());
+	rawrland.pop_back();
+	rawrland.emplace_back(std::vector<int>{1, 2, 3, 4});
+
+	std::vector<indirect<std::vector<int>>> hjk;
+	hjk.push_back({1,2,3,4});
+	hjk.emplace_back(std::vector<int>{1, 2, 34});
+	//hjk.emplace_back({1, 2, 34});
 
 	lamby2(std::move(d));
 	d = a;

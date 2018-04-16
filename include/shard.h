@@ -16,18 +16,19 @@
 #include "range-like-stuffs.h"
 
 using namespace std::string_literals;
+using namespace std::chrono_literals;
 class client;
 
 class shard {
 public:
 	using wsClient = uWS::WebSocket<uWS::CLIENT>;
 	shard(int shardN, wsClient* t_client, client* t_parent) :
-	m_shard_number(shardN),
-	m_parent(t_parent), 
-	m_client(t_client),
-	m_name_plox(t_parent) {
-		m_main_thread = std::thread([&](){
-			while(!m_done) {
+		m_shard_number(shardN),
+		m_parent(t_parent), 
+		m_client(t_client),
+		m_name_plox(t_parent)	{
+		m_main_thread = std::thread([&]() {	
+			while (!m_done) {
 				doStuff(nlohmann::json::parse(m_event_queue.pop()));
 			}
 		});
@@ -47,6 +48,9 @@ public:
 	}
 	std::unordered_map<snowflake, text_channel> & text_channels() noexcept { return m_text_channels; }
 	const std::unordered_map<snowflake, text_channel> & text_channels() const noexcept { return m_text_channels; }
+
+	std::unordered_map<snowflake, dm_channel>& dm_channels()noexcept { return m_dm_channels; }
+	const std::unordered_map<snowflake, dm_channel>& dm_channels()const noexcept { return m_dm_channels; }
 
 	std::unordered_map<snowflake, voice_channel>& voice_channels() noexcept { return m_voice_channels; }
 	const std::unordered_map<snowflake, voice_channel>& voice_channels() const noexcept { return m_voice_channels; }
@@ -73,6 +77,12 @@ public:
 	rq::ban_member ban_member(const Guild& guild, const  guild_member& member, std::string reason = "", int days_to_delete_msg = 0);
 	rq::unban_member unban_member(const Guild&, snowflake id);
 	rq::get_messages get_messages(const Channel&,int = 100);
+	rq::get_messages get_messages_before(const Channel&,snowflake, int = 100);
+	rq::get_messages get_messages_after(const Channel&, snowflake, int = 100);
+	rq::get_messages get_messages_around(const Channel&, snowflake, int = 100);
+	rq::get_messages get_messages_before(const Channel&, const partial_message&, int = 100);
+	rq::get_messages get_messages_after(const Channel&, const partial_message&, int = 100);
+	rq::get_messages get_messages_around(const Channel&, const partial_message&, int = 100);
 	rq::create_text_channel create_text_channel(const Guild&, std::string,std::vector<permission_overwrite> = {},bool = false);
 	rq::edit_message edit_message(const partial_message&,std::string);
 	rq::create_voice_channel create_voice_channel(const Guild&, std::string, std::vector<permission_overwrite> = {}, bool = false, int = 96);
@@ -87,7 +97,7 @@ public:
 	rq::typing_start typing_start(const Channel&);
 	rq::delete_channel_permission delete_channel_permissions(const guild_channel&, const permission_overwrite&);
 	//Awaitables::modfiy_guild 
-	rq::modify_channel_positions modify_channel_positions(const Guild&, std::vector<std::pair<snowflake,int>>);
+	rq::modify_channel_positions modify_channel_positions(const Guild&, const std::vector<std::pair<snowflake,int>>&);
 
 	template<typename rng,std::enable_if_t<std::is_same_v<std::decay_t<range_type<rng>>,snowflake>,int> = 0>
 	rq::add_guild_member add_guild_member(const Guild&,snowflake,std::string,rng&&,std::string = "",bool = false,bool = false);
@@ -130,23 +140,24 @@ private:
 	bool m_is_disconnected = false;
 	
 	void set_up_request(boost::beast::http::request<boost::beast::http::string_body>&)const;
-	int m_shard_number = 0;
+	const int m_shard_number = 0;
 	client* m_parent = nullptr;
 
 	uWS::WebSocket<uWS::CLIENT>* m_client = nullptr;
 	discord_http_connection m_name_plox;
 
 	std::thread m_main_thread;
-	my_concurrent_queue<std::string> m_event_queue;
+	my_concurrent_queue<std::string,std::vector<std::string>> m_event_queue;
 
 	void m_opcode0(nlohmann::json, eventName, size_t);
-	void m_opcode1(nlohmann::json&) const;
+	void m_opcode1() const;
 	void m_opcode2() const;
 	void m_opcode3() const;//update presence
 	void m_opcode6() const;
 	void m_opcode7();
 
-	void m_opcode9() const;
+	void m_opcode8() const;
+	void m_opcode9(const nlohmann::json&) const;
 	void m_opcode10(nlohmann::json&);
 	void m_opcode11(nlohmann::json&);
 

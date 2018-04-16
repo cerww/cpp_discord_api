@@ -47,7 +47,7 @@ public:
 	~client() = default;
 	void run();
 
-	void setToken(const tokenType type, std::string token);
+	void setToken(tokenType type, std::string token);
 	const std::string& getToken() const noexcept;
 
 	void set_up_request(boost::beast::http::request<boost::beast::http::string_body>& req) const;

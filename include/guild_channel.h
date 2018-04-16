@@ -35,5 +35,4 @@ private:
 	friend void from_json(const nlohmann::json&, guild_channel& g);
 };
 
-
 void from_json(const nlohmann::json& json, guild_channel& g);

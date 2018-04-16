@@ -520,7 +520,19 @@ template<typename T>
 using notDivisibleBy = comparator<std::modulus<T>, T>;
 
 template<typename T>
-using divisibleBy = comparator<propagate_fn<std::modulus<T>, NOT>,T>;
+using divisibleBy = comparator<propagate_fn<std::modulus<T>, std::negate<>>,T>;
+
+static const auto is_equal_to = [](auto&& thing){
+	return equalTo<std::decay_t<decltype(thing)>>(std::forward<decltype(thing)>(thing));
+};
+
+static const auto is_less_than = [](auto&& thing) {
+	return lessThan<std::decay_t<decltype(thing)>>(std::forward<decltype(thing)>(thing));
+};
+
+static const auto is_greater_than = [](auto&& thing) {
+	return greaterThan<std::decay_t<decltype(thing)>>(std::forward<decltype(thing)>(thing));
+};
 
 template<typename range>
 std::experimental::generator<std::pair<size_t, decltype(*(std::declval<range>().begin()))>> enumerate(range&& r){
@@ -975,10 +987,9 @@ struct nth_type<0,T,Ts...>{
 	using type = T;
 };
 
-
 template<typename T, typename ... Ts,size_t... i>
 T construct_from_tuple_impl(std::tuple<Ts...>&& tup,std::index_sequence<i...>) {
-	return T(std::get<i>(tup));
+	return T(std::get<i>(tup)...);
 }
 
 template<typename T,typename ... Ts>
@@ -988,10 +999,51 @@ T construct_from_tuple(std::tuple<Ts...>&& tup) {
 
 template<typename T, typename ... Ts, size_t... i>
 T construct_from_tuple_impl(const std::tuple<Ts...>& tup, std::index_sequence<i...>) {
-	return T(std::get<i>(tup));
+	return T(std::get<i>(tup)...);
 }
 
 template<typename T, typename ... Ts>
 T construct_from_tuple(const std::tuple<Ts...>& tup) {
 	return construct_from_tuple_impl(tup);
 }
+
+template<typename rng,typename U>
+[[maybe_unused]]
+constexpr int erase_quick(rng&& range,U&& val) {
+	const auto it = std::partition(range.begin(), range.end(), [&](auto&& i) {return i != val; });
+	const int retVal = std::distance(it, range.end());
+	range.erase(it, range.end());
+	return retVal;
+}
+
+template<typename rng, typename U>
+[[maybe_unused]]
+constexpr bool erase_first_quick(rng&& range, U&& val) {
+	const auto it = std::find(range.begin(), range.end(), std::forward<U>(val));
+	if (it == range.end())
+		return false;
+	std::swap(range.back(), *it);
+	range.pop_back();
+	return true;
+}
+
+template<typename rng, typename U>
+[[maybe_unused]]
+constexpr int erase_if_quick(rng&& range, U&& fn) {
+	const auto it = std::partition(range.begin(), range.end(), std::not1(fn));
+	const int retVal = std::distance(it, range.end());
+	range.erase(it, range.end());
+	return retVal;
+}
+
+template<typename rng, typename U>
+[[maybe_unused]]
+constexpr bool erase_if_first_quick(rng&& range, U&& fn) {
+	const auto it = std::find_if(range.begin(), range.end(), std::forward<U>(fn));
+	if (it == range.end())
+		return false;
+	std::swap(range.back(), *it);
+	range.pop_back();
+	return true;
+}
+

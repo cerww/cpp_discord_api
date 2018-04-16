@@ -4,16 +4,28 @@
 
 
 
-thing<text_channel> Guild::text_channels()const {
-	return thing<text_channel>(m_shard->text_channels(), m_text_channels);
+rename_later_3<text_channel> Guild::text_channels()const {
+	return rename_later_3<text_channel>(m_shard->text_channels(), m_text_channels);
 }
 
-thing<voice_channel> Guild::voice_channels()const {
-	return thing<voice_channel>(m_shard->voice_channels(), m_voice_channels);
+rename_later_3<voice_channel> Guild::voice_channels()const {
+	return rename_later_3<voice_channel>(m_shard->voice_channels(), m_voice_channels);
 }
 
-thing<channel_catagory> Guild::channel_catagories() const {
-	return thing<channel_catagory>(m_shard->channel_catagories(), m_channel_catagories);
+rename_later_3<channel_catagory> Guild::channel_catagories() const {
+	return rename_later_3<channel_catagory>(m_shard->channel_catagories(), m_channel_catagories);
+}
+
+const std::vector<snowflake>& Guild::text_channel_ids() const noexcept {
+	return m_text_channels;
+}
+
+const std::vector<snowflake>& Guild::channel_catagories_ids() const noexcept {
+	return m_channel_catagories;
+}
+
+const std::vector<snowflake>& Guild::voice_channel_ids() const noexcept {
+	return m_voice_channels;
 }
 
 const std::vector<guild_member>& Guild::members() const noexcept { return m_members; }
@@ -44,7 +56,6 @@ void from_json(const nlohmann::json& json, Guild& guild) {
 text_channel& Guild::general_channel() const noexcept {
 	return m_shard->text_channels()[general_channel_id()];
 }
-
 
 voice_channel* Guild::afk_channel() const noexcept {
 	if (afk_channel_id().val)

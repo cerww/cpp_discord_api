@@ -4,7 +4,6 @@
 #include <string>
 #include <boost/beast.hpp>
 #include <future>
-//#include <uWS/uWS.h>
 #include "client.h"
 #include "stuffs.h"
 #include "randomThings.h"
@@ -13,13 +12,6 @@
 
 using namespace std::string_literals;
 using namespace std::chrono_literals;
-class u;
-template<typename T>
-struct wat{};
-
-using q = wat<u>;
-template<typename T>
-struct po{};
 
 class timer {
 public:
@@ -76,7 +68,7 @@ struct s{
 template<typename T>
 struct async_generator{	
 	struct promise_type {
-		my_concurrent_queue<T> queue;
+		my_concurrent_queue<T,std::vector<T>> queue;
 		std::atomic<bool> done = false;
 		std::experimental::suspend_always initial_suspend() const{
 			return {};
@@ -138,14 +130,6 @@ private:
 	std::thread m_thread;
 	friend struct iterator;
 };
-
-
-/*
-template<typename R,typename ... Args>
-struct std::experimental::coroutine_traits<async_generator<R>,Args...>{
-	
-};
-*/
 
 async_generator<int> test1() {
 	co_yield 1;
@@ -334,7 +318,7 @@ void braweadsasde() {
 template<typename it,typename binaryPred>
 it unique_l(it s,it e,binaryPred f) {
 	while (s < e){
-		const it o = std::find_if_not(s, e, [&](auto&& a) {return f(a, *s); });
+		const it o = std::find_if_not(s, e, [&](auto&& a) {return f(*s, a); });
 		e = std::rotate(++s, o, e);
 	}return e;
 }
@@ -344,7 +328,48 @@ it unique_l(it s, it e) {
 	return unique_l(s, e, std::equal_to<>());
 }
 
-int main(){
+
+template<typename T>
+struct shared_ptr_p;
+
+
+template<typename T>
+struct shared_ptr_ref{
+	std::atomic<int> cnt = 0;
+	std::mutex mut;
+	T* thing;
+	shared_ptr_p<T>* parent;
+	void die();
+};
+
+template<typename T>
+struct shared_ptr_p{
+	shared_ptr_ref<T> ref;
+	T thing;
+	void die() {
+		delete this;
+	}
+};
+
+template<typename T>
+struct shared_ptr{
+
+
+
+	shared_ptr_ref<T>* ref = nullptr;
+	T* thing = nullptr;
+};
+
+template<typename T>
+void shared_ptr_ref<T>::die() {
+	if (parent) {
+		parent->die();
+	}
+	delete thing;
+	delete this;
+}
+
+int main(){	
 	try{
 		client c;
 		std::vector<partial_message> msgs;
@@ -362,23 +387,27 @@ int main(){
 			}
 			if (wat.author().id() != c.getSelf().id())
 				s.send_message(wat.channel(), std::to_string(wat.author().id().val));
-			s.add_reaction(wat,wat.guild().emojis().back());
+			//s.add_reaction(wat,wat.guild().emojis().back());
 		};
 		c.on_guild_typing_start = [&](guild_member& member,text_channel& channel,shard& s){
-			try{
-				msgs.push_back(s.send_message(channel,member.username()+ " has started typing").get());
-			}catch(...){}
+			//msgs.push_back(s.send_message(channel,member.username()+ " has started typing").get());
 		};
 		c.on_guild_member_add = [&](guild_member& member,shard& s){
 			s.send_message(member.guild().general_channel(),member.username()).get();
 		};
-		c.setToken(tokenType::BOT, "NDAxNjE3Njc4MDk3MTg2ODE3.DWfIcA.EkhHmYUcv3iA4w4IMlfIo1KWysY"s);
+		c.setToken(tokenType::BOT, getFileContents("token.txt"));
+		//c.setToken(tokenType::BOT, "NDAxNjE3Njc4MDk3MTg2ODE3.DWfIcA.EkhHmYUcv3iA4w4IMlfIo1KWysY"s);
 		c.run();
 	}catch(...) {
 		std::cout << ";-;" << std::endl;
 	}
 	std::cin.get();
 }
+
+
+
+
+
 
 
 
@@ -400,6 +429,7 @@ for(int i = 0;i<wat.size();++i){
 	for(int u = 0;u<o[i].size();++u){
 		wat[i] += o[i][u] == correct[u];
 	}
+	wat[i] = std::inner_product(o[i],correct,0,std::equal_to<>(),std::add<>());
 }
 
 */
@@ -688,6 +718,7 @@ int main() {
 		if (check) printf("check\n");
 		int x1, y1, x2, y2;
 		scanf_s("%i %i %i %i", &x1, &y1, &x2, &y2);
+		co_await positions;
 		if (!isValidSpot(x1, y1) || !isValidSpot(x2, y2) || !sameColor(&b, x1, y1, colourTurn)) {
 			printf("invalid piece\n");
 			continue;

@@ -105,7 +105,8 @@ namespace d{
 		}
 		auto end() { return sentinal{}; }
 	protected:
-		my_concurrent_queue<std::pair<std::experimental::coroutine_handle<>, event_type*>> stuff;
+		my_concurrent_queue<std::pair<std::experimental::coroutine_handle<>, event_type*>,std::vector<std::pair<std::experimental::coroutine_handle<>, event_type*>>> stuff;
+		
 	};
 
 	template<typename event_type>
@@ -117,8 +118,8 @@ namespace d{
 	};
 
 	template<typename event_type,typename Executor_t>
-	struct subscriber_thingy_no_async2 :subscriber_thingy_impl<event_type> {
-		subscriber_thingy_no_async2(Executor_t& t_exec):m_exec(t_exec){}
+	struct subscriber_thingy2 :subscriber_thingy_impl<event_type> {
+		subscriber_thingy2(Executor_t& t_exec):m_exec(t_exec){}
 
 		void add_event(event_type e) {			
 			m_exec.execute([_e =std::move(e),this](){
@@ -130,13 +131,13 @@ namespace d{
 		Executor_t& get_executor() noexcept{ return m_exec; }
 	private:
 		Executor_t& m_exec;
+		
 	};
 
 	//template<typename event_type,typename Executor_t>	subscriber_thingy_no_async2(Executor_t&)->subscriber_thingy_no_async2<event_type, Executor_t>;
 
 	template<typename event_type>
 	struct subscriber_thingy_no_async :subscriber_thingy_impl<event_type> {
-
 		void add_event(event_type e) {
 			auto t = stuff.pop();
 			*t.second = std::move(e);

@@ -23,6 +23,7 @@ discord_http_connection::discord_http_connection(client* t):m_client(t) {
 				//std::chrono::milliseconds rate_limit_reset;
 			discord_request r = abcd.pop();
 			std::cout << r.req << std::endl;
+
 			if (r.state->ref_count == 0)continue;
 			{//else
 				std::lock_guard<std::mutex> locky(r.state->mut);
@@ -87,7 +88,7 @@ std::future<void> http_conn(d::subscriber_thingy_async<std::variant<discord_requ
 
 	boost::asio::ssl::context m_sslCtx{ boost::asio::ssl::context::tlsv12_client };
 	boost::asio::ssl::stream<boost::asio::ip::tcp::socket> m_ssl_stream{ m_ioc, m_sslCtx };
-	boost::beast::flat_buffer m_buffer;//needed cuz read_some can read more than it should
+	boost::beast::flat_buffer m_buffer;
 
 	const auto results = resolver.resolve("discordapp.com", "https");
 	boost::asio::connect(m_ssl_stream.next_layer(), results.begin(), results.end());

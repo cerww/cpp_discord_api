@@ -1,5 +1,6 @@
 #pragma once
 #include "randomThings.h"
+#include "range-like-stuffs.h"
 
 using namespace std::string_literals;
 
@@ -8,7 +9,8 @@ public:
 	using functionType = std::function<void(const std::vector<std::string_view>&)>;
 	using defaultFunctionType = std::function<void(std::string_view)>;
 
-	commandLineParser& parseLine(const std::string& data){
+	template<typename string,std::enable_if_t<std::is_same_v<std::decay_t<string>,std::string>,int> = 0>
+	commandLineParser& parseLine(string&& data){//for rvalues and lvalues
 		m_line.reserve(data.size());
 		for (char i : data) {			
 			if((i == '\t' || i == '\n' || i==' ') && m_line.back() != ' ')
@@ -18,14 +20,17 @@ public:
 		}parse_impl(split(std::string_view(m_line)));
 		return *this;
 	}
-	commandLineParser& parseLine(const std::vector<std::string_view>& data){
+	template<typename rng,std::enable_if_t<is_range_of_v<rng,std::string_view>,int> = 0>
+	commandLineParser& parseLine(rng&& data){
 		parse_impl(data);
 		return *this;
 	}
-	commandLineParser& parseLine(const std::vector<std::string>& data){
+
+	template<typename rng, std::enable_if_t<!is_range_of_v<rng,std::string_view> && std::is_convertible_v<std::decay_t<range_type<rng>>,std::string_view>,int> = 0>
+	commandLineParser& parseLine(rng&& data){
 		std::vector<std::string_view> stuffs;
 		stuffs.reserve(data.size());
-		for(const auto& i:data)
+		for(auto&& i:data)
 			stuffs.emplace_back(i);		
 		parse_impl(stuffs);
 		return *this;
@@ -61,14 +66,28 @@ public:
 		m_firstFnNum = argc;		
 		return *this;
 	}
-private:
-	void parse_impl(const std::vector<std::string_view>& argv){
-		size_t used = 0;
-		if(m_firstFn.first) {
-			m_firstFn.second.resize(m_firstFnNum);
-			std::copy(argv.begin(), argv.begin() + m_firstFnNum, m_firstFn.second.begin());
+	void reset_args() {
+		for(auto& i:m_fns){
+			i.second.clear();
 		}
-		for (auto argv_it = argv.begin() + m_firstFnNum; argv_it != argv.end(); ) {
+		m_defaultFn.second.clear();
+		m_firstFn.second.clear();
+	}
+private:
+	template<typename rng>
+	void parse_impl(rng&& argv){
+		size_t used = 0;
+		auto argv_it = argv.begin();
+		if(m_firstFn.first) {			
+			const auto next_it= [&]() {
+				if (m_firstFnNum == -1) return std::find_if(argv_it, argv.end(), [&](const std::string_view& item) {return is_in_map(item).second; });
+				else return argv_it + m_firstFnNum;
+			}();
+			m_firstFn.second.resize(std::distance(argv_it, next_it));
+			std::copy(argv.begin(), next_it, m_firstFn.second.begin());
+			argv_it = next_it;
+		}
+		for (; argv_it != argv.end(); ) {
 			const auto[it, is_option] = is_in_map(*argv_it);
 			if(!is_option){
 				if (!add_default_arg(*argv_it++))
@@ -77,13 +96,13 @@ private:
 			}
 			const auto numArgs = it->second.second; 
 			auto& vec = m_fns[it->second.first].second.emplace_back();
-			const auto end_it = [&](){
-				if (numArgs == -1) return std::find_if(argv_it, argv.end(), [&](std::string_view& item) {return is_in_map(item).second; });					
+			const auto next_it = [&](){
+				if (numArgs == -1) return std::find_if(argv_it, argv.end(), [&](const std::string_view& item) {return is_in_map(item).second; });					
 				else return argv_it + it->second.second + 1;				
 			}();
-			vec.resize(std::distance(argv_it + 1, end_it));
-			std::copy(argv_it + 1, end_it, vec.begin());
-			argv_it = end_it;
+			vec.resize(std::distance(argv_it + 1, next_it));
+			std::copy(argv_it + 1, next_it, vec.begin());
+			argv_it = next_it;
 			used |= 1 << it->second.first;
 		}
 		if((m_required & used) != m_required)
@@ -105,15 +124,25 @@ private:
 	std::string m_line;
 	size_t m_required = 0;
 	std::pair<defaultFunctionType, std::vector<std::string_view>> m_defaultFn;
+
 	std::pair<functionType, std::vector<std::string_view>> m_firstFn;
-	size_t m_firstFnNum = 0;
+	int m_firstFnNum = 0;
 };
 
-
 struct command_thingy{
-	bool add_command(std::string command_name, commandLineParser command) {
-		return m_commands.insert(std::make_pair(std::move(command_name), std::move(command))).second;
+	commandLineParser& add_command(std::string command_name, commandLineParser command = {}) {
+		return m_commands.insert(std::make_pair(std::move(command_name), std::move(command))).first->second;
 	}
+	template<typename rng>
+	std::enable_if_t<std::is_convertible_v<range_type<rng>,std::string>> run_command(rng&& r) {//cant use if constexpr ;-; cuz sfinae
+		std::vector<std::string> stuff;
+		//if constexpr(std::sized_range<rng>){stuff.reserve(r.size());}
+		for(auto&& i:r) {
+			stuff.push_back(i);
+		}
+		auto& command = m_commands[stuff[0]];
 
-	std::map<std::string, commandLineParser> m_commands;
+	}
+private:
+	std::map<std::string, commandLineParser,genericComp> m_commands;
 };

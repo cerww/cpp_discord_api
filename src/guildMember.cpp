@@ -28,7 +28,6 @@ void guild_member::set_presence(const partial_presence_update& presence_update) 
 
 void from_json(const nlohmann::json& in, guild_member& out) {
 	from_json(in["user"], static_cast<User&>(out));
-	out.m_guild_id = in["guild_id"].get<snowflake>();
 	const auto it = in.find("nick");
 	if (it != in.end()) out.m_nick = in["nick"].is_null() ? "" : in["nick"].get<std::string>();
 	out.m_roles = in["roles"].get<std::vector<snowflake>>();
@@ -36,8 +35,8 @@ void from_json(const nlohmann::json& in, guild_member& out) {
 	out.m_mute = in["mute"].get<bool>();
 }
 
-thing<Role> guild_member::roles() const {
-	return thing<Role>(m_guild->roles(), m_roles);
+rename_later_3<Role> guild_member::roles() const {
+	return rename_later_3<Role>(m_guild->roles(), m_roles);
 }
 
 bool guild_member::has_role(const snowflake role_id) const noexcept {

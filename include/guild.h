@@ -1,13 +1,10 @@
 #pragma once
 #include "Channel.h"
 #include "text_channel.h"
-#include "Role.h"
 #include "guildMember.h"
 #include <nlohmann/json.hpp>
-#include "emoji.h"
 #include "snowflake.h"
 #include "timestamp.h"
-#include <optional>
 #include "voice_channel.h"
 #include "partial_guild.h"
 #include "voice_state.h"
@@ -24,9 +21,15 @@ public:
 	text_channel& general_channel() const noexcept;
 	const std::vector<guild_member>& members() const noexcept;
 	std::vector<guild_member>& members() noexcept;
-	thing<text_channel> text_channels()const;
-	thing<voice_channel> voice_channels()const;
-	thing<channel_catagory> channel_catagories()const;
+	
+	rename_later_3<text_channel> text_channels()const;	
+	rename_later_3<voice_channel> voice_channels()const;	
+	rename_later_3<channel_catagory> channel_catagories()const;
+
+	const std::vector<snowflake>& text_channel_ids()const noexcept;
+	const std::vector<snowflake>& channel_catagories_ids()const noexcept;
+	const std::vector<snowflake>& voice_channel_ids()const noexcept;	
+
 	voice_channel* afk_channel()const noexcept;
 	const std::vector<voice_state>& voice_states() const noexcept;
 private:

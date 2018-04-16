@@ -5,6 +5,7 @@
 #include "attachment.h"
 #include "reaction.h"
 #include <optional>
+
 class dm_channel;
 class text_channel;
 class Guild;

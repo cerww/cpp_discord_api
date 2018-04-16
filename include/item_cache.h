@@ -21,11 +21,7 @@ private:
 template<typename T>
 class dynamic_item_cache{
 public:
-	explicit dynamic_item_cache(const bool reserve_before = true) {
-		if (reserve_before)
-			m_cache.reserve(10);
-	}
-	dynamic_item_cache(const size_t cache_size, const bool reserve_before):m_cache_size(cache_size) {
+	dynamic_item_cache(const size_t cache_size, const bool reserve_before = false):m_cache_size(cache_size) {
 		if (reserve_before)
 			m_cache.reserve(m_cache_size);
 	}

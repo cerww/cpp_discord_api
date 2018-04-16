@@ -15,7 +15,7 @@ public:
 	const Guild& guild() const noexcept;;
 	const std::string& nick() const noexcept;
 
-	thing<Role> roles()const;
+	rename_later_3<Role> roles()const;
 
 	const std::vector<snowflake>& role_ids() const noexcept;
 	timestamp joined_at() const noexcept;
@@ -33,9 +33,9 @@ private:
 	timestamp m_joined_at;
 	bool m_deaf = false;
 	bool m_mute = false;
-	snowflake m_guild_id;
 	Status m_status = Status::online;
 	std::optional<activity> m_game;
+	//snowflake m_guild_id;
 
 	Guild* m_guild = nullptr;
 	void set_presence(const partial_presence_update& presence_update);

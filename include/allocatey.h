@@ -42,17 +42,19 @@ template<typename T = void>
 struct single_chunk_allocator {
 	using value_type = T;
 	using difference_type = size_t;
+
 	template<typename o> struct rebind { using other = single_chunk_allocator<o>; };
-	single_chunk_allocator(size_t s = 2048) {
-		m_mem_pool = make_ref_count_ptr<mem_pool_>(s);
-	}
-	single_chunk_allocator(ref_count_ptr<mem_pool_> t):m_mem_pool(t) {}
+
+	single_chunk_allocator(size_t s = 2048):m_mem_pool(make_ref_count_ptr<mem_pool_>(s)){}
+
+	single_chunk_allocator(ref_count_ptr<mem_pool_> t):m_mem_pool(std::move(t)) {}
 
 	template<typename U>
 	single_chunk_allocator(const single_chunk_allocator<U>& other) :m_mem_pool(other.m_mem_pool){
 	}
+
 	template<typename U>
-	single_chunk_allocator(single_chunk_allocator<U>&& other) : m_mem_pool(other.m_mem_pool) {
+	single_chunk_allocator(single_chunk_allocator<U>&& other) : m_mem_pool(other.m_mem_pool) {//move is the same as copy
 	}
 
 	template<typename U>
@@ -84,7 +86,6 @@ private:
 	friend struct single_chunk_allocator;
 	friend struct single_chunk_mem_pool;
 };
-
 
 struct single_chunk_mem_pool{
 	single_chunk_mem_pool(size_t s = 2048):m_stuff(make_ref_count_ptr<mem_pool_>(s)){}
