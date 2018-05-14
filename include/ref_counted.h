@@ -1,7 +1,5 @@
 #pragma once
 #include <atomic>
-#include <mutex>
-
 
 struct ref_counted{
 	mutable std::atomic<size_t> ref_count = 0;	
@@ -27,10 +25,10 @@ template<typename T>
 class ref_count_ptr{
 public:
 	ref_count_ptr() = default;
-	ref_count_ptr(T* t):m_self(t) {
+	ref_count_ptr(T* t)noexcept:m_self(t) {
 		m_self->increment_ref_count();
 	}
-	ref_count_ptr(const ref_count_ptr& other) :m_self(other.m_self) {
+	ref_count_ptr(const ref_count_ptr& other) noexcept:m_self(other.m_self) {
 		m_self->increment_ref_count();
 	}
 	ref_count_ptr(ref_count_ptr&& other) noexcept:m_self(other.m_self) {
@@ -66,15 +64,15 @@ public:
 	const T* get()const noexcept {
 		return m_self;
 	}
-	T* operator->() { return m_self; }
-	T* operator*() { return m_self; }
-	const T* operator->() const{ return m_self; }
-	const T* operator*() const{ return m_self; }
+	T* operator->() noexcept{ return m_self; }
+	T* operator*() noexcept { return m_self; }
+	const T* operator->() const noexcept { return m_self; }
+	const T* operator*() const noexcept { return m_self; }
 private:
-	T * m_self = nullptr;
+	T* m_self = nullptr;
 };
 
 template<typename T,typename... args>
 ref_count_ptr<T> make_ref_count_ptr(args&&... Args) {
-	return ref_count_ptr<T>(new T(Args...));
+	return ref_count_ptr<T>(new T(std::forward<args>(Args)...));
 }

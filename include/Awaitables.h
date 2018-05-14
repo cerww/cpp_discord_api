@@ -5,40 +5,81 @@
 #include "ref_counted.h"
 #include "voice_state.h"
 
-
 using namespace std::string_literals;
-namespace rq {
-	static constexpr const char* application_json = "application/json";
 
-	struct erroru:std::exception{
-		erroru(std::string t):what(std::move(t)){};
-		std::string what;
+namespace rq {
+	struct bad_request :std::exception {
+		template<typename... args>
+		bad_request(args&&... s) :std::exception(std::forward<args>(s)...) {};
 	};
+
+	struct unauthorized :std::exception {
+		template<typename... args>
+		unauthorized(args&&... s) :std::exception(std::forward<args>(s)...) {};
+	};
+
+	struct forbidden :std::exception {
+		template<typename... args>
+		forbidden(args&&... s) :std::exception(std::forward<args>(s)...) {};
+	};
+
+	struct not_found : std::exception {
+		template<typename... args>
+		not_found(args&&... s) :std::exception(std::forward<args>(s)...) {};
+	};
+
+	struct method_not_allowed :std::exception {
+		template<typename... args>
+		method_not_allowed(args&&... s) :std::exception(std::forward<args>(s)...) {};
+	};
+
+	struct gateway_unavailable :std::exception {
+		template<typename... args>
+		gateway_unavailable(args&&... s) :std::exception(std::forward<args>(s)...) {};
+	};
+
+	struct server_error :std::exception {
+		template<typename... args>
+		server_error(args&&... s) :std::exception(std::forward<args>(s)...) {};
+	};
+
+	static constexpr const char* application_json = "application/json";
 
 	struct shared_state:ref_counted{//need better name plox
 		std::condition_variable cv;
 		bool done = false;
 		std::mutex mut;
 		boost::beast::http::response<boost::beast::http::string_body> res;
-		size_t major_param_id = 0;
 	};
 	
-	template<typename T>
-	struct request_base:private crtp<T> {
+	template<typename reqeust>
+	struct request_base:private crtp<reqeust> {
 		template<typename ...Ts>
 		static auto request(Ts&&... t) {
 			return boost::beast::http::request<boost::beast::http::string_body>(
-				T::verb,
-				"/api/v6" + T::target(std::forward<Ts>(t)...),
+				reqeust::verb,
+				"/api/v6" + reqeust::target(std::forward<Ts>(t)...),
 				11
 			);
 		}
-		ref_count_ptr<shared_state> state;		
+		ref_count_ptr<shared_state> state;
+
+		void handle_errors() {
+			const auto status = state->res.result_int();
+			if (status == 400) throw bad_request(";-;");
+			if (status == 401) throw unauthorized();			
+			if (status == 403)throw forbidden();
+			if (status == 404) throw not_found();
+			if (status == 405) throw method_not_allowed();
+			if (status == 502) throw gateway_unavailable();
+			if (status >= 500) throw server_error();
+		}
 
 		void wait() {
 			std::unique_lock<std::mutex> lock{state->mut};
 			state->cv.wait(lock, [&]()->bool {return state->done; });
 		}
+
 		bool ready()const noexcept {
 			return state->done;
 		}
@@ -53,7 +94,7 @@ namespace rq {
 		}
 
 		decltype(auto) await_resume() {	
-			if constexpr(!std::is_same_v<void, typename T::return_type>)
+			if constexpr(!std::is_same_v<void, typename reqeust::return_type>)
 				return value();			
 		}
 
@@ -64,14 +105,15 @@ namespace rq {
 		struct has_overload_value<U, std::void_t<decltype(std::declval<U>().overload_value())>> :std::true_type {};
 
 		decltype(auto) value() {
-			if constexpr(has_overload_value<T>::value)
+			if constexpr(has_overload_value<reqeust>::value)
 				return this->self().overload_value();
-			else if constexpr(!std::is_same_v<void, typename T::return_type>) 
-				return nlohmann::json::parse(state->res.body()).get<typename T::return_type>();			
+			else if constexpr(!std::is_same_v<void, typename reqeust::return_type>) 
+				return nlohmann::json::parse(state->res.body()).get<typename reqeust::return_type>();			
 		}
 		decltype(auto) get() {
 			wait();
-			if constexpr(!std::is_same_v<void, typename T::return_type>)
+			handle_errors();
+			if constexpr(!std::is_same_v<void, typename reqeust::return_type>)
 				return value();
 		}
 
@@ -85,9 +127,9 @@ namespace rq {
 		}
 
 		template<typename fn>
-		auto then(fn&& Fun) {
+		auto then(fn&& Fun,std::launch = std::launch::async) {
 			return std::async(std::launch::async, [this,_fun = std::forward<fn>(Fun)](){
-				if constexpr(!std::is_same_v<typename T::return_type, void>)
+				if constexpr(!std::is_same_v<typename reqeust::return_type, void>)
 					return _fun(get());
 				else
 					_fun();
@@ -95,9 +137,9 @@ namespace rq {
 		}
 
 		template<typename fn,typename executor>
-		std::future<std::result_of_t<fn>> then(executor&& exec, fn&& Fun) {
+		auto then(executor&& exec, fn&& Fun) {
 			return std::async(std::forward<executor>(exec), [this, _fun = Fun](){
-				if constexpr(!std::is_same_v<typename T::return_type, void>)
+				if constexpr(!std::is_same_v<typename reqeust::return_type, void>)
 					return _fun(get());
 				else
 					_fun();
@@ -189,7 +231,7 @@ namespace rq {
 		static constexpr auto verb = boost::beast::http::verb::patch;
 		using return_type = void;
 
-		static std::string target(const Guild& g, const guild_member& member) {
+		static std::string target(const Guild& g, const User& member) {
 			return "/guilds/" + std::to_string(g.id().val) + "/members/" + std::to_string(member.id().val);
 		}
 	};

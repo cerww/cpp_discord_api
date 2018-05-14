@@ -27,7 +27,7 @@ private:
 	//sender_t m_author;
 	std::string m_content;
 	timestamp m_timestamp;
-	//std::optional<timestamp> m_edited_timestamp;
+	std::optional<timestamp> m_edited_timestamp;
 	bool m_tts = false;	
 	bool m_mention_everyone = false;
 	
@@ -86,7 +86,7 @@ private:
 	//sender_t m_author;
 	std::string m_content;
 	timestamp m_timestamp;
-	//std::optional<timestamp> m_edited_timestamp;
+	std::optional<timestamp> m_edited_timestamp;
 	bool m_tts = false;
 	bool m_mention_everyone = false;
 

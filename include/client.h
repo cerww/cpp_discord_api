@@ -1,18 +1,13 @@
 #pragma once
 #include <string>
+#include "shard.h"
 #include <nlohmann/json.hpp>
-#include <boost/beast.hpp>
 #include <chrono>
 #include <thread>
-#include <uWS/uWS.h>
 #include "constant_stuffs.h"
 #include "guild.h"
 #include "text_channel.h"
 #include "dm_channel.h"
-#include <future>
-#include "text_channel.h"
-#include "channel.h"
-#include "shard.h"
 
 using namespace std::string_literals;
 using namespace std::chrono_literals;
@@ -71,7 +66,7 @@ public:
 	std::function<void(channel_catagory&, shard&)> on_guild_channel_catagory_update = nothing;
 	std::function<void(Guild&, shard&)> on_guild_update = nothing;
 	std::function<void(const Guild&,bool, shard&)> on_guild_remove = nothing;
-	std::function<void(Guild&,User&, shard&)> on_ban_add = nothing;
+	std::function<void(Guild&, User&, shard&)> on_ban_add = nothing;
 	std::function<void(Guild&, User&, shard&)> on_ban_remove = nothing;
 	std::function<void(guild_member&, shard&)> on_guild_member_update = nothing;
 	std::function<void(Guild&, Role&, shard&)> on_role_create = nothing;
@@ -79,8 +74,8 @@ public:
 	std::function<void(Guild&, const Role&, shard&)> on_role_delete = nothing;
 	std::function<void(dm_msg_update&, dm_message*, shard&)> on_dm_msg_update = nothing; 
 	std::function<void(guild_msg_update&, guild_text_message*, shard&)> on_guild_msg_update = nothing;
-	std::function<void(dm_message*,snowflake, shard&)> on_dm_msg_delete = nothing;
-	std::function<void(guild_text_message*,snowflake, shard&)> on_guild_msg_delete = nothing;
+	std::function<void(std::optional<dm_message>,snowflake, shard&)> on_dm_msg_delete = nothing;
+	std::function<void(std::optional<guild_text_message>,snowflake, shard&)> on_guild_msg_delete = nothing;
 	std::function<void(guild_member&,text_channel&, shard&)> on_guild_typing_start = nothing;
 	std::function<void(User&,dm_channel&, shard&)> on_dm_typing_start = nothing;
 	std::function<void(text_channel&, shard&)> on_text_channel_delete = nothing;

@@ -1,22 +1,23 @@
 #pragma once
-#include <boost/beast.hpp>
 #include <boost/asio.hpp>
 #include <boost/asio/ssl.hpp>
+#include <boost/beast.hpp>
 #include <thread>
 #include "Awaitables.h"
-#include "my_concurrent_queue.h"
-#include <variant>
+#include "concurrent_queue.h"
+//#include <variant>
 
 struct discord_request {
 	boost::beast::http::request<boost::beast::http::string_body> req;
 	ref_count_ptr<rq::shared_state> state;
 };
+
 class client;
 
 class discord_http_connection{
 public:
 	void sleep_till(std::chrono::steady_clock::time_point time_point) {
-		m_tp = time_point;
+		m_rate_limted_until = time_point;
 		m_global_rate_limited.store(true);
 	};
 	discord_http_connection() = delete;
@@ -26,19 +27,20 @@ public:
 	discord_http_connection& operator=(discord_http_connection&&) = delete;
 
 	explicit discord_http_connection(client*);
+
 	~discord_http_connection() {
 		m_done.store(true);
 		if (m_thread.joinable())
 			m_thread.join();
 	};
 	void add(discord_request&& d) {
-		abcd.push(d);
+		m_request_queue.push(d);
 	}
 	void stop() {
 		m_done = true;
 	}
 private:
-	std::chrono::steady_clock::time_point m_tp;
+	std::chrono::steady_clock::time_point m_rate_limted_until;
 	std::atomic<bool> m_global_rate_limited = false;
 
 	std::atomic<bool> m_done = false;
@@ -50,10 +52,14 @@ private:
 	boost::asio::ssl::context m_sslCtx{ boost::asio::ssl::context::tlsv12_client };
 	boost::asio::ssl::stream<boost::asio::ip::tcp::socket> m_ssl_stream{ m_ioc, m_sslCtx };
 	boost::beast::flat_buffer m_buffer;//needed cuz read_some can read more than it should
-	my_concurrent_queue<discord_request> abcd;
+	concurrent_queue<discord_request> m_request_queue = {};
 	client* m_client = nullptr;
+	void send_to_discord(discord_request);
+	void send_to_discord_(discord_request&,size_t);
+	std::vector<std::tuple<size_t, std::chrono::system_clock::time_point, std::vector<discord_request>>> m_rate_limited;
 };
 
+/*
 #include <experimental/coroutine>
 
 struct coro_discord_http_connection{
@@ -105,8 +111,7 @@ namespace d{
 		}
 		auto end() { return sentinal{}; }
 	protected:
-		my_concurrent_queue<std::pair<std::experimental::coroutine_handle<>, event_type*>,std::vector<std::pair<std::experimental::coroutine_handle<>, event_type*>>> stuff;
-		
+		concurrent_queue<std::pair<std::experimental::coroutine_handle<>, event_type*>,std::vector<std::pair<std::experimental::coroutine_handle<>, event_type*>>> stuff;		
 	};
 
 	template<typename event_type>
@@ -148,3 +153,4 @@ namespace d{
 }
 
 std::future<void> http_conn(d::subscriber_thingy_async<std::variant<discord_request, std::chrono::milliseconds>>& hand, client* parent);
+*/

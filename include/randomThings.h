@@ -87,54 +87,8 @@ constexpr int roundToNearest(const int num, const int multiply) {
 }
 
 template<int multiply>
-
 constexpr int roundToNearestT(const int num) {
 	return (num / multiply)*multiply + multiply * !!(num%multiply);
-}
-
-template<typename T>
-struct getDimensions {
-	static constexpr size_t value = 0;
-};
-template<typename T,size_t n>
-struct getDimensions<std::array<T, n>> {
-	static constexpr size_t value = getDimensions<T>::value + 1;
-};
-template<typename T>
-struct getDimensions<std::vector<T>> {
-	static constexpr size_t value = getDimensions<T>::value + 1;
-};
-template<typename T>
-struct getDimensions<std::stack<T>> {
-	static constexpr size_t value = getDimensions<T>::value + 1;
-};
-template<typename T,typename U>
-struct getDimensions<std::unordered_map<T,U>> {
-	static constexpr size_t value = getDimensions<U>::value + 1;
-};
-template<typename T,typename U>
-struct getDimensions<std::map<T,U>> {
-	static constexpr size_t value = getDimensions<U>::value + 1;
-};
-template<typename T>
-struct getDimensions<std::list<T>> {
-	static constexpr size_t value = getDimensions<T>::value + 1;
-};
-template<typename T>
-struct getDimensions<std::forward_list<T>> {
-	static constexpr size_t value = getDimensions<T>::value + 1;
-};
-template<typename T>
-struct getDimensions<std::deque<T>> {
-	static constexpr size_t value = getDimensions<T>::value + 1;
-};
-
-template<typename T1, typename T2, size_t size>
-inline std::array<T1,size> array_cast(const std::array<T2,size>& oldArray){
-	std::array<T1, size> retVal = {};
-	for(size_t i = 0;i<size;++i)
-		retVal[i] = static_cast<T1>(oldArray[i]);
-	return retVal;
 }
 
 template<typename T1, typename T2, size_t size>
@@ -182,12 +136,12 @@ inline size_t find_first_if_not(string_t&& str, size_t off, pred... fn) {
 }
 
 template<typename string_t, typename... pred>
-inline size_t find_first_if(string_t&& str, size_t off, pred... fn) {
+inline size_t find_first_if(string_t&& str, size_t off, pred&&... fn) {
 	for (; off < str.size(); ++off) {
-		bool t = false;
-		(void)(std::initializer_list<int>{(t |= fn(str[off]), 0)...});
-		//if ((fn(str[off])||...))
-		if (t)
+		//bool t = false;
+		//(void)(std::initializer_list<int>{(t |= fn(str[off]), 0)...});
+		if ((fn(str[off])||...))
+		//if (t)
 			return off;
 	}return -1;
 }
@@ -294,38 +248,6 @@ inline T breadthFirstSearch_p(T start, adjFn adj, predFn pred) {
 	}return retVal.value();
 }
 */
-template<typename T>
-class circleInt {//IDK WHAT THIS IS USEFULL FOR D: ;-;
-public:
-	circleInt(T t_per):m_per(t_per){};
-	circleInt& operator=(T thingy){
-		m_stuff = std::move(thingy) % m_perimater;		
-		return *this;
-	}
-	operator T(){
-		return m_stuff;
-	}
-	circleInt& operator++(int){
-		m_stuff = (m_stuff + 1)% m_perimater;
-		return *this;
-	}circleInt& operator++() {
-		m_stuff = (m_stuff + 1) % m_perimater;
-		return *this;
-	}
-	circleInt& operator+(T other){
-		m_stuff += other;
-		m_stuff = m_stuff%m_perimater;
-		return *this;
-	}
-	circleInt& operator+=(T other){
-		m_stuff += other;
-		m_stuff = m_stuff % m_perimater;
-		return *this;
-	}
-private:
-	T m_stuff;
-	const T m_perimater;
-};
 
 template<typename Container_t,typename pred>
 inline Container_t& remove_if_all_quick(Container_t& vec,pred fn){
@@ -381,7 +303,7 @@ template<typename T, typename adjFn, typename fn>
 inline void BFSApply(T start, adjFn adj, fn Fn) {
 	std::vector<T> queue(1, start);	
 	while (queue.size()) {		
-		//queue = std::move(queue) | transform([&](auto& i){std::invoke(adj,i);return std::invoke(adj,i);}) | join 
+		//queue = std::move(queue) | transform([&](auto& i){std::invoke(Fn,i);return std::invoke(adj,i);}) | join 
 		std::vector<T> next;
 		for (T& node : queue) {
 			for (T& newNode : std::invoke(adj, node))
@@ -586,14 +508,17 @@ public:
 		if(m_starts.size() == m_ends.size())
 			m_starts.push_back(std::chrono::system_clock::now());
 	}
-	void stop(){
+
+	void pause(){
 		if (m_starts.size() == m_ends.size() + 1)
 			m_ends.push_back(std::chrono::system_clock::now());		
 	}
+
 	void reset(){
 		m_starts.clear();
 		m_ends.clear();
 	}
+
 	template<typename time_t>
 	time_t getTime()const{
 		return
@@ -635,43 +560,7 @@ inline std::vector<T> reorder2(const std::vector<T>& vec, const std::vector<int>
 	return newVec;
 }
 
-template<typename T>
-struct reorder_vector_iterator {//bad name ;-;
-	reorder_vector_iterator(std::vector<T>& vec, std::vector<int> t_indices) :m_vec(vec), m_indices(t_indices) {
 
-	};
-	decltype(auto) begin() {
-		return *this;
-	}
-
-	struct endy {};
-
-	static endy end() {
-		return {};
-	}
-
-	T& operator*() {
-		return m_vec[m_current];
-	}
-
-	decltype(auto) operator++() {
-		m_current++;
-		return *this;
-	}
-
-	decltype(auto) operator++(int) {
-		m_current++;
-		return *this;
-	}
-
-	bool operator!=(endy) {
-		return m_current < m_indices.size();
-	}
-private:
-	std::vector<T>& m_vec;
-	std::vector<int> m_indices;
-	int m_current = 0;
-};
 
 inline unsigned swapEndianness(unsigned input) {
 	return input << 24 | input >> 24 | ((input << 8) & (0xFF << 16)) | ((input >> 8) & (0xFF << 8));
@@ -927,7 +816,7 @@ void iterateAll(Tuple& tuple,std::index_sequence<i...>) {
 
 template<typename Tuple,typename Tuple2, size_t... i>
 bool reachedEnd(Tuple& starts, const Tuple2& ends,std::index_sequence<i...>) {
-	return (((std::get<i>(tuple) != std::get<i>(ends)) || ...));
+	return (((std::get<i>(starts) != std::get<i>(ends)) || ...));
 }
 
 template<typename outTuple, typename inTuple, size_t...i >
@@ -958,21 +847,6 @@ std::vector<T1> vector_cast(std::vector<T2>&& other) {
 		retVal[i] = static_cast<T1>(other[i]);
 	return retVal;
 }
-
-inline std::string_view removeEnds(const std::string& in) {
-	std::string_view out(in);
-	out.remove_prefix(1);
-	out.remove_suffix(1);
-	return out;
-}
-
-inline std::string_view removeEnds(std::string&& in) {
-	std::string_view out(in);
-	out.remove_prefix(1);
-	out.remove_suffix(1);
-	return out;
-}
-
 
 template<typename T>
 static inline const T default_val = std::enable_if_t<std::is_default_constructible_v<T>, T>{};
@@ -1046,4 +920,143 @@ constexpr bool erase_if_first_quick(rng&& range, U&& fn) {
 	range.pop_back();
 	return true;
 }
+
+struct dereference {
+	template<typename T>
+	decltype(auto) operator()(T&& thing)const{
+		return *thing;
+	}
+};
+
+template<typename it,typename parent>
+struct iterator_adapter:private crtp<parent>{
+	iterator_adapter() = default;
+	iterator_adapter(it a):m_it(std::move(a)) {};
+	parent& operator++() {
+		++m_it;
+		return this->self();
+	}
+	parent& operator++(int) {
+		++m_it;
+		return this->self();
+	}
+	parent& operator--() {
+		--m_it;
+		return this->self();
+	}
+	parent& operator--(int) {
+		--m_it;
+		return this->self();
+	}
+
+	parent& operator-=(int i) {
+		m_it-=i;
+		return this->self();
+	}
+
+	parent& operator+=(int i) {
+		m_it += i;
+		return this->self();
+	}
+
+	parent operator+(int i) {
+		parent o = this->self();
+		o.m_it += i;
+		return o;
+	}
+
+	parent operator-(int i) {
+		parent o = this->self();
+		o.m_it -= i;
+		return o;
+	}
+
+	int operator-(const iterator_adapter& other) {
+		return m_it - other.m_it;
+	}
+	decltype(auto) operator*() {
+		return this->self().read();
+	}
+	decltype(auto) operator*() const{
+		return this->self().read();
+	}
+protected:
+	decltype(auto) thing() const noexcept{
+		return *m_it;
+	}
+	decltype(auto) thing() noexcept {
+		return *m_it;
+	}
+private:
+	it m_it;
+};
+
+template<typename rng,typename fn>
+struct transform2{	
+	transform2(rng& r,fn f = {}):m_rng(r),m_fn(std::move(f)) {}
+
+	decltype(auto) operator[](int i){
+		return m_fn(m_rng[i]);
+	}
+	decltype(auto) operator[](int i) const{
+		return m_fn(m_rng[i]);
+	}
+	template<typename it_t>
+	struct iterator:iterator_adapter<it_t,iterator<it_t>>{
+		iterator(fn& f, it_t it) :iterator_adapter<it_t, iterator<it_t>>(it), m_fn(f) {};
+		auto operator*()->decltype(m_fn(*static_cast<it_t&>(*this))) {
+			return m_fn(*static_cast<it_t&>(*this));
+		}
+		auto operator*()const->decltype(m_fn(*static_cast<const it_t&>(*this))) {
+			return m_fn(*static_cast<const it_t&>(*this));
+		}
+		auto operator->()->decltype(m_fn(*static_cast<it_t&>(*this))) {
+			return m_fn(*static_cast<it_t&>(*this));
+		}
+		auto operator->()const->decltype(m_fn(*static_cast<const it_t&>(*this))) {
+			return m_fn(*static_cast<const it_t&>(*this));
+		}
+	private:
+		fn& m_fn;
+	};	
+	
+	auto begin() {
+		return iterator<decltype(m_rng.begin())>(m_fn, m_rng.begin());
+	}
+	auto begin() const {
+		return iterator<decltype(m_rng.begin())>(m_fn, m_rng.begin());
+	}
+
+	auto end() {
+		return iterator<decltype(m_rng.end())>(m_fn, m_rng.end());
+	}
+	auto end() const {
+		return iterator<decltype(m_rng.end())>(m_fn, m_rng.end());
+	}
+
+private:
+	rng& m_rng;
+	fn m_fn;
+};
+
+//template<typename rng,typename fn>transformy(rng&, fn)->transformy<rng, fn>;
+
+
+template<typename T>
+struct no_compare:T{
+	using T::T;
+
+	template<typename U>
+	bool operator<(const no_compare<U>&)const noexcept{ return true; }
+	template<typename U>
+	bool operator>(const no_compare<U>&)const noexcept{ return true; }
+	template<typename U>
+	bool operator<=(const no_compare<U>&)const noexcept{ return true; }
+	template<typename U>
+	bool operator>=(const no_compare<U>&)const noexcept{ return true; }
+	template<typename U>
+	bool operator==(const no_compare<U>&)const noexcept{ return true; }
+	template<typename U>
+	bool operator!=(const no_compare<U>&)const noexcept{ return true; }
+};
 

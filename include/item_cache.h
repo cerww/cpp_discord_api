@@ -11,8 +11,8 @@ public:
 		m_cache[m_position++] = std::move(item);
 		m_position = m_position % size;
 	}
-	std::array<T, size>& cache() noexcept { return m_cache; }
-	const std::array<T, size>& cache() const noexcept{ return m_cache; }
+	std::array<T, size>& data() noexcept { return m_cache; }
+	const std::array<T, size>& data() const noexcept{ return m_cache; }
 private:
 	std::array<T, size> m_cache;
 	int m_position = 0;
@@ -54,8 +54,8 @@ public:
 		m_cache[m_position++] = std::make_unique<T>(std::move(item));
 		m_position = m_position % size;
 	}
-	std::array<std::unique_ptr<T>, size>& cache() noexcept { return m_cache; }
-	const std::array<std::unique_ptr<T>, size>& cache() const noexcept { return m_cache; }
+	std::array<std::unique_ptr<T>, size>& data() noexcept { return m_cache; }
+	const std::array<std::unique_ptr<T>, size>& data() const noexcept { return m_cache; }
 private:
 	std::array<std::unique_ptr<T>, size> m_cache;
 	int m_position = 0;

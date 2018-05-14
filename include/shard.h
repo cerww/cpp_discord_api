@@ -58,9 +58,6 @@ public:
 	std::unordered_map<snowflake, channel_catagory>& channel_catagories()noexcept { return m_channel_catagories; }
 	const std::unordered_map<snowflake, channel_catagory>& channel_catagories()const noexcept { return m_channel_catagories; }
 
-
-
-
 	rq::send_message send_message(const text_channel& channel, std::string content);
 	rq::send_message send_message(const dm_channel& channel, std::string content);
 
@@ -71,10 +68,11 @@ public:
 	rq::create_role create_role(const Guild&, std::string_view, permission, int color = 0xffffff/*white*/, bool hoist = true, bool mentionable = true);
 	rq::delete_role delete_role(const Guild&, const Role&);
 
-	rq::modify_member change_nick(const Guild&, const guild_member&, std::string);
+	rq::modify_member change_nick(const guild_member&, std::string);
+	rq::modify_member change_nick(const Guild&, const User&, std::string);
 	rq::change_my_nick change_my_nick(const Guild&, std::string_view);
 	rq::kick_member kick_member(const Guild&, const  guild_member&);
-	rq::ban_member ban_member(const Guild& guild, const  guild_member& member, std::string reason = "", int days_to_delete_msg = 0);
+	rq::ban_member ban_member(const Guild& guild, const guild_member& member, std::string reason = "", int days_to_delete_msg = 0);
 	rq::unban_member unban_member(const Guild&, snowflake id);
 	rq::get_messages get_messages(const Channel&,int = 100);
 	rq::get_messages get_messages_before(const Channel&,snowflake, int = 100);
@@ -99,11 +97,11 @@ public:
 	//Awaitables::modfiy_guild 
 	rq::modify_channel_positions modify_channel_positions(const Guild&, const std::vector<std::pair<snowflake,int>>&);
 
-	template<typename rng,std::enable_if_t<std::is_same_v<std::decay_t<range_type<rng>>,snowflake>,int> = 0>
-	rq::add_guild_member add_guild_member(const Guild&,snowflake,std::string,rng&&,std::string = "",bool = false,bool = false);
+	template<typename rng>
+	std::enable_if_t<std::is_same_v<std::decay_t<range_type<rng>>, snowflake>, rq::add_guild_member> add_guild_member(const Guild&,snowflake,std::string,rng&&,std::string = "",bool = false,bool = false);
 
-	template<typename rng, std::enable_if_t<std::is_same_v<std::decay_t<range_type<rng>>, Role>, int> = 0>
-	rq::add_guild_member add_guild_member(const Guild&, snowflake, std::string, rng&&, std::string = "", bool = false, bool = false);
+	template<typename rng>
+	std::enable_if_t<std::is_same_v<std::decay_t<range_type<rng>>, Role>, rq::add_guild_member> add_guild_member(const Guild&, snowflake, std::string, rng&&, std::string = "", bool = false, bool = false);
 
 	rq::delete_channel delete_channel(const Channel&);
 	rq::add_pinned_msg add_pinned_msg(const Channel&,const partial_message&);
@@ -147,7 +145,7 @@ private:
 	discord_http_connection m_name_plox;
 
 	std::thread m_main_thread;
-	my_concurrent_queue<std::string,std::vector<std::string>> m_event_queue;
+	concurrent_queue<std::string,std::vector<std::string>> m_event_queue;
 
 	void m_opcode0(nlohmann::json, eventName, size_t);
 	void m_opcode1() const;
@@ -203,10 +201,10 @@ private:
 	template<>	void m_procces_event<eventName::WEBHOOKS_UPDATE>(const nlohmann::json&);
 	
 	template<typename msg_t,typename channel_t,typename map_t>
-	msg_t createMsg(channel_t*, const nlohmann::json&,map_t&&);
+	msg_t createMsg(channel_t&, const nlohmann::json&,map_t&&);
 
 	template<typename msg_t, typename channel_t, typename map_t>
-	msg_t createMsgUpdate(channel_t*, const nlohmann::json&, map_t&&);
+	msg_t createMsgUpdate(channel_t&, const nlohmann::json&, map_t&&);
 	//HB stuff
 	std::atomic<bool> m_op11 = true;
 	size_t m_HBd = 0;
@@ -245,8 +243,6 @@ std::pair<thingy, discord_request> get_default_stuffs(Args&&... args) {
 }
 }
 
-
-
 template <typename T, typename ... args>
 std::enable_if_t<rq::has_content_type_v<T>, T> shard::m_send_things(std::string&& body, args&&... Args) {
 	auto[retVal, r] = rawrland::get_default_stuffs<T>(std::forward<args>(Args)...);
@@ -266,30 +262,32 @@ std::enable_if_t<!rq::has_content_type_v<T>, T> shard::m_send_things(args&&... A
 	return std::move(retVal);
 }
 
-template <typename rng, std::enable_if_t<std::is_same_v<std::decay_t<range_type<rng>>, snowflake>, int>>
-rq::add_guild_member shard::add_guild_member(const Guild& guild, snowflake id, std::string access_token, rng&& roles, std::string nick, bool deaf, bool mute) {
+template <typename rng>
+std::enable_if_t<std::is_same_v<std::decay_t<range_type<rng>>, snowflake>, rq::add_guild_member> shard::add_guild_member(const Guild& guild, snowflake id, std::string access_token, rng&& roles, std::string nick, bool deaf, bool mute) {
 	nlohmann::json body;
 	body["access_token"] = access_token;
 	body["nick"] = std::move(nick);
+	body["deaf"] = deaf;
+	body["mute"] = mute;
 	if constexpr(std::is_convertible_v<rng,nlohmann::json>)
 		body["roles"] = roles;
 	else {
 		std::vector<snowflake> stuff;
-		std::transform(roles.begin(), roles.end(), std::back_insert_iterator<std::vector<snowflake>>(stuff),[](auto&& r) {return r.id(); });
+		std::copy(roles.begin(), roles.end(), std::back_inserter(stuff));
 		body["roles"] = std::move(stuff);
-		nlohmann::json q(stuff);
 	}
 	return m_send_things<rq::add_guild_member>(body.dump(), guild, id);
 }
 
-template <typename rng, std::enable_if_t<std::is_same_v<std::decay_t<range_type<rng>>, Role>, int>>
-rq::add_guild_member shard::add_guild_member(const Guild& guild , snowflake id, std::string access_token, rng&& roles, std::string nick, bool deaf, bool mute) {
+template <typename rng>
+std::enable_if_t<std::is_same_v<std::decay_t<range_type<rng>>, Role>, rq::add_guild_member> shard::add_guild_member(const Guild& guild , snowflake id, std::string access_token, rng&& roles, std::string nick, bool deaf, bool mute) {
 	nlohmann::json body;
 	body["access_token"] = access_token;
-	body["nick"] = std::move(nick);
-	std::vector<snowflake> role_ids(roles.size());
-	std::transform(roles.begin(), roles.end(), role_ids.begin(), [](auto&& role) {return role.id(); });
-	body["roles"] = role_ids;
+	body["nick"] = std::move(nick);		
+	body["deaf"] = deaf;
+	body["mute"] = mute;	
+	body["roles"] = std::vector<int>();
+	std::transform(roles.begin(), roles.end(), body["roles"].begin(), [](auto&& role) {return role.id(); });	
 	return m_send_things<rq::add_guild_member>(body.dump(), guild, id);
 }
 
@@ -297,10 +295,10 @@ template <eventName e>
 void shard::m_procces_event(const nlohmann::json&) {}
 
 template <typename msg_t, typename channel_t,typename map_t>
-msg_t shard::createMsg(channel_t* ch, const nlohmann::json& stuffs,map_t&& members) {
+msg_t shard::createMsg(channel_t& ch, const nlohmann::json& stuffs,map_t&& members) {
 	msg_t retVal;
 	from_json(stuffs, static_cast<partial_message&>(retVal));
-	retVal.m_channel = ch;
+	retVal.m_channel = &ch;
 	retVal.m_author = members[retVal.author_id()];
 	for (const auto& mention : stuffs["mentions"])
 		retVal.m_mentions.push_back(members[mention["id"].get<snowflake>()]);
@@ -312,10 +310,10 @@ msg_t shard::createMsg(channel_t* ch, const nlohmann::json& stuffs,map_t&& membe
 }
 
 template <typename msg_t, typename channel_t, typename map_t>
-msg_t shard::createMsgUpdate(channel_t* ch, const nlohmann::json& stuffs, map_t&& members) {
+msg_t shard::createMsgUpdate(channel_t& ch, const nlohmann::json& stuffs, map_t&& members) {
 	msg_t retVal;
 	from_json(stuffs, static_cast<msg_update&>(retVal));
-	retVal.m_channel = ch;
+	retVal.m_channel = &ch;
 	//retVal.m_author = members[stuffs["author"]["id"]];
 	if(retVal.m_author_id.val) {
 		retVal.m_author = members[retVal.m_author_id];

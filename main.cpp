@@ -1,10 +1,10 @@
+#include "client.h"
 #include <iostream>
 #include <boost/asio.hpp>
 #include <utility>
 #include <string>
 #include <boost/beast.hpp>
 #include <future>
-#include "client.h"
 #include "stuffs.h"
 #include "randomThings.h"
 #include "indirect.h"
@@ -68,7 +68,7 @@ struct s{
 template<typename T>
 struct async_generator{	
 	struct promise_type {
-		my_concurrent_queue<T,std::vector<T>> queue;
+		concurrent_queue<T,std::vector<T>> queue;
 		std::atomic<bool> done = false;
 		std::experimental::suspend_always initial_suspend() const{
 			return {};
@@ -185,7 +185,7 @@ struct subscriber_thingy_impl{
 	}
 	auto end() { return sentinal{}; }
 protected:
-	my_concurrent_queue<std::pair<std::experimental::coroutine_handle<>, event_type*>> stuff;
+	concurrent_queue<std::pair<std::experimental::coroutine_handle<>, event_type*>> stuff;
 };
 
 template<typename event_type>
@@ -245,7 +245,7 @@ struct thread_pooly{
 private:
 	struct coro_thingy{
 		struct promise_type:no_suspend{
-			my_concurrent_queue<std::function<void()>> q;
+			concurrent_queue<std::function<void()>> q;
 
 			coro_thingy get_return_value();
 				
@@ -335,26 +335,75 @@ struct shared_ptr_p;
 
 template<typename T>
 struct shared_ptr_ref{
-	std::atomic<int> cnt = 0;
+	shared_ptr_ref(T* a) :thing(a) {};
+	std::atomic<int> cnt = 1;
 	std::mutex mut;
 	T* thing;
 	shared_ptr_p<T>* parent;
 	void die();
+	void decrement() {
+		--cnt;
+		if (cnt == 0)
+			die();
+	}
+	void increment() {
+		++cnt;
+	}
 };
 
 template<typename T>
 struct shared_ptr_p{
-	shared_ptr_ref<T> ref;
+	template<typename... args>
+	shared_ptr_p(args&&... Args):thing(std::forward<args>(Args)...),ref(&thing) {
+		ref->parent = this;
+	};
+
 	T thing;
-	void die() {
+	shared_ptr_ref<T> ref;
+	void die() const {
 		delete this;
 	}
 };
 
 template<typename T>
 struct shared_ptr{
+	shared_ptr(shared_ptr_p<T>* blarg):ref(blarg->ref),thing(blarg->thing) {
+		
+	}
+	~shared_ptr() {
+		if(ref)
+			ref->decrement();
+	}
+	shared_ptr(const shared_ptr& other):ref(other.ref),thing(other.thing){
+		ref->increment();
+	}
 
+	shared_ptr(shared_ptr&& other) noexcept:ref(std::exchange(other.ref,nullptr)), thing(std::exchange(other.thing,nullptr)) {}
 
+	shared_ptr(T* other) :thing(other){
+		ref = new shared_ptr_ref<T>(other);
+	}
+	shared_ptr& operator=(T* other) {
+		this->~shared_ptr();
+		thing = other;
+		ref = new shared_ptr_ref<T>(ref);
+		return &this;
+	}
+
+	shared_ptr& operator=(const shared_ptr& other){
+		this->~shared_ptr();
+		ref = other.ref;
+		ref->increment();
+		thing = other.thing;		
+		return *this;
+	}
+
+	shared_ptr& operator=(shared_ptr&& other) noexcept{
+		this->~shared_ptr();
+		ref = std::exchange(other.ref,nullptr);
+		thing = std::exchange(other.thing,nullptr);
+		return *this;
+	}
 
 	shared_ptr_ref<T>* ref = nullptr;
 	T* thing = nullptr;
@@ -364,10 +413,36 @@ template<typename T>
 void shared_ptr_ref<T>::die() {
 	if (parent) {
 		parent->die();
+	}else{
+		delete thing;
+		delete this;
 	}
-	delete thing;
-	delete this;
 }
+
+template<typename T,typename... args>
+auto make_shared(args&&... Args) {
+	return shared_ptr<T>(new shared_ptr_p<T>(std::forward<args>(Args)...));
+}
+
+struct qwer{
+	void u() {
+		std::cout << "qwer" << std::endl;
+	}
+
+
+};
+
+bool operator!=(qwer, qwer) { return false; }
+
+struct abc:qwer{
+	void u() {
+		std::cout << "abc" << std::endl;
+	}
+};
+//*
+struct b{
+	int c;
+};
 
 int main(){	
 	try{
@@ -381,7 +456,7 @@ int main(){
 			else if(wat.content()== "make new channel") {
 				s.create_text_channel(wat.guild(),"blargy").get();
 			}
-			//s->change_nick(wat.guild(),wat.author(), wat.content());
+			//s.change_nick(wat.guild(),wat.author(), wat.content());
 			for(auto& i:wat.mentions()){
 				s.change_nick(wat.guild(), *i, wat.content());
 			}
@@ -406,9 +481,200 @@ int main(){
 
 
 
+//*/
+/*
+#include <math.h>
+#include <stdio.h>
+#define WHITE 1
+#define BLACK 2
+#define NONE 0
+#define PAWN 4
+#define BISH 8
+#define ROOK 16
+#define KING 32
+#define KNIGHT 64
+#define QUEEN 128
+#define dv(wat) ((wat)?(wat)/abs(wat):(wat))
+#define getColor(piece) ((piece) & 0b11)
+#define getPieceName(piece) ((piece) & 0b11111100)
+#define otherColor(c) (((c) ^ 0b11))
+#define isValidSpot(x,y) ((x) >= 0 && (x)<8 && (y) >= 0 && (y)<8)
+#define return_if(condition,value) if(condition) return value;
+#define cpp_for(init,condition,end) \
+	init;\
+	for(;condition;end)
+typedef struct {
+	int data[64];
+} board;
+#define getSpot(b,x,y) ((b)->data[(x)+(y)*8])
+#define setSpot(b,x,y,piece) ((b)->data[(x)+(y)*8] = piece)
+#define sameColor(b,x,y,color) ((getColor(getSpot((b), (x), (y))) == color))
+board moveSpot(board b, int x1, int y1, int x2, int y2) {
+	if (getPieceName(getSpot(&b, x1, y1)) == PAWN && x1 != x2 && !getSpot(&b, x2, y2))
+		setSpot(&b, x2, y2 - (BLACK ? -1 : 1), NONE);
+	setSpot(&b, x2, y2, getSpot(&b, x1, y1));
+	setSpot(&b, x1, y1, NONE);
+	if (getPieceName(getSpot(&b, x2, y2)) == KING && abs(x1 - x2) == 2) {
+		return_if(y2 != (getColor(getSpot(&b, x2, y2)) == BLACK ? 0 : 7) || y1 != (getColor(getSpot(&b, x2, y2)) == BLACK ? 0 : 7), b);
+		if (x2 == 6)
+			b = moveSpot(b, 7, getColor(getSpot(&b, x2, y2)) == BLACK ? 0 : 7, 5, getColor(getSpot(&b, x2, y2)) == BLACK ? 0 : 7);
+		else if (x2 == 2)
+			b = moveSpot(b, 0, getColor(getSpot(&b, x2, y2)) == BLACK ? 0 : 7, 3, getColor(getSpot(&b, x2, y2)) == BLACK ? 0 : 7);
+	}return b;
+}
+void printPieceSymbol(int piece) {
+	static char pieceSymbol[7] = { 'P','B','R','K','N','Q' };
+	static char pieceColors[3] = "wb";
+	printf("| %c%c ", piece ? pieceColors[getColor(piece) / 2] : ' ', piece ? pieceSymbol[(int)log2(double(getPieceName(piece))) - 2] : ' ');
+}
+void printBoard(board* b) {
+	printf("    +----+----+----+----+----+----+----+----+\n");	
+	cpp_for (int y = 0, y<8, ++y) {
+		printf("%i   ", 8 - y);
+		cpp_for (int x = 0, x<8, ++x)
+			printPieceSymbol(getSpot(b, x, y));
+		printf("|\n    +----+----+----+----+----+----+----+----+\n");
+	}printf("       a    b    c    d    e    f    g    h");
+}
+void getKingSpot(board* b, int color, int* kx, int* ky) {	
+	cpp_for (int i = 0, i<64, ++i)
+		if (getSpot(b, i % 8, i / 8) == KING + color) {
+			*kx = i % 8;
+			*ky = i / 8;
+		}
+}
+static int bishMoveSpotsx[4] = { -1,-1,1,1 };
+static int bishMoveSpotsy[4] = { 1,-1,-1,1 };
+static int rookMoveSpotsx[4] = { 1,-1,0,0 };
+static int rookMoveSpotsy[4] = { 0,0,1,-1 };
+static int knightMoveSpotsx[8] = { 1, 2, 1, 2,-1,-2,-1,-2 };
+static int knightMoveSpotsy[8] = { 2, 1,-2,-1, 2, 1,-2,-1 };
+static int kingMoveSpotsx[8] = { 1,1,1,0,0,-1,-1,-1 };
+static int kingMoveSpotsy[8] = { 0,-1,1,1,-1,1,-1,0 };
+bool ray_trace(board* b, int kingX, int kingY, int color, int pieceType, int dx, int dy) {	
+	cpp_for (int u = 1, isValidSpot(kingX + u * dx, kingY + u * dy), ++u)
+		return_if(getSpot(b, kingX + u * dx, kingY + u * dy), ((getSpot(b, kingX + u * dx, kingY + u * dy) == pieceType + color) || (getSpot(b, kingX + u * dx, kingY + u * dy) == QUEEN + color)));
+	return false;
+}
+bool isValidBoard(board* b, int lastPlayedColor) {
+	int kingXSpot;
+	int kingYSpot;
+	getKingSpot(b, lastPlayedColor, &kingXSpot, &kingYSpot);
+	cpp_for (int i = 0, i < 4, ++i)
+		return_if(ray_trace(b, kingXSpot, kingYSpot, otherColor(lastPlayedColor), BISH, bishMoveSpotsx[i], bishMoveSpotsy[i]) || ray_trace(b, kingXSpot, kingYSpot, otherColor(lastPlayedColor), ROOK, rookMoveSpotsx[i], rookMoveSpotsy[i]), false);
+	for (i = 0; i < 8; ++i)
+		return_if((isValidSpot(kingXSpot + kingMoveSpotsx[i], kingYSpot + kingMoveSpotsy[i]) && getSpot(b, kingXSpot + kingMoveSpotsx[i], kingYSpot + kingMoveSpotsy[i]) == KING + otherColor(lastPlayedColor)) || (isValidSpot(kingXSpot + knightMoveSpotsx[i], kingYSpot + knightMoveSpotsy[i]) && getSpot(b, kingXSpot + knightMoveSpotsx[i], kingYSpot + knightMoveSpotsy[i]) == KNIGHT + otherColor(lastPlayedColor)), false);
+	return !((isValidSpot(kingXSpot + 1, kingYSpot + otherColor(lastPlayedColor) == BLACK ? 1 : -1) && getSpot(b, kingXSpot + 1, kingYSpot + otherColor(lastPlayedColor) == BLACK ? 1 : -1) == PAWN + otherColor(lastPlayedColor)) ||  (isValidSpot(kingXSpot - 1, kingYSpot + otherColor(lastPlayedColor) == BLACK ? 1 : -1) && getSpot(b, kingXSpot - 1, kingYSpot + otherColor(lastPlayedColor) == BLACK ? 1 : -1) == PAWN + otherColor(lastPlayedColor)));
+}
+bool hmmm(board* b, int dx, int dy, int x1, int y1, int dtotal) {	
+	cpp_for (int u = 1, u<dtotal, ++u) 
+		return_if(getSpot(b, dx*u + x1, dy*u + y1), false);
+	return true;
+}
+#define validMoveForRook(b,color,x1,y1,x2,y2) ((!((x1 == x2) ^ (y1 == y2)) || sameColor(b, x2, y2, color))?false:hmmm(b, dv(x2 - x1), dv(y2 - y1), x1, y1, abs(x1 - x2) + abs(y1 - y2)))
+#define validMoveForBish(b,color,x1,y1,x2,y2) ((abs(x1 - x2) != abs(y1 - y2) || sameColor(b, x2, y2, color))?false: hmmm(b, dv(x2 - x1), dv(y2 - y1), x1, y1, abs(x1 - x2)))
+#define validMoveForQueen(b,color,x1,y1,x2,y2) ((validMoveForBish(b, color, x1, y1, x2, y2) || validMoveForRook(b, color, x1, y1, x2, y2)))
+#define validMoveForKing(b,color,x1,y1,x2,y2) ((abs(x1 - x2) > 1 && abs(y1 - y2) > 1 && !sameColor(b, x2, y2, color))?false: abs(x1 - x2) || abs(y1 - y2))
+#define validMoveForKnight(b,color,x1,y1,x2,y2) (bool((abs((x1) - (x2)) <= 2 && abs((y1) - (y2)) <= 2 && abs((x1) - (x2)) + abs((y1) - (y2)) == 3) && !sameColor(b, x2, y2, color)))
+#define validMoveForPawn(b,color,x1,y1,x2,y2) (((color == WHITE && y2 >= y1) || (color == BLACK && y2 <= y1)) ? false : (abs(x1 - x2) == 1 && abs(y1 - y2) == 1) ? !sameColor(b, x2, y2, color) && getSpot(b, x2, y2) : (getSpot(b, x2, y2) || abs(x1 - x2)) ? false : ((color == BLACK && y1 == 1) || (color == WHITE && y1 == 6)) ? abs(y1 - y2) <= 2 && !getSpot(b, x2, y1 + (color == WHITE ? -1 : 1)) : (abs(y1 - y2) == 1))
+char kingCastleing = 4;
+char rightRookCastleing = 2;
+char leftRookCastleing = 1;
+bool validKingCastle(board* b, int color, int x1, int y1, int x2, int y2, char castleingStatus) {
+	return_if(castleingStatus & kingCastleing || (castleingStatus & (x2 == 2 ? leftRookCastleing : rightRookCastleing)) || y1 != y2 || y1 != (color == BLACK ? 0 : 7) || (x2 != 2 && x2 != 6) || x1 != 4, false);	
+	if ((x2 == 2 ? leftRookCastleing : rightRookCastleing) == leftRookCastleing) {
+		cpp_for (int i = 0, i<3, ++i) {
+			board nb = moveSpot(*b, x1, color == BLACK ? 0 : 7, x1 - 1 - i, y2);
+			return_if(!isValidBoard(&nb, color), false);
+		}return !getSpot(b, x1 - 1, color == BLACK ? 0 : 7) && !getSpot(b, x1 - 2, color == BLACK ? 0 : 7) && !getSpot(b, x1 - 3, color == BLACK ? 0 : 7);
+	}//else
+	cpp_for(int i = 0, i<2, ++i) {
+		board nb = moveSpot(*b, x1, color == BLACK ? 0 : 7, x1 + 1 + i, y2);
+		return_if(!isValidBoard(&nb, color), false);
+	}return !(getSpot(b, x1 + 1, color == BLACK ? 0 : 7) || getSpot(b, x1 + 2, color == BLACK ? 0 : 7));
+}
+#define validEnpassant(b, color, x1, y1, x2, y2, enpassantStatus) (((enpassantStatus) != -1) && (y1 == (color == BLACK ? 5 : 3) && ((color) == BLACK ? 1 : -1) + (color == BLACK ? 5 : 3) == (y2) && (x2) == (enpassantStatus)))
+bool validMove(board* b,board* newBoard,int pieceName,int colourTurn,int x1,int y1,int x2,int y2,char blackEnpassantable,char whiteEnpassantable,char castleing_white_status,char castleing_black_status) {	
+	return ((pieceName == PAWN) ? (validMoveForPawn(b, colourTurn, x1, y1, x2, y2) || validEnpassant(b, colourTurn, x1, y1, x2, y2, (colourTurn == WHITE) ? blackEnpassantable : whiteEnpassantable)) : (pieceName == BISH) ? validMoveForBish(b, colourTurn, x1, y1, x2, y2) : (pieceName == QUEEN) ? validMoveForQueen(b, colourTurn, x1, y1, x2, y2) : (pieceName == KING) ? validMoveForKing(b, colourTurn, x1, y1, x2, y2) || validKingCastle(b, colourTurn, x1, y1, x2, y2, colourTurn == BLACK ? castleing_black_status : castleing_white_status) : (pieceName == ROOK) ? validMoveForRook(b, colourTurn, x1, y1, x2, y2) : false) && isValidBoard(newBoard, colourTurn);
+}
+bool is_checkmate(board* b,int colorTurn) {	//colourTurn wins
+	cpp_for(int i = 0,i<64*64,++i) {
+		board newBoard = moveSpot(*b, (i%64) % 8, (i%64) / 8, (i/64) % 8, (i/64) / 8);
+		return_if((getColor(getSpot(b, (i % 64) % 8, (i % 64) / 8)) == otherColor(colorTurn)) && ((validMove(b, &newBoard, getPieceName(getSpot(b, (i % 64) % 8, (i % 64) / 8)), otherColor(colorTurn), (i % 64) % 8, (i % 64) / 8, (i / 64) % 8, (i / 64) / 8, -1, -1, -1, -1))), false);
+	}return true;
+}
+#define continue_if(condition,string_to_print) if(condition){\
+	printf(string_to_print);\
+	continue;\
+}
+int main() {
+	board b;
+	int i, colourTurn = WHITE,u = 0;
+	for (i = 0; i<64; ++i)
+		b.data[i] = 0;
+	for (i = WHITE; i < BLACK+1; ++i) {
+		setSpot(&b, 0,( 7 * (i == WHITE)), ROOK + i);
+		setSpot(&b, 1,( 7 * (i == WHITE)), KNIGHT + i);
+		setSpot(&b, 2,( 7 * (i == WHITE)), BISH + i);
+		setSpot(&b, 3,( 7 * (i == WHITE)), QUEEN + i);
+		setSpot(&b, 4,( 7 * (i == WHITE)), KING + i);
+		setSpot(&b, 5,( 7 * (i == WHITE)), BISH + i);
+		setSpot(&b, 6,( 7 * (i == WHITE)), KNIGHT + i);
+		setSpot(&b, 7,( 7 * (i == WHITE)), ROOK + i);
+		for(u = 0;u<8;++u)
+			setSpot(&b, u, ((i == WHITE) ? 6 : 1), PAWN + i);
+	}
+	char check = false, checkmate = false, castleing_white_status = 0, castleing_black_status = 0, whiteEnpassantable = -1, blackEnpassantable = -1;
+	while (!checkmate) {
+		printBoard(&b);
+		printf("\n");
+		if (check) printf("check\n");
+		int x1, y1, x2, y2;
+		scanf_s("%i %i %i %i", &x1, &y1, &x2, &y2);
+		continue_if(!isValidSpot(x1, y1) || !isValidSpot(x2, y2) || !sameColor(&b, x1, y1, colourTurn), "invalid piece\n");
+		board newBoard = moveSpot(b, x1, y1, x2, y2);
+		continue_if(!validMove(&b, &newBoard, getPieceName(getSpot(&b, x1, y1)), colourTurn, x1, y1, x2, y2, blackEnpassantable, whiteEnpassantable, castleing_white_status, castleing_black_status), "invalid move\n");
+		if ((getSpot(&newBoard, x2, y2) == PAWN + colourTurn) && y2 == ((colourTurn == BLACK) ? 7 : 0)) {
+			printf("0 for rook,1 for bish,2 for knight,3 for queen: ");
+			int pawn_promotion_piece = 0;
+			scanf_s("%i", &pawn_promotion_piece);
+			static int pieces[] = { ROOK,BISH,KNIGHT,QUEEN };
+			setSpot(&b, x2, y2, pieces[pawn_promotion_piece] + colourTurn);
+		}
+		castleing_black_status |= (x1 == 0 || x2 == 0) *((y1 == 0 || y2 == 0) ? leftRookCastleing : (y1 == 7 || y2 == 7) ? rightRookCastleing : 0);
+		castleing_white_status |= (x1 == 7 || x2 == 7) * ((y1 == 0 || y2 == 0) ? leftRookCastleing : (y1 == 7 || y2 == 7) ? rightRookCastleing : 0);
+		if (y1 == 0 && x1 == 4)
+			castleing_black_status |= kingCastleing;
+		else if (y1 == 7 && x1 == 4)
+			castleing_white_status |= kingCastleing;
+		if (getPieceName(getSpot(&b, x1, y1)) == PAWN && abs(y2 - y1) == 2) {
+			if (colourTurn == BLACK)
+				blackEnpassantable = x1, whiteEnpassantable = -1;
+			else
+				whiteEnpassantable = x1, blackEnpassantable = -1;
+		}else
+			blackEnpassantable = -1, whiteEnpassantable = -1;
+		b = moveSpot(b,x1,y1,x2,y2);
+		check = !isValidBoard(&b, otherColor(colourTurn));
+		colourTurn = otherColor(colourTurn);
+	}
+}
 
 
+//*/
+/*
+test stuffs
+pawn---
+1 6 1 4
+0 1 0 3
+1 4 1 3
+2 1 2 3
+1 3 2 2
+knignt
+1 7 0 5
 
+
+*/
 
 
 /*
@@ -429,7 +695,7 @@ for(int i = 0;i<wat.size();++i){
 	for(int u = 0;u<o[i].size();++u){
 		wat[i] += o[i][u] == correct[u];
 	}
-	wat[i] = std::inner_product(o[i],correct,0,std::equal_to<>(),std::add<>());
+	wat[i] = std::inner_product(o[i],correct,0,std::equal_to<>(),std::plus<>());
 }
 
 */
@@ -459,7 +725,7 @@ int getColor(int piece) {
 }
 
 int getPieceName(int piece) {
-	return piece & 0b1111100;
+	return piece & 0b11111100;
 }
 
 int otherColor(int c) {
@@ -689,22 +955,24 @@ bool validEnpassant(board* b, int color, int x1, int y1, int x2, int y2, int enp
 
 int main() {
 	board b;
-	for(int i =0;i<64;++i){
+	int i, colourTurn = WHITE,u = 0;
+	for (i = 0; i<64; ++i)
 		b.data[i] = 0;
+	for (i = WHITE; i < BLACK+1; ++i) {
+		setSpot(&b, 0,( 7 * (i == WHITE)), ROOK + i);
+		setSpot(&b, 1,( 7 * (i == WHITE)), KNIGHT + i);
+		setSpot(&b, 2,( 7 * (i == WHITE)), BISH + i);
+		setSpot(&b, 3,( 7 * (i == WHITE)), QUEEN + i);
+		setSpot(&b, 4,( 7 * (i == WHITE)), KING + i);
+		setSpot(&b, 5,( 7 * (i == WHITE)), BISH + i);
+		setSpot(&b, 6,( 7 * (i == WHITE)), KNIGHT + i);
+		setSpot(&b, 7,( 7 * (i == WHITE)), ROOK + i);
+		for(u = 0;u<8;++u)
+			setSpot(&b, u, ((i == WHITE) ? 6 : 1), PAWN + i);
 	}
-
-	setSpot(&b, 1, 1, PAWN + BLACK);
-	setSpot(&b, 4, 0, KING + BLACK);
-	setSpot(&b, 4, 7, KING + WHITE);
-	setSpot(&b, 1, 6, PAWN + WHITE);
-	setSpot(&b, 0, 7, ROOK + WHITE);
-	setSpot(&b, 1, 7, KNIGHT + WHITE);
-	setSpot(&b, 2, 7, BISH + WHITE);
-	setSpot(&b, 7, 7, ROOK + WHITE);
 	char check = false;
 	char checkmate = false;
 	int turns = 0;
-	int colourTurn = WHITE;
 
 	char castleing_white_status = 0;
 	char castleing_black_status = 0;
@@ -717,8 +985,7 @@ int main() {
 		printf("\n");
 		if (check) printf("check\n");
 		int x1, y1, x2, y2;
-		scanf_s("%i %i %i %i", &x1, &y1, &x2, &y2);
-		co_await positions;
+		scanf_s("%i %i %i %i", &x1, &y1, &x2, &y2);		
 		if (!isValidSpot(x1, y1) || !isValidSpot(x2, y2) || !sameColor(&b, x1, y1, colourTurn)) {
 			printf("invalid piece\n");
 			continue;
@@ -817,7 +1084,7 @@ int main() {
 }
 
 
-*/
+//*/
 
 
 

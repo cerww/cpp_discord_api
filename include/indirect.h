@@ -29,7 +29,8 @@ struct indirect {
 
 	template<typename ...Ts1, typename ...Ts2>
 	indirect(std::tuple<Ts1...> alloc_args,std::tuple<Ts2...> T_args):
-		m_allocator() {
+		m_allocator(std::make_from_tuple<_Alloc>(std::move(alloc_args))),
+		m_data(new (m_allocator.allocate(1)) T(std::make_from_tuple<T>(std::move(T_args)))){
 		
 	}
 

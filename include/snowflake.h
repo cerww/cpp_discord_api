@@ -140,6 +140,11 @@ struct rename_later_3{//i need a better name
 			iterator retVal = *this;
 			return retVal -= i;
 		}
+		decltype(auto) operator[](size_t i)const {
+			return it[i];
+		}decltype(auto) operator[](size_t i) {
+			return it[i];
+		}
 	private:
 		rename_later_3 * m_parent;
 		std::vector<snowflake>::const_iterator it;
@@ -192,6 +197,12 @@ struct rename_later_3{//i need a better name
 			const_iterator retVal = *this;
 			return retVal -= i;
 		}
+		decltype(auto) operator[](size_t i)const{
+			return it[i];
+		}
+		decltype(auto) operator[](size_t i) {
+			return it[i];
+		}
 	private:
 		rename_later_3 * m_parent;
 		std::vector<snowflake>::const_iterator it;
@@ -228,6 +239,7 @@ private:
 	std::unordered_map<snowflake, T>& m_wat;
 	const std::vector<snowflake>& m_waty;
 	friend struct iterator;
+	friend struct const_iterator;
 };
 
 template<typename T>
