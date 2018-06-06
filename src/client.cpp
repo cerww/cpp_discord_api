@@ -14,28 +14,47 @@ client::client() {
 	});
 
 	m_ws_hub.onDisconnection([&](uWS::WebSocket<uWS::CLIENT>* clientu,int code,char* msg,size_t len){
+		if(code == 4000) {
+			m_shards.at(clientu)->reconnect();
+		}if(code == 4003) {
+			std::cout << "not authenticated" << std::endl;
+		}
+		if(code == 4004) {
+			std::cout << "authentication failed" << std::endl;
+		}
+		if(code == 4005) {
+			std::cout << "already authenticated" << std::endl;
+		}
 		if(code == 4007) {
-			m_shards.at(clientu)->reconnect2();
+			m_shards.at(clientu)->reconnect();
+		}
+		if(code == 4008) {
+			std::cout << "rate limited" << std::endl;
+		}
+		if(code == 4009) {
+			std::cout << "session timeout" << std::endl;
+			m_shards.at(clientu)->reconnect();
+		}
+		if(code == 4011) {
+			std::cout << "sharding required" << std::endl;
 		}
 	});
 
 	m_ws_hub.onConnection([&](uWS::WebSocket<uWS::CLIENT>* web_socket, uWS::HttpRequest){
-		auto it = std::find_if(m_shards.begin(),m_shards.end(),[](auto& val){
+		const auto it = std::find_if(m_shards.begin(),m_shards.end(),[](auto& val){
 			return val.second->is_disconnected();
-		});
+		});//the socket each shard is associated with is determined after send_resume();
 		if(it!=m_shards.end()) {
 			auto temp = m_shards.extract(it);
 			temp.key() = web_socket;
 			shard& shardy = *m_shards.insert(std::move(temp)).node.mapped();//wat
 			shardy.send_resume();
-			std::cout << "blargy\n\n\n\n\n\n\n\n\n\n" << std::endl;
-			std::cin.get();
 		}else{
 			m_shards.insert(std::make_pair(web_socket,std::make_unique<shard>(m_shards.size(), web_socket, this)));
 		}
 	});	
 	m_ws_hub.onError([&](void* user){
-		std::cout << "D:" << std::endl;
+		std::cout << "couldn't connect try again" << std::endl;
 	});
 }
 

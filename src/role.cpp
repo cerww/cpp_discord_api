@@ -18,7 +18,7 @@ void to_json(nlohmann::json& json, const Role& r) {
 }
 
 void from_json(const nlohmann::json& json, Role& other) {
-	if (json.is_null()) return;
+	if (json.is_null()) return;//why would role be null ;-;
 	other.m_id = json["id"].get<snowflake>();
 	other.m_position = json["position"].get<int>();
 	other.m_permissions.data() = json["permissions"].get<size_t>();

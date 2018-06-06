@@ -15,7 +15,7 @@ public:
 	const Guild& guild() const noexcept;;
 	const std::string& nick() const noexcept;
 
-	rename_later_3<Role> roles()const;
+	discord_obj_list<Role> roles()const;
 
 	const std::vector<snowflake>& role_ids() const noexcept;
 	timestamp joined_at() const noexcept;
@@ -47,3 +47,5 @@ private:
 void from_json(const nlohmann::json& in, guild_member& out);
 
 void to_json(nlohmann::json& out, const guild_member& in);
+
+

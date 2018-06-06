@@ -45,13 +45,13 @@ namespace rq {
 
 	static constexpr const char* application_json = "application/json";
 
-	struct shared_state:ref_counted{//need better name plox
+	struct shared_state:ref_counted{
 		std::condition_variable cv;
-		bool done = false;
 		std::mutex mut;
+		bool done = false;
 		boost::beast::http::response<boost::beast::http::string_body> res;
 	};
-	
+
 	template<typename reqeust>
 	struct request_base:private crtp<reqeust> {
 		template<typename ...Ts>
@@ -68,7 +68,7 @@ namespace rq {
 			const auto status = state->res.result_int();
 			if (status == 400) throw bad_request(";-;");
 			if (status == 401) throw unauthorized();			
-			if (status == 403)throw forbidden();
+			if (status == 403) throw forbidden();
 			if (status == 404) throw not_found();
 			if (status == 405) throw method_not_allowed();
 			if (status == 502) throw gateway_unavailable();
@@ -108,7 +108,7 @@ namespace rq {
 			if constexpr(has_overload_value<reqeust>::value)
 				return this->self().overload_value();
 			else if constexpr(!std::is_same_v<void, typename reqeust::return_type>) 
-				return nlohmann::json::parse(state->res.body()).get<typename reqeust::return_type>();			
+				return nlohmann::json::parse(make_safe_to_parse(state->res.body())).get<typename reqeust::return_type>();			
 		}
 		decltype(auto) get() {
 			wait();

@@ -14,6 +14,7 @@
 #include "discord_http_connection.h"
 #include <type_traits>
 #include "range-like-stuffs.h"
+#include "indirect.h"
 
 using namespace std::string_literals;
 using namespace std::chrono_literals;
@@ -26,7 +27,7 @@ public:
 		m_shard_number(shardN),
 		m_parent(t_parent), 
 		m_client(t_client),
-		m_name_plox(t_parent)	{
+		m_http_connection(t_parent)	{
 		m_main_thread = std::thread([&]() {	
 			while (!m_done) {
 				doStuff(nlohmann::json::parse(m_event_queue.pop()));
@@ -41,23 +42,22 @@ public:
 	
 	~shard() {
 		m_done = true;
-		if (m_heartbeatThread.joinable())
-			m_heartbeatThread.join();
 		if (m_main_thread.joinable())
 			m_main_thread.join();
 	}
-	std::unordered_map<snowflake, text_channel> & text_channels() noexcept { return m_text_channels; }
-	const std::unordered_map<snowflake, text_channel> & text_channels() const noexcept { return m_text_channels; }
+	
+	rename_later_4<snowflake, text_channel> & text_channels() noexcept { return m_text_channels; }
+	const rename_later_4<snowflake, text_channel> & text_channels() const noexcept { return m_text_channels; }
 
-	std::unordered_map<snowflake, dm_channel>& dm_channels()noexcept { return m_dm_channels; }
-	const std::unordered_map<snowflake, dm_channel>& dm_channels()const noexcept { return m_dm_channels; }
+	rename_later_4<snowflake, dm_channel>& dm_channels()noexcept { return m_dm_channels; }
+	const rename_later_4<snowflake, dm_channel>& dm_channels()const noexcept { return m_dm_channels; }
 
-	std::unordered_map<snowflake, voice_channel>& voice_channels() noexcept { return m_voice_channels; }
-	const std::unordered_map<snowflake, voice_channel>& voice_channels() const noexcept { return m_voice_channels; }
+	rename_later_4<snowflake, voice_channel>& voice_channels() noexcept { return m_voice_channels; }
+	const rename_later_4<snowflake, voice_channel>& voice_channels() const noexcept { return m_voice_channels; }
 
-	std::unordered_map<snowflake, channel_catagory>& channel_catagories()noexcept { return m_channel_catagories; }
-	const std::unordered_map<snowflake, channel_catagory>& channel_catagories()const noexcept { return m_channel_catagories; }
-
+	rename_later_4<snowflake, channel_catagory>& channel_catagories()noexcept { return m_channel_catagories; }
+	const rename_later_4<snowflake, channel_catagory>& channel_catagories()const noexcept { return m_channel_catagories; }
+	
 	rq::send_message send_message(const text_channel& channel, std::string content);
 	rq::send_message send_message(const dm_channel& channel, std::string content);
 
@@ -111,7 +111,7 @@ public:
 	bool is_disconnected() const {
 		return m_is_disconnected;
 	}
-	void update_presence(const Status,std::string);
+	void update_presence(Status,std::string);
 
 private:
 	void add_event(std::string t) {
@@ -119,15 +119,16 @@ private:
 	};
 	void doStuff(nlohmann::json);
 	void rate_limit(std::chrono::steady_clock::time_point tp) {
-		m_name_plox.sleep_till(tp);
+		m_http_connection.sleep_till(tp);
 	}
 
-	void reconnect2() {
+	void close_connection(int code) {
 		m_is_disconnected = true;
-		m_client->close();
+		m_client->close(code);
 	}
 
-	void reconnect();
+	void reconnect();	
+	void send_heartbeat();
 	void send_resume() const;
 
 	template<typename T,typename ... args>	
@@ -138,25 +139,28 @@ private:
 	bool m_is_disconnected = false;
 	
 	void set_up_request(boost::beast::http::request<boost::beast::http::string_body>&)const;
-	const int m_shard_number = 0;
-	client* m_parent = nullptr;
 
-	uWS::WebSocket<uWS::CLIENT>* m_client = nullptr;
-	discord_http_connection m_name_plox;
 
-	std::thread m_main_thread;
-	concurrent_queue<std::string,std::vector<std::string>> m_event_queue;
 
+	//dispatch
 	void m_opcode0(nlohmann::json, eventName, size_t);
+	//heartbeat
 	void m_opcode1() const;
+	//identify
 	void m_opcode2() const;
+	//status update
 	void m_opcode3() const;//update presence
+	//resume
 	void m_opcode6() const;
+	//reconnect
 	void m_opcode7();
-
+	//request guild members
 	void m_opcode8() const;
+	//invalid session
 	void m_opcode9(const nlohmann::json&) const;
+	//hello
 	void m_opcode10(nlohmann::json&);
+	//heartbeat ack
 	void m_opcode11(nlohmann::json&);
 
 	void m_sendIdentity()const;
@@ -208,7 +212,6 @@ private:
 	//HB stuff
 	std::atomic<bool> m_op11 = true;
 	size_t m_HBd = 0;
-	std::thread m_heartbeatThread;
 	int m_hb_interval = 0;
 	//trace stuff
 	nlohmann::json m_trace;//idk what this is;-;
@@ -216,16 +219,25 @@ private:
 
 	//discord object stuffs
 
-	std::unordered_map<snowflake, Guild> m_guilds;
-	std::unordered_map<snowflake, text_channel> m_text_channels;
-	std::unordered_map<snowflake, voice_channel> m_voice_channels;
-	std::unordered_map<snowflake, channel_catagory> m_channel_catagories;
-	//std::unordered_map<snowflake,voi
-	//std::vector<DMChannel> m_dm_channels;
-	std::unordered_map<snowflake, dm_channel> m_dm_channels;
+	rename_later_4<snowflake, Guild> m_guilds;
+	rename_later_4<snowflake, text_channel> m_text_channels;
+	rename_later_4<snowflake, voice_channel> m_voice_channels;
+	rename_later_4<snowflake, channel_catagory> m_channel_catagories;
+	rename_later_4<snowflake, dm_channel> m_dm_channels;
+
 	std::string session_id;
 	size_t m_seqNum = 0;
 	std::atomic<bool> m_done = false;
+
+	const int m_shard_number = 0;
+	client* m_parent = nullptr;
+
+	uWS::WebSocket<uWS::CLIENT>* m_client = nullptr;
+	discord_http_connection m_http_connection;
+
+	std::thread m_main_thread;
+	concurrent_queue<std::string, std::vector<std::string>> m_event_queue;
+
 	friend class client;
 };
 
@@ -249,7 +261,7 @@ std::enable_if_t<rq::has_content_type_v<T>, T> shard::m_send_things(std::string&
 	set_up_request(r.req);
 	r.req.body() = body;
 	r.req.prepare_payload();
-	m_name_plox.add(std::move(r));
+	m_http_connection.add(std::move(r));
 	return std::move(retVal);
 }
 
@@ -258,7 +270,7 @@ std::enable_if_t<!rq::has_content_type_v<T>, T> shard::m_send_things(args&&... A
 	auto[retVal, r] = rawrland::get_default_stuffs<T>(std::forward<args>(Args)...);
 	set_up_request(r.req);
 	r.req.prepare_payload();
-	m_name_plox.add(std::move(r));
+	m_http_connection.add(std::move(r));
 	return std::move(retVal);
 }
 

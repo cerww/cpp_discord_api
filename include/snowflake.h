@@ -3,6 +3,9 @@
 #include <utility>
 #include <type_traits>
 #include "allocatey.h"
+#include "bytell_hash_map.hpp"
+#include "indirect.h"
+#include "rename_later_4.h"
 
 struct snowflake{
 	size_t val = 0;
@@ -67,9 +70,9 @@ template<typename T>
 static constexpr bool has_id_v = has_id<T>::value_type;
 
 template<typename T>
-std::enable_if_t<has_id_v<T>,std::unordered_map<snowflake,T*,std::hash<snowflake>,std::equal_to<>,single_chunk_allocator<std::pair<const snowflake,T*>>>> to_map(std::vector<T>& stuffs) {
-	single_chunk_mem_pool pool(std::max(stuffs.size() * 64,2048ull));
-	std::unordered_map<snowflake, T*, std::hash<snowflake>, std::equal_to<>, single_chunk_allocator<std::pair<const snowflake, T*>>> retVal(pool);//so long ;-;
+std::enable_if_t<has_id_v<T>,ska::bytell_hash_map<snowflake,T*,std::hash<snowflake>,std::equal_to<>,single_chunk_allocator<std::pair<const snowflake,T*>>>> to_map(std::vector<T>& stuffs) {
+	single_chunk_mem_pool pool(std::max(stuffs.size() * sizeof(std::pair<const snowflake, T*>) * 5,2048));//5 is random number
+	ska::bytell_hash_map<snowflake, T*, std::hash<snowflake>, std::equal_to<>, single_chunk_allocator<std::pair<const snowflake, T*>>> retVal(pool);//so long ;-;
 	retVal.reserve(stuffs.size());
 	for(auto& item:stuffs) 
 		retVal[item.id()] = &item;
@@ -84,20 +87,26 @@ struct id_equal_to{
 	}
 	const snowflake id;
 };
-//just use auto
-template<typename T>
-struct rename_later_3{//i need a better name
-	rename_later_3(std::unordered_map<snowflake,T>& a,const std::vector<snowflake>& b):m_wat(a),m_waty(b){};
 
-	struct iterator{
-		iterator(rename_later_3* t_parent,std::vector<snowflake>::const_iterator t_it):
+template<typename T>
+using discord_obj_map = rename_later_4<snowflake, T>;
+
+//just use auto
+template<typename T,template<typename,typename,typename...> typename map_t = rename_later_4>
+struct discord_obj_list{
+	discord_obj_list(map_t<snowflake,T>& a,const std::vector<snowflake>& b):m_wat(a),m_waty(b){};
+
+
+	template<typename value_type>
+	struct iterator_{
+		iterator_(discord_obj_list* t_parent,std::vector<snowflake>::const_iterator t_it):
 		m_parent(t_parent),
 		it(t_it){}
-		iterator& operator++() {
+		iterator_& operator++() {
 			++it;
 			return *this;
 		}
-		iterator& operator++(int) {
+		iterator_& operator++(int) {
 			++it;
 			return *this;
 		}
@@ -107,107 +116,53 @@ struct rename_later_3{//i need a better name
 		const T& operator*() const {
 			return m_parent->m_wat.at(*it);
 		}
-		iterator& operator--() {
-			++it;
+		iterator_& operator--() {
+			--it;
 			return *this;
 		}
-		iterator& operator--(int) {
-			++it;
-			return *this;
+		iterator_ operator--(int) {
+			auto other = *this;
+			--other;
+			return other;
 		}
-		bool operator==(iterator other) {
+		bool operator==(iterator_ other) {
 			return it == other.it;
 		}
-		bool operator!=(iterator other) {
+		bool operator!=(iterator_ other) {
 			return it != other.it;
 		}
-		size_t operator-(iterator other) {
+		size_t operator-(iterator_ other) {
 			return it - other.it;
 		}
-		iterator& operator+=(size_t i) {
+		iterator_& operator+=(size_t i) {
 			it += i;
 			return *this;
 		}
-		iterator& operator-=(size_t i) {
+		iterator_& operator-=(size_t i) {
 			it += i;
 			return *this;
 		}
-		iterator operator+(size_t i) {
+		iterator_ operator+(size_t i) {
 			iterator retVal = *this;			
 			return retVal+=i;
 		}
-		iterator operator-(size_t i) {
+		iterator_ operator-(size_t i) {
 			iterator retVal = *this;
 			return retVal -= i;
 		}
 		decltype(auto) operator[](size_t i)const {
-			return it[i];
-		}decltype(auto) operator[](size_t i) {
-			return it[i];
-		}
-	private:
-		rename_later_3 * m_parent;
-		std::vector<snowflake>::const_iterator it;
-	};
-	struct const_iterator {
-		const_iterator(rename_later_3* t_parent, std::vector<snowflake>::const_iterator t_it) :
-			m_parent(t_parent),
-			it(t_it) {}
-		const_iterator& operator++() {
-			++it;
-			return *this;
-		}
-		const_iterator& operator++(int) {
-			++it;
-			return *this;
-		}		
-		const T& operator*() const {
-			return m_parent->m_wat.at(*it);
-		}
-		const_iterator& operator--() {
-			++it;
-			return *this;
-		}
-		const_iterator& operator--(int) {
-			++it;
-			return *this;
-		}
-		bool operator==(const_iterator other) {
-			return it == other.it;
-		}
-		bool operator!=(const_iterator other) {
-			return it != other.it;
-		}
-		size_t operator-(const_iterator other) {
-			return it - other.it;
-		}
-		const_iterator& operator+=(size_t i) {
-			it += i;
-			return *this;
-		}
-		const_iterator& operator-=(size_t i) {
-			it += i;
-			return *this;
-		}
-		const_iterator operator+(const size_t i) {
-			const_iterator retVal = *this;
-			return retVal += i;
-		}
-		const_iterator operator-(const size_t i) {
-			const_iterator retVal = *this;
-			return retVal -= i;
-		}
-		decltype(auto) operator[](size_t i)const{
-			return it[i];
+			return m_parent->m_wat.at(it[i]);
 		}
 		decltype(auto) operator[](size_t i) {
-			return it[i];
+			return m_parent->m_wat.at(it[i]);
 		}
 	private:
-		rename_later_3 * m_parent;
+		discord_obj_list * m_parent;
 		std::vector<snowflake>::const_iterator it;
 	};
-	
+
+	using iterator = iterator_<T>;
+	using const_iterator = iterator_<const T>;
 	
 	iterator begin() {
 		return iterator{ this,m_waty.begin() };
@@ -228,31 +183,26 @@ struct rename_later_3{//i need a better name
 		return m_wat.at(m_waty[i]);
 	}
 	size_t size()const noexcept { return m_waty.size(); }
-	operator std::vector<T>(){
+	operator std::vector<T>()const{
 		std::vector<T> retVal;
 		retVal.reserve(size());
-		for(auto i:m_waty) 
-			retVal.push_back(m_wat[i]);
+		for(const auto& i:m_waty) 
+			retVal.push_back(m_wat.at(i));
 		return retVal;
 	}
 private:
-	std::unordered_map<snowflake, T>& m_wat;
+	map_t<snowflake, T>& m_wat;
 	const std::vector<snowflake>& m_waty;
 	friend struct iterator;
 	friend struct const_iterator;
 };
 
-template<typename T>
-struct from_id_to{
-	T& operator()(snowflake s){
-		return thing[s];
-	}
-	std::unordered_map<snowflake, T>& thing;
-};
+//template<typename T,template<typename,typename...> typename map_t> discord_obj_list(map_t<snowflake, T>& a, const std::vector<snowflake>& b)->discord_obj_list<T, map_t>;
 
 const auto transform_to_pair = [](auto&& a, auto&& fn1,auto&& fn2){
-	auto ret = fn1(a);
-	auto other = fn2(ret);
+	//evaluation order is not known
+	auto ret = std::invoke(std::forward(fn1),a);
+	auto other = std::invoke(std::forward(fn2),ret);
 	return std::make_pair(std::move(other), std::move(ret));
 };
 

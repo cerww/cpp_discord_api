@@ -9,6 +9,9 @@
 #include "randomThings.h"
 #include "indirect.h"
 #include <memory_resource>
+#include "bytell_hash_map.hpp"
+#include <unordered_set>
+#include "rename_later_4.h"
 
 using namespace std::string_literals;
 using namespace std::chrono_literals;
@@ -323,6 +326,9 @@ it unique_l(it s,it e,binaryPred f) {
 	}return e;
 }
 
+//template<typename it,typename binaryPred>it unique_way(it s,it e,binaryPred f) {}
+
+
 template<typename it>
 it unique_l(it s, it e) {
 	return unique_l(s, e, std::equal_to<>());
@@ -444,17 +450,42 @@ struct b{
 	int c;
 };
 
+template<typename T>
+struct logging_allocator{
+	using value_type = T;
+
+	struct rebind{
+		template<typename U>
+		using other = logging_allocator<U>;
+	};
+
+	T* allocate(size_t n) {
+		std::cout << "allocating" << std::endl;
+		return new T[n];
+	}
+
+	void deallocate(T* t,size_t) {
+		delete t;
+	}
+};
+
 int main(){	
 	try{
 		client c;
 		std::vector<partial_message> msgs;
 		c.on_guild_text_msg = [&](guild_text_message& wat,shard& s){
+			
 			if(wat.content() == "watland") {
-				s.delete_message(msgs.back()).get();
-				msgs.pop_back();
+				//s.delete_message(msgs.back()).get();
+				//msgs.pop_back();
 			}
 			else if(wat.content()== "make new channel") {
-				s.create_text_channel(wat.guild(),"blargy").get();
+				s.create_text_channel(wat.guild(),"blargylandy").get();
+			}else if(wat.content() == "rolesy") {
+				std::string stuff;
+				for (const auto& r : wat.author().roles())
+					stuff += r.name() + " ";
+				s.send_message(wat.channel(),stuff);
 			}
 			//s.change_nick(wat.guild(),wat.author(), wat.content());
 			for(auto& i:wat.mentions()){
@@ -463,15 +494,15 @@ int main(){
 			if (wat.author().id() != c.getSelf().id())
 				s.send_message(wat.channel(), std::to_string(wat.author().id().val));
 			//s.add_reaction(wat,wat.guild().emojis().back());
+			
 		};
 		c.on_guild_typing_start = [&](guild_member& member,text_channel& channel,shard& s){
-			//msgs.push_back(s.send_message(channel,member.username()+ " has started typing").get());
+			msgs.push_back(s.send_message(channel,member.username()+ " has started typing").get());
 		};
 		c.on_guild_member_add = [&](guild_member& member,shard& s){
 			s.send_message(member.guild().general_channel(),member.username()).get();
 		};
 		c.setToken(tokenType::BOT, getFileContents("token.txt"));
-		//c.setToken(tokenType::BOT, "NDAxNjE3Njc4MDk3MTg2ODE3.DWfIcA.EkhHmYUcv3iA4w4IMlfIo1KWysY"s);
 		c.run();
 	}catch(...) {
 		std::cout << ";-;" << std::endl;

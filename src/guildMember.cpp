@@ -35,8 +35,8 @@ void from_json(const nlohmann::json& in, guild_member& out) {
 	out.m_mute = in["mute"].get<bool>();
 }
 
-rename_later_3<Role> guild_member::roles() const {
-	return rename_later_3<Role>(m_guild->roles(), m_roles);
+discord_obj_list<Role> guild_member::roles() const {
+	return discord_obj_list<Role>(m_guild->roles(), m_roles);
 }
 
 bool guild_member::has_role(const snowflake role_id) const noexcept {

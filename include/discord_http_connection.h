@@ -40,7 +40,7 @@ public:
 		m_done = true;
 	}
 private:
-	std::chrono::steady_clock::time_point m_rate_limted_until;
+	std::chrono::steady_clock::time_point m_rate_limted_until = {};
 	std::atomic<bool> m_global_rate_limited = false;
 
 	std::atomic<bool> m_done = false;
@@ -55,7 +55,7 @@ private:
 	concurrent_queue<discord_request> m_request_queue = {};
 	client* m_client = nullptr;
 	void send_to_discord(discord_request);
-	void send_to_discord_(discord_request&,size_t);
+	void send_to_discord_(discord_request&, size_t);
 	std::vector<std::tuple<size_t, std::chrono::system_clock::time_point, std::vector<discord_request>>> m_rate_limited;
 };
 

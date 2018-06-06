@@ -2,7 +2,7 @@
 #include "discord_http_connection.h"
 #include <queue>
 
-size_t major_param_id(std::string_view s) {
+size_t get_major_param_id(std::string_view s) {
 	s.remove_prefix(7);//sizeof("/api/v6") - 1;
 	const auto start = s.find_first_of("1234567890");
 	if (start == std::string_view::npos)return 0;
@@ -35,9 +35,9 @@ discord_http_connection::discord_http_connection(client* t):m_client(t) {
 
 void discord_http_connection::send_to_discord(discord_request r) {
 	std::cout << r.req << std::endl;	
-	const size_t major_param_id_ = major_param_id(std::string_view(r.req.target().data(), r.req.target().size()));
+	const size_t major_param_id = get_major_param_id(std::string_view(r.req.target().data(), r.req.target().size()));
 	const auto it = std::find_if(m_rate_limited.begin(), m_rate_limited.end(), [&](const auto& thing){
-		return std::get<0>(thing) == major_param_id_;
+		return std::get<0>(thing) == major_param_id;
 	});
 	if(it != m_rate_limited.end()) {
 		std::get<2>(*it).push_back(std::move(r));
@@ -47,7 +47,7 @@ void discord_http_connection::send_to_discord(discord_request r) {
 		std::this_thread::sleep_until(m_rate_limted_until);
 		m_global_rate_limited.store(false);
 	}
-	send_to_discord_(r,major_param_id_);
+	send_to_discord_(r,major_param_id);
 	r.state->cv.notify_all();
 }
 
@@ -56,7 +56,7 @@ void discord_http_connection::send_to_discord_(discord_request& r,size_t major_p
 	boost::beast::error_code ec;
 	boost::beast::http::write(m_ssl_stream, r.req, ec);
 	boost::beast::http::read(m_ssl_stream, m_buffer, r.state->res, ec);
-	if (ec)std::cout << "rawrrrrr " << ec << std::endl;
+	if (ec) std::cout << "rawrrrrr " << ec << std::endl;
 	while (r.state->res.result_int() == 429) {
 		try {
 			if (r.state->res.at("X-RateLimit-Global") == "true")
@@ -64,6 +64,8 @@ void discord_http_connection::send_to_discord_(discord_request& r,size_t major_p
 		}catch (...) {}
 		std::this_thread::sleep_for(std::chrono::milliseconds(std::stoi(r.state->res.at("Retry-After").to_string())));
 		boost::beast::http::write(m_ssl_stream, r.req, ec);
+		r.state->res.clear();
+		r.state->res.body().clear();
 		boost::beast::http::read(m_ssl_stream, m_buffer, r.state->res, ec);
 		if (ec)std::cout << "rawrrrrr " << ec << std::endl;
 	}try {
@@ -77,6 +79,8 @@ void discord_http_connection::send_to_discord_(discord_request& r,size_t major_p
 	std::cout << r.state->res << std::endl;
 	r.state->done = true;
 }
+
+
 /*
 template<typename Socket,typename Buffer>
 void send_thingy(discord_request& r, Socket& sock, Buffer& buffer, client* parent) {

@@ -2,9 +2,9 @@
 
 snowflake partial_guild::id() const noexcept { return m_id; }
 
-std::unordered_map<snowflake, Role>& partial_guild::roles() noexcept { return m_roles; }
+rename_later_4<snowflake, Role>& partial_guild::roles() noexcept { return m_roles; }
 
-const std::unordered_map<snowflake, Role>& partial_guild::roles() const noexcept { return m_roles; }
+const rename_later_4<snowflake, Role>& partial_guild::roles() const noexcept { return m_roles; }
 
 const std::string& partial_guild::name() const noexcept { return m_name; }
 

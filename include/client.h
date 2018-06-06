@@ -1,13 +1,14 @@
 #pragma once
 #include <string>
-#include "shard.h"
 #include <nlohmann/json.hpp>
+#include "shard.h"
 #include <chrono>
 #include <thread>
 #include "constant_stuffs.h"
 #include "guild.h"
 #include "text_channel.h"
 #include "dm_channel.h"
+#include "timed_task_executor.h"
 
 using namespace std::string_literals;
 using namespace std::chrono_literals;
@@ -88,27 +89,27 @@ public:
 
 
 	void rated_limit_global(std::chrono::steady_clock::time_point);
-	void reconnect(shard* s,int sharNumber) {
+	void reconnect(shard* s,int shardNumber) {
 		m_ws_hub.connect(m_gateway);
 	}
 	Status status = Status::online;
 	std::string gameName = "";
-
+	timed_task_executor heartbeat_sender;
 private:
 	using wsClient = uWS::WebSocket<uWS::CLIENT>;
 	void m_getGateway();
 	std::chrono::steady_clock::time_point m_last_global_rate_limit = std::chrono::steady_clock::now();
 	std::string m_endpoint;
-
-	
+		
 	std::string m_authToken;
 	std::string m_gateway = ""s;
 	size_t m_num_shards = 0;
 	std::string m_token = "";
 	uWS::Hub m_ws_hub;
 	//
-	std::unordered_map<wsClient*, std::unique_ptr<shard>> m_shards;
-	User m_self;
-	
+	std::unordered_map<wsClient*, std::unique_ptr<shard>> m_shards = {};
+	User m_self;	
 };
+
+
 

@@ -4,16 +4,16 @@
 
 
 
-rename_later_3<text_channel> Guild::text_channels()const {
-	return rename_later_3<text_channel>(m_shard->text_channels(), m_text_channels);
+discord_obj_list<text_channel> Guild::text_channels()const {
+	return discord_obj_list<text_channel>(m_shard->text_channels(), m_text_channels);
 }
 
-rename_later_3<voice_channel> Guild::voice_channels()const {
-	return rename_later_3<voice_channel>(m_shard->voice_channels(), m_voice_channels);
+discord_obj_list<voice_channel> Guild::voice_channels()const {
+	return discord_obj_list<voice_channel>(m_shard->voice_channels(), m_voice_channels);
 }
 
-rename_later_3<channel_catagory> Guild::channel_catagories() const {
-	return rename_later_3<channel_catagory>(m_shard->channel_catagories(), m_channel_catagories);
+discord_obj_list<channel_catagory> Guild::channel_catagories() const {
+	return discord_obj_list<channel_catagory>(m_shard->channel_catagories(), m_channel_catagories);
 }
 
 const std::vector<snowflake>& Guild::text_channel_ids() const noexcept {

@@ -20,7 +20,7 @@ static constexpr const char* s_os = "\\u00AF\\\\_(\\u30C4)_\\/\\u00AF";  //shrug
 //copy paste end
 
 template<typename T>
-T* ptr_or_null(std::unordered_map<snowflake,T>& in,snowflake key) {
+T* ptr_or_null(rename_later_4<snowflake,T>& in,snowflake key) {
 	if (key.val)
 		return &in[key];
 	return nullptr;
@@ -105,6 +105,7 @@ void shard::m_opcode0(nlohmann::json data, eventName event, size_t s) {
 }
 
 void shard::m_opcode1() const {
+	if (is_disconnected())return;
 	m_client->send(
 R"({
 	"op": 1,
@@ -131,12 +132,8 @@ void shard::m_opcode7() {
 	reconnect();
 }
 
-void shard::m_opcode8() const {
-	const std::string a = R"({
-	"op":8
-	})";
-	m_client->send(a.c_str());
-	//m_client->send(R"({	"op":8	})");
+void shard::m_opcode8() const {	
+	m_client->send(R"({	"op":8	})");
 }
 
 void shard::m_opcode9(const nlohmann::json& d) const {
@@ -147,23 +144,18 @@ void shard::m_opcode9(const nlohmann::json& d) const {
 		m_opcode2();
 }
 
+void shard::send_heartbeat() {
+	if (!m_op11.load()) {
+		reconnect();
+	}
+	m_opcode1();
+	m_op11 = false;
+	m_parent->heartbeat_sender.execute(std::make_pair([this]() {send_heartbeat(); }, std::chrono::steady_clock::now() + std::chrono::milliseconds(m_hb_interval)));
+}
+
 void shard::m_opcode10(nlohmann::json& stuff) {
 	m_hb_interval = stuff["heartbeat_interval"].get<int>();
-	m_heartbeatThread = std::thread([this]() {
-		std::string wat = R"({
-			"op": 1,
-			"d" : null
-		})";
-		m_client->send(wat.c_str());
-		while (!m_done) {
-			std::this_thread::sleep_for(std::chrono::milliseconds(m_hb_interval));
-			if (!m_op11.load()) {
-				reconnect();
-			}			
-			m_opcode1();
-			m_op11 = false;
-		}
-	});
+	send_heartbeat();
 	m_sendIdentity();
 }
 
@@ -171,8 +163,28 @@ void shard::m_opcode11(nlohmann::json& data) {
 	m_op11 = true;
 }
 
+void shard::reconnect() {
+	if (!is_disconnected())
+		close_connection(4000);
+	m_parent->reconnect(this, m_shard_number);
+}
+
+void shard::send_resume() const {
+	const std::string temp(R"({
+		"op":6,
+		"d":{
+			"token":)"s + m_parent->getToken() + R"(
+			"session_id:)"s + session_id + R"(
+			"seq:")" + std::to_string(m_seqNum) + R"(
+		}
+	}
+	)"s);
+	m_client->send(temp.c_str());
+}
+
+
 void shard::m_sendIdentity()const {
-	std::string identity = R"({
+	const std::string identity = R"({
 		"op":2,
 		"d":{
 			"token":")" + m_parent->token() + R"(",
@@ -186,8 +198,6 @@ void shard::m_sendIdentity()const {
 			"shard":[)"s + std::to_string(m_shard_number) + "," + std::to_string(m_parent->num_shards()) + R"(],	
 			"presence":)"s + m_parent->presence().dump() +
 		"}"s + "}";
-
-	std::cout << identity << std::endl;
 	m_client->send(identity.c_str());
 }
 
@@ -199,15 +209,15 @@ void shard::m_procces_event<eventName::READY>(const nlohmann::json& event) {
 	//ignore unavailable guilds;
 	m_guilds.reserve(event["guilds"].size());
 
-	const auto& b = event["private_channels"].get_ref<const nlohmann::json::array_t&>();
-	m_dm_channels.reserve(b.size());
-	for (const auto& c : b)
+	const auto& private_channels = event["private_channels"].get_ref<const nlohmann::json::array_t&>();
+	m_dm_channels.reserve(private_channels.size());
+	for (const auto& c : private_channels)
 		insert_proj_as_key(m_dm_channels, c.get<dm_channel>(),get_id);	
 }
 
 template <>
 void shard::m_procces_event<eventName::GUILD_CREATE>(const nlohmann::json& data) {
-	auto& guild = m_guilds.insert(std::make_pair(data["id"].get<snowflake>(),data.get<Guild>())).first->second;
+	Guild& guild = m_guilds.insert(std::make_pair(data["id"].get<snowflake>(),data.get<Guild>())).first->second;
 	for (auto& member : guild.m_members) 
 		member.m_guild = &guild;
 	
@@ -248,6 +258,7 @@ void shard::m_procces_event<eventName::GUILD_CREATE>(const nlohmann::json& data)
 			channel.m_parent = &m_channel_catagories[channel.m_parent_id];		
 	}
 	const auto members = to_map(guild.m_members);
+
 	for(const auto& presence: data["presences"]) {		
 		auto& member = *members.at(presence["user"]["id"].get<snowflake>());
 		member.m_status = string_to_status(presence["status"].get_ref<const nlohmann::json::string_t&>());
@@ -332,7 +343,7 @@ void shard::m_procces_event<eventName::CHANNEL_DELETE>(const nlohmann::json& e) 
 template <>
 void shard::m_procces_event<eventName::GUILD_MEMBER_ADD>(const nlohmann::json& e) {	
 	auto member = e.get<guild_member>();
-	auto& guild = m_guilds[member.guild().id()];
+	Guild& guild = m_guilds[member.guild().id()];
 	auto it = guild.m_members.insert(
 		std::lower_bound(guild.m_members.begin(), guild.m_members.end(), member.id(), id_comp),
 		std::move(member)
@@ -343,7 +354,7 @@ void shard::m_procces_event<eventName::GUILD_MEMBER_ADD>(const nlohmann::json& e
 
 template <>
 void shard::m_procces_event<eventName::GUILD_MEMBER_REMOVE>(const nlohmann::json& e) {
-	auto& guild = m_guilds[e["guild_id"].get<snowflake>()];
+	Guild& guild = m_guilds[e["guild_id"].get<snowflake>()];
 	const auto user_id = e["user"]["id"].get<snowflake>();
 	auto it = std::lower_bound(guild.m_members.begin(), guild.m_members.end(), user_id, id_comp);
 	--guild.m_member_count;
@@ -360,11 +371,11 @@ void shard::m_procces_event<eventName::GUILD_MEMBER_REMOVE>(const nlohmann::json
 }
 
 template<> void shard::m_procces_event<eventName::RESUMED>(const nlohmann::json& e){
-	m_trace = e["trace"].get<std::vector<std::string>>();
+	m_trace = e["_trace"].get<std::vector<std::string>>();
 };
 
 template<>	void shard::m_procces_event<eventName::HELLO>(const nlohmann::json& json){
-	m_trace = json["trace"].get <std::vector<std::string>>();
+	m_trace = json["_trace"].get<std::vector<std::string>>();
 	m_hb_interval = json["heartbeat_interval"].get<int>();
 };
 
@@ -600,8 +611,8 @@ template<>	void shard::m_procces_event<eventName::PRESENCE_UPDATE>(const nlohman
 template<>	void shard::m_procces_event<eventName::TYPING_START>(const nlohmann::json& e){
 	const auto channel_id = e["channel_id"].get<snowflake>();
 	const auto user_id = e["user_id"].get<snowflake>();
-	const auto it = m_text_channels.find(channel_id);
-	if(it!=m_text_channels.end()) {
+	const auto it = m_text_channels.find(channel_id);	
+	if (it != m_text_channels.end()) {
 		Guild& guild = it->second.guild();
 		auto& user = *std::lower_bound(guild.members().begin(), guild.members().end(), user_id, id_comp);
 		m_parent->on_guild_typing_start(user, it->second, *this);
@@ -642,23 +653,6 @@ void shard::update_presence(const Status s, std::string g) {
 	m_opcode3();
 }
 
-void shard::reconnect() {
-	m_is_disconnected = true;
-	m_client->close();
-	m_parent->reconnect(this, m_shard_number);
-}
-
-void shard::send_resume() const {
-	m_client->send(std::string(R"({
-		"op":6,
-		"d":{
-			"token":)"s + m_parent->getToken() + R"(
-			"session_id:)"s + session_id + R"(
-			"seq:")" + std::to_string(m_seqNum) + R"(
-		}
-	}
-	)"s).c_str());
-}
 
 rq::send_message shard::send_message(const text_channel& channel, std::string content) {
 	nlohmann::json body;

@@ -66,6 +66,27 @@ public:
 	size_t size()const noexcept {
 		return m_data.size();
 	}
+
+	auto begin() noexcept{
+		return m_data.begin();
+	}
+
+	auto begin() const noexcept{
+		return m_data.begin();
+	}
+	auto end()const noexcept {
+		return m_data.end();
+	}
+	auto end()noexcept {
+		return m_data.end();
+	}
+	decltype(auto) operator[](int i)const{
+		return m_data[i];
+	}
+
+	decltype(auto) operator[](int i) {
+		return m_data[i];
+	}
 private:
 	T do_pop() {
 		auto retVal = std::move(m_data[0]);

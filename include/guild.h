@@ -22,9 +22,9 @@ public:
 	const std::vector<guild_member>& members() const noexcept;
 	std::vector<guild_member>& members() noexcept;
 	
-	rename_later_3<text_channel> text_channels()const;	
-	rename_later_3<voice_channel> voice_channels()const;	
-	rename_later_3<channel_catagory> channel_catagories()const;
+	discord_obj_list<text_channel> text_channels()const;	
+	discord_obj_list<voice_channel> voice_channels()const;	
+	discord_obj_list<channel_catagory> channel_catagories()const;
 
 	const std::vector<snowflake>& text_channel_ids()const noexcept;
 	const std::vector<snowflake>& channel_catagories_ids()const noexcept;

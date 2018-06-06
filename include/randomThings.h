@@ -19,6 +19,8 @@
 #include <functional>
 #include <mutex>
 #include <numeric>
+#include <execution>
+
 //#include <ppl.h>
 //#include <ppltasks.h>
 
@@ -36,12 +38,12 @@ template<typename fn>
 struct Not{
 	Not(fn t_f) : m_function(std::move(t_f)) {}
 	template<typename ... Args>
-	decltype(auto) operator()(Args... args) {
+	decltype(auto) operator()(Args&&... args) {
 		return !m_function(std::forward<Args>(args)...);
 	}
 private:
 	fn m_function;
-};//callable that is returns !fn(args...) :D
+};
 
 template<typename T>
 inline std::vector<T> Range(const T n) {
@@ -442,7 +444,7 @@ template<typename T>
 using notDivisibleBy = comparator<std::modulus<T>, T>;
 
 template<typename T>
-using divisibleBy = comparator<propagate_fn<std::modulus<T>, std::negate<>>,T>;
+using divisibleBy = comparator<propagate_fn<std::modulus<T>, std::bit_not<>>,T>;
 
 static const auto is_equal_to = [](auto&& thing){
 	return equalTo<std::decay_t<decltype(thing)>>(std::forward<decltype(thing)>(thing));
@@ -459,7 +461,7 @@ static const auto is_greater_than = [](auto&& thing) {
 template<typename range>
 std::experimental::generator<std::pair<size_t, decltype(*(std::declval<range>().begin()))>> enumerate(range&& r){
 	size_t i = 0;
-	for(decltype(auto) item:r)
+	for(auto&& item:r)
 		co_yield{ i++, item};	
 }
 
@@ -498,7 +500,6 @@ private:
 	const end_iterator_type m_end;
 	size_t i = 0;
 };
-
 
 class sync_timer {
 public:
@@ -799,7 +800,7 @@ private:
 	std::vector<std::function<retType(Args...)>> m_stuffs;
 };
 
-struct genericComp {
+struct transparent_less {
 	using is_transparent = int;
 	template<typename T,typename T2>
 	bool operator()(const T& a,const T2& b){
@@ -981,13 +982,6 @@ struct iterator_adapter:private crtp<parent>{
 		return this->self().read();
 	}
 protected:
-	decltype(auto) thing() const noexcept{
-		return *m_it;
-	}
-	decltype(auto) thing() noexcept {
-		return *m_it;
-	}
-private:
 	it m_it;
 };
 
@@ -1010,10 +1004,10 @@ struct transform2{
 		auto operator*()const->decltype(m_fn(*static_cast<const it_t&>(*this))) {
 			return m_fn(*static_cast<const it_t&>(*this));
 		}
-		auto operator->()->decltype(m_fn(*static_cast<it_t&>(*this))) {
+		auto operator->()->decltype(&m_fn(*static_cast<it_t&>(*this))) {
 			return m_fn(*static_cast<it_t&>(*this));
 		}
-		auto operator->()const->decltype(m_fn(*static_cast<const it_t&>(*this))) {
+		auto operator->()const->decltype(&m_fn(*static_cast<const it_t&>(*this))) {
 			return m_fn(*static_cast<const it_t&>(*this));
 		}
 	private:
@@ -1060,3 +1054,120 @@ struct no_compare:T{
 	bool operator!=(const no_compare<U>&)const noexcept{ return true; }
 };
 
+template<typename T>
+struct strong_type{
+	strong_type(T t_value):m_value(std::move(t_value)){}
+
+	T& get() {
+		return m_value;
+	}
+	const T& get()const {
+		return m_value;
+	}
+private:
+	T m_value;
+};
+
+template<typename T,typename = void>
+struct input_cursor:std::false_type{};
+
+template<typename T>
+struct input_cursor<T,std::void_t<decltype((std::declval<T>().next())),decltype(std::declval<T>().read())>>:std::true_type{};
+
+template<typename T,typename = void>
+struct forward_cursor :std::false_type{};
+
+template<typename T>
+struct forward_cursor<T,std::void_t<>> :input_cursor<T> {};
+
+
+template<typename parent>
+struct view_facade{
+	struct iterator{
+		using cursor = typename parent::cursor;
+		decltype(auto) operator*() {
+			return m_cursor.read();
+		}
+		iterator& operator++() {
+			m_cursor.next();
+			return *this;
+		}
+
+		iterator operator++(int) {
+			auto temp = *this;
+			++temp;
+			return temp;
+		}
+		//std::enable_if_t<>
+
+		private:
+			cursor m_cursor;
+	};
+};
+
+
+inline std::string_view make_safe_to_parse(const std::string& str) {
+	auto start = str.find('{');
+	int n = 1;
+	while (n) {
+		start = str.find_first_of("{}", start + 1);
+		if (start == str.npos)
+			throw std::runtime_error("unable to match {");
+		if (str[start] == '{')
+			++n;
+		else if (str[start] == '}')
+			--n;
+
+	}
+	return std::string_view(str.data(), start + 1);
+}
+
+
+template<typename T,typename...rest>
+struct tuple:tuple<rest...>{
+
+
+private:
+	T m_current;
+	template<typename ...types>
+	friend T& gety(tuple<T, types...>&);
+};
+
+
+template<typename T>
+struct tuple {
+
+
+private:
+	T m_current;	
+	friend T& gety(tuple<T>&);
+};
+
+
+template<int N,typename T1,typename ...types>
+T1& gety(tuple<T1,types...>& tuple) {
+	if constexpr(N==0){
+		return tuple.m_current;
+	}return gety<N - 1>(tuple.m_rest);
+}
+
+template<typename tag1,typename ...tags>
+struct tagged_tuple:tag1,tagged_tuple<tags...>{
+	operator tuple<tag1,tags...>&(){
+		return *static_cast<tuple<tag1,tags...>*>(static_cast<void*>(this));
+	}	
+};
+
+template<typename tag1>
+struct tagged_tuple:tag1{
+	operator tuple<tag1>&(){
+		return *static_cast<tuple<tag1>*>(static_cast<void*>(this));
+	}
+};
+
+template<typename D,typename T,int N>
+struct in_tag{
+	decltype(auto) in() {
+		return gety<N>(static_cast<D&>(*this));
+	}
+};

@@ -114,8 +114,8 @@ struct indirect {
 
 	T& operator*() { return *m_data; }
 	const T& operator*()const { return *m_data; }
-	T& operator->() { return *m_data; }
-	const T& operator->()const { return *m_data; }
+	T* operator->() { return m_data; }
+	const T* operator->()const { return m_data; }
 	
 	template<typename U>
 	bool operator==(U&& other) {
@@ -145,9 +145,11 @@ struct indirect {
 	_Alloc& get_allocator() {
 		return m_allocator;
 	}
+
 	const _Alloc& get_allocator() const{
 		return m_allocator;
 	}
+
 	template<typename ...args>
 	void construct(args&&... Args) {
 		m_data = new(m_allocator.allocate(1)) T(std::forward<args>(Args)...);
@@ -158,7 +160,7 @@ private:
 	T* m_data = nullptr;
 	template<typename,typename> friend struct indirect;
 };
-
+/*
 #include "allocatey.h"
 #include <unordered_map>
 
@@ -184,6 +186,9 @@ inline void qwettrsffdh() {
 	auto qwea = d == y;
 
 	std::unordered_map<int, indirect<int>> mapu;
+	std::unordered_map<int, indirect<std::vector<int>>> mapua;
+	mapua[2].value().emplace_back();
+
 	mapu[2] = d;
 	mapu[2] = 9;
 	mapu.insert(std::make_pair(1, 2));
@@ -222,3 +227,4 @@ inline void qwettrsffdh() {
 	v.push_back(a + y + i + d);
 	std::cout << d << std::endl;
 }
+*/

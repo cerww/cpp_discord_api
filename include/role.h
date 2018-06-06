@@ -4,11 +4,12 @@
 #include "snowflake.h"
 #include "permission.h"
 
+
 class Role{
 public:
+	snowflake id() const noexcept;;
 	int position() const noexcept;
 	permission permissions() const noexcept;
-	snowflake id() const noexcept;;
 	bool managed() const noexcept;
 	bool mentionable() const noexcept;
 	bool hoist() const noexcept;
