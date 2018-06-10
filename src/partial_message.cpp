@@ -1,5 +1,5 @@
 #include "partial_message.h"
-#include "channel.h"
+#include "partial_channel.h"
 #include "text_channel.h"
 #include "guild.h"
 
@@ -20,9 +20,9 @@ const guild_member& guild_text_message::author() const noexcept { return *m_auth
 const std::vector<snowflake>& guild_text_message::mention_roles() const noexcept { return m_mention_roles; }
 const std::vector<guild_member*>& guild_text_message::mentions() const noexcept { return m_mentions; }
 
-User& dm_message::author() noexcept { return *m_author; }
-const User& dm_message::author() const noexcept { return *m_author; }
-const std::vector<User*>& dm_message::mentions() const noexcept { return m_mentions; }
+user& dm_message::author() noexcept { return *m_author; }
+const user& dm_message::author() const noexcept { return *m_author; }
+const std::vector<user*>& dm_message::mentions() const noexcept { return m_mentions; }
 dm_channel& dm_message::channel() noexcept { return *m_channel; }
 const dm_channel& dm_message::channel() const noexcept { return *m_channel; }
 
@@ -45,8 +45,8 @@ void from_json(const nlohmann::json& json, partial_message& msg) {
 snowflake msg_update::id() const noexcept { return m_id; }
 snowflake msg_update::channel_id() const noexcept { return m_channel_id; }
 const std::string& msg_update::content() const noexcept { return m_content; }
-User& dm_msg_update::author() { return *m_author; }
-const User& dm_msg_update::author() const { return *m_author; }
+user& dm_msg_update::author() { return *m_author; }
+const user& dm_msg_update::author() const { return *m_author; }
 
 void from_json(const nlohmann::json& json, msg_update& msg) {
 	const auto it = json.find("author");

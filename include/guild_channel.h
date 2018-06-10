@@ -1,12 +1,12 @@
 #pragma once
-#include "channel.h"
+#include "partial_channel.h"
 #include <experimental/generator>
 
 class channel_catagory;
 
 class Guild;
 
-class guild_channel:public Channel{
+class guild_channel:public partial_channel{
 public:
 	snowflake guild_id() const noexcept;
 	Guild& guild() noexcept;

@@ -469,6 +469,7 @@ struct logging_allocator{
 	}
 };
 
+
 int main(){	
 	try{
 		client c;
@@ -487,7 +488,11 @@ int main(){
 					stuff += r.name() + " ";
 				s.send_message(wat.channel(),stuff);
 			}
-			//s.change_nick(wat.guild(),wat.author(), wat.content());
+			if(wat.content() == "invite"){
+				s.create_channel_invite(wat.channel()).wait();
+			}
+			//s.change_nick(wat.author(), wat.content());
+
 			for(auto& i:wat.mentions()){
 				s.change_nick(wat.guild(), *i, wat.content());
 			}
@@ -498,6 +503,7 @@ int main(){
 		};
 		c.on_guild_typing_start = [&](guild_member& member,text_channel& channel,shard& s){
 			msgs.push_back(s.send_message(channel,member.username()+ " has started typing").get());
+			//s.send_message(channel, member.username() + " has started typing").wait();
 		};
 		c.on_guild_member_add = [&](guild_member& member,shard& s){
 			s.send_message(member.guild().general_channel(),member.username()).get();

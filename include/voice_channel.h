@@ -1,5 +1,5 @@
 #pragma once
-#include "channel.h"
+#include "partial_channel.h"
 #include "guild_channel.h"
 
 class voice_channel :

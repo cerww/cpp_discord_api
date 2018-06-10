@@ -1,5 +1,5 @@
 #pragma once
-#include "Channel.h"
+#include "partial_channel.h"
 #include "text_channel.h"
 #include "guildMember.h"
 #include <nlohmann/json.hpp>

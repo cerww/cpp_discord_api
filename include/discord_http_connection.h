@@ -50,7 +50,7 @@ private:
 	boost::asio::ip::tcp::resolver resolver{ m_ioc };
 
 	boost::asio::ssl::context m_sslCtx{ boost::asio::ssl::context::tlsv12_client };
-	boost::asio::ssl::stream<boost::asio::ip::tcp::socket> m_ssl_stream{ m_ioc, m_sslCtx };
+	boost::asio::ssl::stream<boost::asio::ip::tcp::socket> m_ssl_stream{ m_ioc, m_sslCtx };	
 	boost::beast::flat_buffer m_buffer;//needed cuz read_some can read more than it should
 	concurrent_queue<discord_request> m_request_queue = {};
 	client* m_client = nullptr;

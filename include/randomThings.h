@@ -405,16 +405,36 @@ struct NOT {
 	}
 };
 
+template<typename...>
+struct propagate_fn{};
+
+template<>
+struct propagate_fn<>{
+	
+};
+
 template<typename f1,typename ... fns>
-struct propagate_fn {
+struct propagate_fn<f1,fns...>:propagate_fn<fns...> {
+	using my_base = propagate_fn<fns...>;
+	using current_fn_ = f1;
+
+	template<typename f1_,typename ...rest_fns>
+	propagate_fn(f1_&& first,rest_fns&&... rest):propagate_fn<fns...>(std::forward<rest_fns>(rest)...),fun(std::forward<f1_>(first)) {
+		static_assert(sizeof...(rest_fns) <= sizeof...(fns));
+	}
+
+	propagate_fn() = default;
+
 	template<typename ...Args>
-	constexpr decltype(auto) operator()(Args... args)const{	
+	constexpr decltype(auto) operator()(Args&&... args)const{	
 		if constexpr(sizeof...(fns)!=0){
-			return propagate_fn<fns...>()(f1()(std::forward<Args>(args)...));
+			return static_cast<const my_base&>(*this)(fun(std::forward<Args>(args)...));
 		}else{
-			return f1()(std::forward<Args>(args)...);
+			return fun(std::forward<Args>(args)...);
 		}
-	}	
+	}
+
+	f1 fun = {};	 
 };
 
 template<typename comp,typename T>
@@ -507,12 +527,12 @@ public:
 	
 	void start(){
 		if(m_starts.size() == m_ends.size())
-			m_starts.push_back(std::chrono::system_clock::now());
+			m_starts.push_back(std::chrono::steady_clock::now());
 	}
 
 	void pause(){
 		if (m_starts.size() == m_ends.size() + 1)
-			m_ends.push_back(std::chrono::system_clock::now());		
+			m_ends.push_back(std::chrono::steady_clock::now());
 	}
 
 	void reset(){
@@ -529,8 +549,8 @@ public:
 			});
 	}
 private:
-	std::vector<std::chrono::system_clock::time_point> m_starts;
-	std::vector<std::chrono::system_clock::time_point> m_ends;
+	std::vector<std::chrono::steady_clock::time_point> m_starts;
+	std::vector<std::chrono::steady_clock::time_point> m_ends;
 };
 
 
@@ -1135,7 +1155,7 @@ private:
 
 
 template<typename T>
-struct tuple {
+struct tuple<T> {
 
 
 private:
@@ -1159,7 +1179,7 @@ struct tagged_tuple:tag1,tagged_tuple<tags...>{
 };
 
 template<typename tag1>
-struct tagged_tuple:tag1{
+struct tagged_tuple<tag1>:tag1{
 	operator tuple<tag1>&(){
 		return *static_cast<tuple<tag1>*>(static_cast<void*>(this));
 	}

@@ -1,5 +1,5 @@
 #pragma once
-#include "Channel.h"
+#include "partial_channel.h"
 #include "snowflake.h"
 #include "timestamp.h"
 #include "guildMember.h"

@@ -60,14 +60,14 @@ private:
 
 class dm_message:public partial_message {
 public:
-	User& author() noexcept;
-	const User& author() const noexcept;
-	const std::vector<User*>& mentions() const noexcept;;
+	user& author() noexcept;
+	const user& author() const noexcept;
+	const std::vector<user*>& mentions() const noexcept;;
 	dm_channel& channel() noexcept;
 	const dm_channel& channel() const noexcept;
 private:
-	User* m_author = nullptr;
-	std::vector<User*> m_mentions;
+	user* m_author = nullptr;
+	std::vector<user*> m_mentions;
 	dm_channel * m_channel = nullptr;
 	friend class shard;
 };
@@ -108,11 +108,11 @@ private:
 };
 class dm_msg_update:public msg_update{
 public:
-	User& author();
-	const User& author() const;
+	user& author();
+	const user& author() const;
 private:
-	User * m_author = nullptr;
-	std::vector<User*> m_mentions;
+	user * m_author = nullptr;
+	std::vector<user*> m_mentions;
 	dm_channel * m_channel = nullptr;
 	friend class shard;
 };

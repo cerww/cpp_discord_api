@@ -5,7 +5,8 @@
 size_t get_major_param_id(std::string_view s) {
 	s.remove_prefix(7);//sizeof("/api/v6") - 1;
 	const auto start = s.find_first_of("1234567890");
-	if (start == std::string_view::npos)return 0;
+	if (start == std::string_view::npos) 
+		return 0;
 	s.remove_prefix(start);
 	const size_t end = s.find('/');
 	return std::stoull(std::string(s.begin(), s.begin() + (end != std::string_view::npos ? end : s.size())));	
@@ -62,16 +63,16 @@ void discord_http_connection::send_to_discord_(discord_request& r,size_t major_p
 			if (r.state->res.at("X-RateLimit-Global") == "true")
 				m_client->rated_limit_global(std::chrono::steady_clock::now() + std::chrono::milliseconds(std::stoi(r.state->res.at("Retry-After").to_string())));
 		}catch (...) {}
-		std::this_thread::sleep_for(std::chrono::milliseconds(std::stoi(r.state->res.at("Retry-After").to_string())));
-		boost::beast::http::write(m_ssl_stream, r.req, ec);
 		r.state->res.clear();
 		r.state->res.body().clear();
+		std::this_thread::sleep_for(std::chrono::milliseconds(std::stoi(r.state->res.at("Retry-After").to_string())));
+		boost::beast::http::write(m_ssl_stream, r.req, ec);
 		boost::beast::http::read(m_ssl_stream, m_buffer, r.state->res, ec);
 		if (ec)std::cout << "rawrrrrr " << ec << std::endl;
 	}try {
 		if (r.state->res.at("X-RateLimit-Remaining") == "0") {			
 			const auto time = std::chrono::system_clock::time_point(std::chrono::seconds(std::stoi(r.state->res.at("X-RateLimit-Reset").to_string())));
-			m_rate_limited.insert(std::upper_bound(m_rate_limited.begin(), m_rate_limited.end(), time, [](const auto& a, const auto& b) {
+			m_rate_limited.insert(std::upper_bound(m_rate_limited.begin(), m_rate_limited.end(), time, [](const std::chrono::system_clock::time_point& a, const auto& b) {
 				return a < std::get<1>(b);
 			}), { major_param_id_,time,{} });
 		}

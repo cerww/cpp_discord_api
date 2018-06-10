@@ -1,13 +1,14 @@
-#include "role.h"
-int Role::position() const noexcept { return m_position; }
-permission Role::permissions() const noexcept { return m_permissions; }
-snowflake Role::id() const noexcept { return m_id; }
-bool Role::managed() const noexcept { return m_managed; }
-bool Role::mentionable() const noexcept { return m_mentionable; }
-bool Role::hoist() const noexcept { return m_hoist; }
-const std::string& Role::name() const noexcept { return m_name; }
+#include "guild_role.h"
 
-void to_json(nlohmann::json& json, const Role& r) {
+int guild_role::position() const noexcept { return m_position; }
+permission guild_role::permissions() const noexcept { return m_permissions; }
+snowflake guild_role::id() const noexcept { return m_id; }
+bool guild_role::managed() const noexcept { return m_managed; }
+bool guild_role::mentionable() const noexcept { return m_mentionable; }
+bool guild_role::hoist() const noexcept { return m_hoist; }
+const std::string& guild_role::name() const noexcept { return m_name; }
+
+void to_json(nlohmann::json& json, const guild_role& r) {
 	json["position"] = r.position();
 	json["permissions"] = r.permissions().data();
 	json["id"] = r.id();
@@ -17,7 +18,7 @@ void to_json(nlohmann::json& json, const Role& r) {
 	json["managed"] = r.managed();
 }
 
-void from_json(const nlohmann::json& json, Role& other) {
+void from_json(const nlohmann::json& json, guild_role& other) {
 	if (json.is_null()) return;//why would role be null ;-;
 	other.m_id = json["id"].get<snowflake>();
 	other.m_position = json["position"].get<int>();

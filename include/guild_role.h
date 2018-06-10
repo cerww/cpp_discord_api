@@ -5,7 +5,7 @@
 #include "permission.h"
 
 
-class Role{
+class guild_role{
 public:
 	snowflake id() const noexcept;;
 	int position() const noexcept;
@@ -23,11 +23,11 @@ private:
 	bool m_managed = false;
 	bool m_mentionable = false;
 	bool m_hoist = false;
-	friend void from_json(const nlohmann::json& json, Role& other);
+	friend void from_json(const nlohmann::json& json, guild_role& other);
 };
 
-void to_json(nlohmann::json& json, const Role& r);
+void to_json(nlohmann::json& json, const guild_role& r);
 
-void from_json(const nlohmann::json& json, Role& other);
+void from_json(const nlohmann::json& json, guild_role& other);
 
 

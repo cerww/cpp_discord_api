@@ -2,10 +2,9 @@
 #include "bytell_hash_map.hpp"
 #include "indirect.h"
 
-
 template<typename K,typename V,typename H = std::hash<K>,typename E = std::equal_to<>,typename A = std::allocator<std::pair<const K,indirect<V>>>>
 struct rename_later_4{
-	using map = ska::bytell_hash_map<K, indirect<V>, H, E, A>;
+	using map_t = ska::bytell_hash_map<K, indirect<V>, H, E, A>;
 	using value_type = std::pair<const K , V>;
 	using reference = std::pair<const K&, V&>;
 	using const_reference = std::pair<const K&, const V&>;
@@ -15,9 +14,11 @@ struct rename_later_4{
 		templated_iterator(iterator_t it,iterator_t end):m_it(std::move(it)) ,m_end(std::move(end)) {
 			set_stuff();
 		}
+
 		value_t& operator*() const{
 			return const_cast<value_t&>(*m_stuff);
 		}
+
 		value_t* operator->() const{
 			return &(**this);
 		}
@@ -27,9 +28,10 @@ struct rename_later_4{
 			set_stuff();
 			return *this;
 		}
+
 		templated_iterator operator++(int) {
-			auto t = *this;
-			++t;
+			auto t = *this;			
+			++m_it;
 			return t;
 		}
 
@@ -38,15 +40,18 @@ struct rename_later_4{
 			set_stuff();
 			return *this;
 		}
+
 		templated_iterator operator--(int) {
-			auto t = *this;
-			--t;
+			auto t = *this;	
+			--m_it;
 			return t;
 		}
+
 		template<typename U,typename other_it>
 		bool operator==(const templated_iterator<U,other_it>& other) const{
 			return m_it == other.m_it;
 		}
+
 		template<typename U, typename other_it>
 		bool operator!=(const templated_iterator<U, other_it>& other) const{
 			return m_it != other.m_it;
@@ -55,7 +60,7 @@ struct rename_later_4{
 	private:
 		void set_stuff() {
 			m_stuff = std::nullopt;
-			if(m_it!=m_end) {
+			if (m_it != m_end) {
 				auto& a = m_it->first;
 				auto& b = m_it->second;
 				m_stuff.emplace(a,b);
@@ -87,11 +92,9 @@ struct rename_later_4{
 		friend struct rename_later_4;
 	};
 
-	using iterator = templated_iterator<reference, typename map::iterator>;
-	using const_iterator = templated_iterator<const_reference, typename map::const_iterator>;
-
+	using iterator = templated_iterator<reference, typename map_t::iterator>;
+	using const_iterator = templated_iterator<const_reference, typename map_t::const_iterator>;
 	
-
 	std::pair<iterator,bool> insert(std::pair<K,V> thing) {
 		indirect<V> key = std::move(thing.second);
 		const auto[it, succcess] = m_data.insert(std::make_pair(std::move(thing.first), std::move(key)));
@@ -186,7 +189,17 @@ struct rename_later_4{
 		}
 		return retVal;
 	}
-	
+
+	node_handle extract(const const_iterator& it) {
+		node_handle retVal;
+		if (it.m_it != m_data.end()) {
+			retVal.m_data.first = std::move(const_cast<K&>((it.m_it->first)));
+			retVal.m_data.second = std::move((it.m_it->second));
+			m_data.erase(it.m_it);
+		}
+		return retVal;
+	}
+
 	template<typename Value>
 	std::pair<iterator,bool> insert_or_assign(const K& key,Value&& v) {
 		const auto[it, s] = m_data.insert_or_assign(key,std::forward<Value>(v));
@@ -200,18 +213,20 @@ struct rename_later_4{
 	}
 
 private:
-	map m_data;
+	map_t m_data;
 };
 
 inline void asdhasdjkasdh() {
 	rename_later_4<int, int> blargus;
 	indirect<int> b = 2;
 	int q = b;
-	std::pair<indirect<int>, int> blqweqaesad;
-	std::pair<int&, int> iuop = std::make_pair(b, 1);
 	blargus[4] = 2;
 	blargus.insert(std::make_pair(1, 23));
+	auto t = blargus.begin();
+
 	for(const auto& i:blargus) {
 		i.second = 1;//;-;
 	}
 }
+
+

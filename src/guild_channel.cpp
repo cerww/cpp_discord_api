@@ -25,7 +25,7 @@ const channel_catagory& guild_channel::parent() const noexcept { return *m_paren
 bool guild_channel::has_parent() const noexcept { return m_parent; }
 
 void from_json(const nlohmann::json& json, guild_channel& g) {
-	from_json(json, static_cast<Channel&>(g));
+	from_json(json, static_cast<partial_channel&>(g));
 	g.m_guild_id = json.value("guild_id", snowflake());
 	g.m_nsfw = json.value("nsfw", false);
 	g.m_position = json["position"].get<int>();

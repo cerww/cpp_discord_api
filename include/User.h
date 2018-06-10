@@ -4,7 +4,7 @@
 #include "constant_stuffs.h"
 #include "snowflake.h"
 
-class User{
+class user{
 public:
 	snowflake id() const noexcept;
 	bool is_bot() const noexcept;
@@ -21,9 +21,9 @@ private:
 	Status m_status = Status::idle;
 	std::string m_game;
 	friend class shard;
-	friend void from_json(const nlohmann::json&, User& other);
+	friend void from_json(const nlohmann::json&, user& other);
 };
 
-void to_json(nlohmann::json& json, const User& other);
+void to_json(nlohmann::json& json, const user& other);
 
-void from_json(const nlohmann::json& json, User& other);
+void from_json(const nlohmann::json& json, user& other);

@@ -1,5 +1,5 @@
 #pragma once
-#include "Channel.h"
+#include "partial_channel.h"
 #include "guild_channel.h"
 
 class channel_catagory:public guild_channel{

@@ -2,9 +2,9 @@
 
 snowflake partial_guild::id() const noexcept { return m_id; }
 
-rename_later_4<snowflake, Role>& partial_guild::roles() noexcept { return m_roles; }
+rename_later_4<snowflake, guild_role>& partial_guild::roles() noexcept { return m_roles; }
 
-const rename_later_4<snowflake, Role>& partial_guild::roles() const noexcept { return m_roles; }
+const rename_later_4<snowflake, guild_role>& partial_guild::roles() const noexcept { return m_roles; }
 
 const std::string& partial_guild::name() const noexcept { return m_name; }
 
@@ -44,7 +44,7 @@ void from_json(const nlohmann::json& json, partial_guild& guild) {
 	guild.m_explicit_content_filter = json["explicit_content_filter"].get<int>();
 
 	guild.m_roles.reserve(json["roles"].size());
-	for (auto& r : json["roles"]) insert_proj_as_key(guild.m_roles, r.get<Role>(), get_id);
+	for (auto& r : json["roles"]) insert_proj_as_key(guild.m_roles, r.get<guild_role>(), get_id);
 
 	guild.m_emojis = json["emojis"].get<std::vector<emoji>>();
 	guild.m_features = json["features"].get<std::vector<std::string>>();

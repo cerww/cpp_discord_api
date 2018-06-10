@@ -10,7 +10,9 @@ private:
 	int m_count = 0;
 	bool m_me = false;
 	partial_emoji m_emoji;
+
 	friend void from_json(const nlohmann::json&, reaction&);
+	friend class shard;
 };
 
 void from_json(const nlohmann::json& json, reaction& r);

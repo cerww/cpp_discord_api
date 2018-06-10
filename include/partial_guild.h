@@ -1,7 +1,7 @@
 #pragma once
 #include "snowflake.h"
 #include "permission.h"
-#include "Role.h"
+#include "guild_role.h"
 #include "emoji.h"
 #include "things2.h"
 #include "voice_channel.h"
@@ -9,8 +9,8 @@
 class partial_guild{
 public:
 	snowflake id() const noexcept;
-	rename_later_4<snowflake, Role>& roles() noexcept;
-	const rename_later_4<snowflake, Role>& roles() const noexcept;
+	rename_later_4<snowflake, guild_role>& roles() noexcept;
+	const rename_later_4<snowflake, guild_role>& roles() const noexcept;
 	const std::string& name() const noexcept;
 	const std::string& icon() const noexcept;
 	snowflake owner_id() const noexcept;
@@ -40,7 +40,7 @@ private:
 	int m_verification_level = 0;
 	int m_default_message_notifications = 0;//what is this for ;-;
 	bool m_explicit_content_filter = false;
-	rename_later_4<snowflake, Role> m_roles;
+	rename_later_4<snowflake, guild_role> m_roles;
 	std::vector<emoji> m_emojis;
 	std::vector<std::string> m_features;
 	int m_mfa_level = 0;
