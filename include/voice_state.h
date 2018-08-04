@@ -23,6 +23,7 @@ private:
 	bool m_suppress = false;
 	friend void from_json(const nlohmann::json& json, voice_state& vs);
 };
+
 class voice_state2:public voice_state {
 public:
 	snowflake guild_id()const noexcept { return m_guild_id; }

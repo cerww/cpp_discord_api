@@ -12,7 +12,7 @@ class Guild;
 
 class guild_member:public partial_guild_member{
 public:
-	Guild& guild() noexcept;;
+	//Guild& guild() noexcept;
 	const Guild& guild() const noexcept;;
 	discord_obj_list<guild_role> roles()const;
 	Status status() const noexcept;;

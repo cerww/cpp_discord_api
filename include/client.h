@@ -9,6 +9,7 @@
 #include "text_channel.h"
 #include "dm_channel.h"
 #include "timed_task_executor.h"
+#include "optional_ref.h"
 
 using namespace std::string_literals;
 using namespace std::chrono_literals;
@@ -72,36 +73,35 @@ public:
 	std::function<void(Guild&, guild_role&, shard&)> on_role_create = nothing;
 	std::function<void(Guild&, guild_role&, guild_role&, shard&)> on_role_update = nothing;
 	std::function<void(Guild&, const guild_role&, shard&)> on_role_delete = nothing;
-	std::function<void(dm_msg_update&, dm_message*, shard&)> on_dm_msg_update = nothing; 
-	std::function<void(guild_msg_update&, guild_text_message*, shard&)> on_guild_msg_update = nothing;
+	std::function<void(dm_msg_update&, optional_ref<dm_message>, shard&)> on_dm_msg_update = nothing; 
+	std::function<void(guild_msg_update&, optional_ref<guild_text_message>, shard&)> on_guild_msg_update = nothing;
 	std::function<void(std::optional<dm_message>,snowflake, shard&)> on_dm_msg_delete = nothing;
 	std::function<void(std::optional<guild_text_message>,snowflake, shard&)> on_guild_msg_delete = nothing;
 	std::function<void(guild_member&,text_channel&, shard&)> on_guild_typing_start = nothing;
 	std::function<void(user&,dm_channel&, shard&)> on_dm_typing_start = nothing;
 	std::function<void(text_channel&, shard&)> on_text_channel_delete = nothing;
 	std::function<void(dm_channel&, shard&)> on_dm_channel_delete = nothing;
-	std::function<void(guild_member&,text_channel&,guild_text_message*,reaction&,shard&)> on_guild_reaction_add = nothing;
-	std::function<void(user&, dm_channel&,dm_message*, reaction&, shard&)> on_dm_reaction_add = nothing;
-	std::function<void(guild_member&, text_channel&, guild_text_message*, reaction&, shard&)> on_guild_reaction_remove = nothing;
-	std::function<void(user&, dm_channel&, dm_message*, reaction&, shard&)> on_dm_reaction_remove = nothing;
-	std::function<void(text_channel&,guild_text_message*, shard&)> on_guild_reaction_remove_all = nothing;
-	std::function<void(dm_channel&, dm_message*, shard&)> on_dm_reaction_remove_all = nothing;
+	std::function<void(guild_member&,text_channel&, optional_ref<guild_text_message>,reaction&,shard&)> on_guild_reaction_add = nothing;
+	std::function<void(user&, dm_channel&, optional_ref<dm_message>, reaction&, shard&)> on_dm_reaction_add = nothing;
+	std::function<void(guild_member&, text_channel&, optional_ref<guild_text_message>, reaction&, shard&)> on_guild_reaction_remove = nothing;
+	std::function<void(user&, dm_channel&, optional_ref<dm_message>, reaction&, shard&)> on_dm_reaction_remove = nothing;
+	std::function<void(text_channel&, optional_ref<guild_text_message>, shard&)> on_guild_reaction_remove_all = nothing;
+	std::function<void(dm_channel&, optional_ref<dm_message>, shard&)> on_dm_reaction_remove_all = nothing;
 	std::function<void(guild_member&, shard&)> on_presence_update = nothing;
 	std::function<void(std::vector<snowflake>, text_channel&, shard&)> on_message_bulk = nothing;
 	std::function<void(std::vector<snowflake>, dm_channel&, shard&)> on_dm_message_bulk = nothing;
-
-
-	void rated_limit_global(std::chrono::steady_clock::time_point);
+	
+	void rate_limit_global(const std::chrono::system_clock::time_point);
 	void reconnect(shard* s,int shardNumber) {
 		m_ws_hub.connect(m_gateway);
 	}
+	timed_task_executor heartbeat_sender;	
 	Status status = Status::online;
 	std::string gameName = "";
-	timed_task_executor heartbeat_sender;
 private:
 	using wsClient = uWS::WebSocket<uWS::CLIENT>;
 	void m_getGateway();
-	std::chrono::steady_clock::time_point m_last_global_rate_limit = std::chrono::steady_clock::now();
+	std::chrono::system_clock::time_point m_last_global_rate_limit = std::chrono::system_clock::now();
 	std::string m_endpoint;
 		
 	std::string m_authToken;

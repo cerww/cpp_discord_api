@@ -14,7 +14,6 @@ public:
 	bool mentionable() const noexcept;
 	bool hoist() const noexcept;
 	const std::string& name() const noexcept;
-
 private:
 	snowflake m_id;
 	std::string m_name;

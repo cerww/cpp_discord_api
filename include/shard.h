@@ -14,7 +14,6 @@
 #include "discord_http_connection.h"
 #include <type_traits>
 #include "range-like-stuffs.h"
-#include "indirect.h"
 
 using namespace std::string_literals;
 using namespace std::chrono_literals;
@@ -23,7 +22,7 @@ class client;
 class shard {
 public:
 	using wsClient = uWS::WebSocket<uWS::CLIENT>;
-	shard(int shardN, wsClient* t_client, client* t_parent) :
+	explicit shard(int shardN, wsClient* t_client, client* t_parent) :
 		m_shard_number(shardN),
 		m_parent(t_parent), 
 		m_client(t_client),
@@ -127,7 +126,7 @@ private:
 		m_event_queue.push(std::move(t));
 	};
 	void doStuff(nlohmann::json);
-	void rate_limit(std::chrono::steady_clock::time_point tp) {
+	void rate_limit(std::chrono::system_clock::time_point tp) {
 		m_http_connection.sleep_till(tp);
 	}
 
@@ -150,6 +149,11 @@ private:
 	void set_up_request(boost::beast::http::request<boost::beast::http::string_body>&)const;
 
 
+	void request_guild_members(Guild& g)const {
+		m_opcode8(g.id());
+		g.m_members.clear();
+		g.m_members.reserve(g.m_member_count);
+	}
 
 	//dispatch
 	void m_opcode0(nlohmann::json, eventName, size_t);
@@ -164,7 +168,7 @@ private:
 	//reconnect
 	void m_opcode7();
 	//request guild members
-	void m_opcode8() const;
+	void m_opcode8(snowflake) const;
 	//invalid session
 	void m_opcode9(const nlohmann::json&) const;
 	//hello
@@ -251,9 +255,6 @@ private:
 	std::thread m_main_thread;
 	concurrent_queue<std::string, std::vector<std::string>> m_event_queue;
 
-
-	
-
 	friend class client;
 };
 
@@ -275,10 +276,10 @@ template <typename T, typename ... args>
 std::enable_if_t<rq::has_content_type_v<T>, T> shard::m_send_things(std::string&& body, args&&... Args) {
 	auto[retVal, r] = rawrland::get_default_stuffs<T>(std::forward<args>(Args)...);
 	set_up_request(r.req);
-	r.req.body() = body;
+	r.req.body() = std::move(body);
 	r.req.prepare_payload();
 	m_http_connection.add(std::move(r));
-	return std::move(retVal);
+	return std::move(retVal);//no nrvo
 }
 
 template <typename T, typename ... args>
@@ -287,7 +288,7 @@ std::enable_if_t<!rq::has_content_type_v<T>, T> shard::m_send_things(args&&... A
 	set_up_request(r.req);
 	r.req.prepare_payload();
 	m_http_connection.add(std::move(r));
-	return std::move(retVal);
+	return std::move(retVal);//no nrvo
 }
 
 template <typename rng>
@@ -327,7 +328,7 @@ std::enable_if_t<is_range_of<range, std::string>::value, rq::create_group_dm> sh
 		body["access_tokens"].push_back(token);
 	}
 	body["nicks"] = std::move(nicks);
-	m_send_things<rq::create_group_dm>(body.dump());
+	return m_send_things<rq::create_group_dm>(body.dump());
 }
 
 
@@ -340,12 +341,17 @@ msg_t shard::createMsg(channel_t& ch, const nlohmann::json& stuffs,map_t&& membe
 	from_json(stuffs, static_cast<partial_message&>(retVal));
 	retVal.m_channel = &ch;
 	retVal.m_author = members[retVal.author_id()];
+	retVal.m_mentions.reserve(stuffs["mentions"].size());
 	for (const auto& mention : stuffs["mentions"])
 		retVal.m_mentions.push_back(members[mention["id"].get<snowflake>()]);
 
-	if constexpr(std::is_same_v<msg_t,guild_text_message>)
-		retVal.m_mention_roles = stuffs["mention_roles"].get<std::vector<snowflake>>();
-	
+	if constexpr(std::is_same_v<msg_t,guild_text_message>){
+		retVal.m_mention_roles_ids = stuffs["mention_roles"].get<std::vector<snowflake>>();
+		const Guild& guild = *ch.m_guild;
+		retVal.m_mention_roles.reserve(retVal.m_mention_roles_ids.size());
+		for(const auto& role_id:retVal.m_mention_roles_ids) 
+			retVal.m_mention_roles.push_back(&guild.m_roles.at(role_id));				
+	}
 	return retVal;
 }
 
@@ -364,7 +370,7 @@ msg_t shard::createMsgUpdate(channel_t& ch, const nlohmann::json& stuffs, map_t&
 			retVal.m_mentions.push_back(members[mention["id"].get<snowflake>()]);
 
 	if constexpr(std::is_same_v<msg_t, guild_text_message>)
-		retVal.m_mention_roles = stuffs.value("mention_roles", std::vector<snowflake>());
+		retVal.m_mention_roles_ids = stuffs.value("mention_roles", std::vector<snowflake>());
 
 	return retVal;
 }
@@ -384,14 +390,13 @@ reaction& shard::update_reactions(std::vector<reaction>& reactions, partial_emoj
 		temp.m_count = n;
 		temp.m_emoji = std::move(emoji);
 		temp.m_me = user_id == my_id;
-		reactions.push_back(std::move(temp));
-		return reactions.back();
+		return reactions.emplace_back(std::move(temp));
 	}else {
 		reaction& r = *it;
 		r.m_count += n;
 
 		if(my_id == user_id) {
-			r.m_me = n > 0;
+			r.m_me = n > 0;//true if n == 1, false if n==-1
 		}
 		return r;
 	}

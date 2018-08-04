@@ -2,8 +2,6 @@
 #include "snowflake.h"
 #include "guild.h"
 
-
-
 discord_obj_list<text_channel> Guild::text_channels()const {
 	return discord_obj_list<text_channel>(m_shard->text_channels(), m_text_channels);
 }
@@ -30,7 +28,9 @@ const std::vector<snowflake>& Guild::voice_channel_ids() const noexcept {
 
 const std::vector<guild_member>& Guild::members() const noexcept { return m_members; }
 
-std::vector<guild_member>& Guild::members() noexcept { return m_members; }
+const guild_member& Guild::owner() const noexcept {
+	return *std::lower_bound(m_members.begin(), m_members.end(), owner_id(), id_comp);
+}
 
 timestamp Guild::joined_at() const noexcept { return m_joined_at; }
 
@@ -53,12 +53,12 @@ void from_json(const nlohmann::json& json, Guild& guild) {
 			  [](const auto& a, const auto& b){ return a.id().val < b.id().val; });
 }
 
-text_channel& Guild::general_channel() const noexcept {
+const text_channel& Guild::general_channel() const noexcept {
 	return m_shard->text_channels()[general_channel_id()];
 }
 
-voice_channel* Guild::afk_channel() const noexcept {
+optional_ref<voice_channel> Guild::afk_channel() const noexcept {
 	if (afk_channel_id().val)
-		return &m_shard->voice_channels().at(afk_channel_id());
-	return nullptr;		
+		return m_shard->voice_channels().at(afk_channel_id());
+	return std::nullopt;		
 }

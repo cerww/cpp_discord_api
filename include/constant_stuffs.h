@@ -62,9 +62,9 @@ inline eventName to_event_name(const std::string& name) {
 	if (name == "GUILD_EMOJI_UPDATE")return eventName::GUILD_EMOJI_UPDATE;
 	if (name == "GUILD_INTEGRATIONS_UPDATE")return eventName::GUILD_INTEGRATIONS_UPDATE;
 	if (name == "GUILD_MEMBER_ADD")return eventName::GUILD_MEMBER_ADD;
-	if (name == "GUILD_MEMEBER_REMOVE")return eventName::GUILD_MEMBER_REMOVE;
+	if (name == "GUILD_MEMBER_REMOVE")return eventName::GUILD_MEMBER_REMOVE;
 	if (name == "GUILD_MEMBER_UPDATE")return eventName::GUILD_MEMBER_UPDATE;
-	if (name == "GUILD_MEMBER_CHUNK")return eventName::GUILD_MEMBER_CHUNK;
+	if (name == "GUILD_MEMBERS_CHUNK")return eventName::GUILD_MEMBER_CHUNK;
 	if (name == "GUILD_ROLE_CREATE")return eventName::GUILD_ROLE_CREATE;
 	if (name == "GUILD_ROLE_UPDATE")return eventName::GUILD_ROLE_UPDATE;
 	if (name == "GUILD_ROLE_DELETE")return eventName::GUILD_ROLE_DELETE;

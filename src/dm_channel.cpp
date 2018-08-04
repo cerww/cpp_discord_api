@@ -2,14 +2,14 @@
 
 
 snowflake dm_channel::last_message_id() const noexcept { return m_last_message_id; }
-std::vector<user>& dm_channel::recipients() noexcept { return m_recipients; }
+
 const std::vector<user>& dm_channel::recipients() const noexcept { return m_recipients; }
 timestamp dm_channel::last_pin_timestamp() const noexcept { return m_last_pin_timestamp; }
 const std::vector<dm_message>& dm_channel::msg_cache() const noexcept { return m_msg_cache.data(); }
-std::vector<dm_message>& dm_channel::msg_cache() noexcept { return m_msg_cache.data(); }
 
-void dm_channel::m_add_msg(dm_message msg) {
-	m_msg_cache.add(std::move(msg));
+
+dm_message& dm_channel::m_add_msg(dm_message msg) {
+	return m_msg_cache.add(std::move(msg));
 }
 
 void to_json(nlohmann::json& json, const dm_channel& channel) {

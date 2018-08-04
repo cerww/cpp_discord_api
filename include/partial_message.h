@@ -23,8 +23,7 @@ public:
 private:
 	snowflake m_author_id;
 	snowflake m_id;
-	snowflake m_channel_id;
-	//sender_t m_author;
+	snowflake m_channel_id;	
 	std::string m_content;
 	timestamp m_timestamp;
 	std::optional<timestamp> m_edited_timestamp;
@@ -42,17 +41,16 @@ private:
 
 class guild_text_message:public partial_message{
 public:
-	text_channel& channel() noexcept;;
 	const text_channel& channel() const noexcept;;
-	Guild& guild()noexcept;
 	const Guild& guild()const noexcept;
-	guild_member& author() noexcept;
 	const guild_member& author() const noexcept;
-	const std::vector<snowflake>& mention_roles() const noexcept;
-	const std::vector<guild_member*>& mentions() const noexcept;
+	const std::vector<snowflake>& mention_roles_ids() const noexcept;
+	const std::vector<const guild_member*>& mentions() const noexcept;
+	const std::vector<const guild_role*>& mention_roles()const noexcept;
 private:
-	std::vector<snowflake> m_mention_roles;
-	std::vector<guild_member*> m_mentions;
+	std::vector<snowflake> m_mention_roles_ids;
+	std::vector<const guild_member*> m_mentions;
+	std::vector<const guild_role*> m_mention_roles;
 	guild_member* m_author = nullptr;
 	text_channel* m_channel = nullptr;
 	friend class shard;
@@ -60,10 +58,8 @@ private:
 
 class dm_message:public partial_message {
 public:
-	user& author() noexcept;
 	const user& author() const noexcept;
 	const std::vector<user*>& mentions() const noexcept;;
-	dm_channel& channel() noexcept;
 	const dm_channel& channel() const noexcept;
 private:
 	user* m_author = nullptr;
@@ -82,8 +78,7 @@ public:
 private:
 	snowflake m_author_id;
 	snowflake m_id;
-	snowflake m_channel_id;
-	//sender_t m_author;
+	snowflake m_channel_id;	
 	std::string m_content;
 	timestamp m_timestamp;
 	std::optional<timestamp> m_edited_timestamp;
@@ -98,27 +93,35 @@ private:
 
 class guild_msg_update:public msg_update{
 public:
+	const guild_member& author()const noexcept;
+	const std::vector<snowflake>& mention_role_ids()const noexcept;
+	const std::vector<const guild_member*>& mentions()const noexcept;
+	const std::vector<const guild_role*>& mention_roles()const noexcept;
+	const text_channel& channel()const noexcept;
 
 private:
 	guild_member* m_author = nullptr;
-	std::vector<snowflake> m_mention_roles;
-	std::vector<guild_member*> m_mentions;
+	std::vector<snowflake> m_mention_role_ids;
+	std::vector<const guild_member*> m_mentions;
+	std::vector<const guild_role*> m_mention_roles;
 	text_channel* m_channel = nullptr;
 	friend class shard;
 };
+
 class dm_msg_update:public msg_update{
 public:
-	user& author();
+	//user& author();
 	const user& author() const;
+	const std::vector<const user*>& mentions()const noexcept;
+	const dm_channel& channel()const noexcept;
 private:
-	user * m_author = nullptr;
-	std::vector<user*> m_mentions;
+	user* m_author = nullptr;
+	std::vector<const user*> m_mentions;
 	dm_channel * m_channel = nullptr;
 	friend class shard;
 };
 
 void from_json(const nlohmann::json& json, msg_update& msg);
-
 
 inline void update_msg(guild_text_message&,const guild_msg_update&) {
 	

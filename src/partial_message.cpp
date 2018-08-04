@@ -13,17 +13,18 @@ bool partial_message::mention_everyone() const noexcept { return m_mention_every
 const std::vector<reaction>& partial_message::reactions() const noexcept { return m_reactions; }
 const std::vector<attachment>& partial_message::attachments() const noexcept { return m_attachments; }
 
-text_channel& guild_text_message::channel() noexcept { return *m_channel; }
+//text_channel& guild_text_message::channel() noexcept { return *m_channel; }
 const text_channel& guild_text_message::channel() const noexcept { return *m_channel; }
-guild_member& guild_text_message::author() noexcept { return *m_author; }
+//guild_member& guild_text_message::author() noexcept { return *m_author; }
 const guild_member& guild_text_message::author() const noexcept { return *m_author; }
-const std::vector<snowflake>& guild_text_message::mention_roles() const noexcept { return m_mention_roles; }
-const std::vector<guild_member*>& guild_text_message::mentions() const noexcept { return m_mentions; }
+const std::vector<snowflake>& guild_text_message::mention_roles_ids() const noexcept { return m_mention_roles_ids; }
+const std::vector<const guild_member*>& guild_text_message::mentions() const noexcept { return m_mentions; }
+const std::vector<const guild_role*>& guild_text_message::mention_roles() const noexcept { return m_mention_roles; }
 
-user& dm_message::author() noexcept { return *m_author; }
+//user& dm_message::author() noexcept { return *m_author; }
 const user& dm_message::author() const noexcept { return *m_author; }
 const std::vector<user*>& dm_message::mentions() const noexcept { return m_mentions; }
-dm_channel& dm_message::channel() noexcept { return *m_channel; }
+//dm_channel& dm_message::channel() noexcept { return *m_channel; }
 const dm_channel& dm_message::channel() const noexcept { return *m_channel; }
 
 void from_json(const nlohmann::json& json, partial_message& msg) {
@@ -45,8 +46,15 @@ void from_json(const nlohmann::json& json, partial_message& msg) {
 snowflake msg_update::id() const noexcept { return m_id; }
 snowflake msg_update::channel_id() const noexcept { return m_channel_id; }
 const std::string& msg_update::content() const noexcept { return m_content; }
-user& dm_msg_update::author() { return *m_author; }
+const guild_member& guild_msg_update::author() const noexcept {return *m_author;}
+const std::vector<snowflake>& guild_msg_update::mention_role_ids() const noexcept { return m_mention_role_ids; }
+const std::vector<const guild_member*>& guild_msg_update::mentions() const noexcept { return m_mentions; }
+const std::vector<const guild_role*>& guild_msg_update::mention_roles() const noexcept { return m_mention_roles; }
+const text_channel& guild_msg_update::channel() const noexcept { return *m_channel; }
+//user& dm_msg_update::author() { return *m_author; }
 const user& dm_msg_update::author() const { return *m_author; }
+const std::vector<const user*>& dm_msg_update::mentions() const noexcept { return m_mentions; }
+const dm_channel& dm_msg_update::channel() const noexcept { return *m_channel; }
 
 void from_json(const nlohmann::json& json, msg_update& msg) {
 	const auto it = json.find("author");
@@ -63,5 +71,4 @@ void from_json(const nlohmann::json& json, msg_update& msg) {
 	msg.m_reactions = json.value("reactions", std::vector<reaction>());
 }
 
-Guild& guild_text_message::guild() noexcept { return channel().guild(); }
 const Guild& guild_text_message::guild() const noexcept {return channel().guild(); }

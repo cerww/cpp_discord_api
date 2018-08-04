@@ -20,3 +20,5 @@ inline void from_json(const nlohmann::json& json,attachment& val) {
 	val.url = json["url"].get<std::string>();
 	val.proxy_url = json["proxy_url"].get<std::string>();
 }
+
+

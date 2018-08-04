@@ -9,12 +9,11 @@
 class partial_guild{
 public:
 	snowflake id() const noexcept;
-	rename_later_4<snowflake, guild_role>& roles() noexcept;
-	const rename_later_4<snowflake, guild_role>& roles() const noexcept;
+	discord_obj_map<guild_role> roles() const noexcept;
+	//rename_later_4<snowflake, guild_role>& roles() noexcept;
 	const std::string& name() const noexcept;
 	const std::string& icon() const noexcept;
 	snowflake owner_id() const noexcept;
-	std::vector<emoji>& emojis() noexcept;
 	const std::vector<emoji>& emojis() const noexcept;
 	snowflake general_channel_id()const noexcept;
 	const std::string& region() const noexcept;
@@ -50,6 +49,8 @@ private:
 	snowflake m_system_channel_id;
 	friend void from_json(const nlohmann::json& json, partial_guild& guild);
 	friend class shard;
+
+	//
 };
 
 

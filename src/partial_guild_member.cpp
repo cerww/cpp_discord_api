@@ -1,7 +1,5 @@
 #include "partial_guild_member.h"
 
-
-
 const std::vector<snowflake>& partial_guild_member::role_ids() const noexcept { return m_roles; }
 
 timestamp partial_guild_member::joined_at() const noexcept { return m_joined_at; }

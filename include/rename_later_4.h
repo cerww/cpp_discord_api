@@ -15,6 +15,11 @@ struct rename_later_4{
 			set_stuff();
 		}
 
+		template<typename value_t2, typename iterator_t2, std::enable_if_t<std::is_convertible_v<iterator_t2,iterator_t>> = 0>
+		templated_iterator(templated_iterator<value_t2,iterator_t2> other):templated_iterator(other.m_it,other.m_first) {
+			
+		}
+
 		value_t& operator*() const{
 			return const_cast<value_t&>(*m_stuff);
 		}
@@ -130,6 +135,30 @@ struct rename_later_4{
 		return const_iterator(m_data.find(key),m_data.end);
 	}
 
+	void erase(const K& key) {
+		m_data.erase(key);
+	}
+
+	iterator erase(iterator a,iterator b) {
+		return { m_data.erase(a.m_it,b.m_it),m_data.end() };
+	}
+
+	iterator erase(const_iterator a, const_iterator b) {
+		return { m_data.erase(a.m_it,b.m_it),m_data.end() };
+	}
+
+	void clear() noexcept{
+		m_data.clear();
+	}
+
+	size_t size()const noexcept {
+		return m_data.size();
+	}
+
+	bool empty()const noexcept {
+		return size() == 0;
+	}
+
 	void reserve(size_t n) {
 		m_data.reserve(n);
 	}
@@ -141,10 +170,11 @@ struct rename_later_4{
 		return m_data != other.m_data;
 	}
 
-	template<typename... args>
-	std::pair<iterator,bool> emplace(const K& key,args&&... Args) {
-		return m_data.emplace(key, std::forward<args>(Args)...);
+	template<typename K_,typename... args>
+	std::pair<iterator,bool> emplace(K_&& key,args&&... Args) {
+		return m_data.emplace(std::forward<K_>(key), std::forward<args>(Args)...);
 	}
+
 	iterator begin() {
 		return iterator(m_data.begin(),m_data.end());
 	}

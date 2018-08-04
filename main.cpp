@@ -12,6 +12,7 @@
 #include "bytell_hash_map.hpp"
 #include <unordered_set>
 #include "rename_later_4.h"
+#include "preallocated_allocator.h"
 
 using namespace std::string_literals;
 using namespace std::chrono_literals;
@@ -341,11 +342,11 @@ struct shared_ptr_p;
 
 template<typename T>
 struct shared_ptr_ref{
-	shared_ptr_ref(T* a) :thing(a) {};
+	explicit shared_ptr_ref(T* a) :thing(a) {};
 	std::atomic<int> cnt = 1;
 	std::mutex mut;
 	T* thing;
-	shared_ptr_p<T>* parent;
+	shared_ptr_p<T>* parent = nullptr;
 	void die();
 	void decrement() {
 		--cnt;
@@ -434,8 +435,6 @@ struct qwer{
 	void u() {
 		std::cout << "qwer" << std::endl;
 	}
-
-
 };
 
 bool operator!=(qwer, qwer) { return false; }
@@ -461,26 +460,63 @@ struct logging_allocator{
 
 	T* allocate(size_t n) {
 		std::cout << "allocating" << std::endl;
-		return new T[n];
+		return malloc(n * sizeof(T));
 	}
 
 	void deallocate(T* t,size_t) {
-		delete t;
+		free(t);
 	}
 };
 
+struct fat_obj{
+	std::array<char, sizeof(guild_member)> data = {};
+	size_t rawr;
 
-int main(){	
+};
+
+struct testy{
+	testy(int n) { data.reserve(n); }
+	void test_fat_obj_thing_1(std::vector<fat_obj> s) {
+		for(auto& t:s) {
+			data.push_back(std::move(t));
+		}
+		std::sort(data.begin(), data.end(), [](const auto& a, const auto& b) {return a.rawr < b.rawr; });
+		//radix_sort(data.begin(), data.end(), [](const auto& t) {return t.rawr; });
+	}
+
+	void test_fat_obj_thing_2(std::vector<fat_obj> s) {
+		std::vector<std::pair<fat_obj, std::vector<fat_obj>::const_iterator>> data2(s.size());
+		std::transform(s.begin(), s.end(), data2.begin(), [&](auto& a){
+			auto it = std::upper_bound(data.cbegin(), data.cend(), a, [](const auto& b, const auto& c) {
+				return b.rawr < c.rawr;
+			});
+			return std::make_pair(std::move(a), it);
+		});
+		std::sort(data2.begin(), data2.end(), [](const auto& a,const auto& b){
+			return a.second < b.second;
+		});
+
+		for(int i = 0;i<data2.size();++i) {
+			data.insert(data2[i].second + i, std::move(data2[i].first));
+		}
+
+	}
+
+
+	std::vector<fat_obj> data;
+};
+
+int main(){
 	try{
 		client c;
 		std::vector<partial_message> msgs;
 		c.on_guild_text_msg = [&](guild_text_message& wat,shard& s){
+			/*
 			
 			if(wat.content() == "watland") {
 				//s.delete_message(msgs.back()).get();
 				//msgs.pop_back();
-			}
-			else if(wat.content()== "make new channel") {
+			}else if(wat.content()== "make new channel") {
 				s.create_text_channel(wat.guild(),"blargylandy").get();
 			}else if(wat.content() == "rolesy") {
 				std::string stuff;
@@ -499,14 +535,23 @@ int main(){
 			if (wat.author().id() != c.getSelf().id())
 				s.send_message(wat.channel(), std::to_string(wat.author().id().val));
 			//s.add_reaction(wat,wat.guild().emojis().back());
-			
+			*/
 		};
 		c.on_guild_typing_start = [&](guild_member& member,text_channel& channel,shard& s){
+			/*
 			msgs.push_back(s.send_message(channel,member.username()+ " has started typing").get());
-			//s.send_message(channel, member.username() + " has started typing").wait();
+			s.send_message(channel, member.username() + " has started typing");
+			s.send_message(channel, member.username() + " has started typing");
+			s.send_message(channel, member.username() + " has started typing");
+			s.send_message(channel, member.username() + " has started typing");
+			s.send_message(channel, member.username() + " has started typing");
+			s.send_message(channel, member.username() + " has started typing");
+			s.send_message(channel, member.username() + " has started typing").wait();
+			member.guild().roles();
+			*/
 		};
 		c.on_guild_member_add = [&](guild_member& member,shard& s){
-			s.send_message(member.guild().general_channel(),member.username()).get();
+			//s.send_message(member.guild().general_channel(),member.username()).get();
 		};
 		c.setToken(tokenType::BOT, getFileContents("token.txt"));
 		c.run();

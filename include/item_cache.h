@@ -25,12 +25,15 @@ public:
 		if (reserve_before)
 			m_cache.reserve(m_cache_size);
 	}
-	void add(T item) {
+	T& add(T item) {
 		if (m_cache.size()<m_cache_size) {
 			m_cache.push_back(std::move(item));
+			return m_cache.back();
 		}else {
 			m_cache[m_position++] = std::move(item);
+			auto& ret = m_cache[m_position - 1];
 			m_position %= m_cache_size;
+			return ret;
 		}
 	}
 	void cache_size(size_t t_cache_size) noexcept{

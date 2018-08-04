@@ -8,48 +8,43 @@ struct defer_construction{};
 template<typename T,typename _Alloc = std::allocator<T>>
 struct indirect {
 	indirect():m_data(new(m_allocator.allocate(1)) T()){};
-	
+
+	indirect(T stuff, _Alloc al = _Alloc()) :
+		m_allocator(std::move(al)),
+		m_data(new(m_allocator.allocate(1)) T(std::move(stuff))) {}
+
 	template<typename allo, std::enable_if_t<std::is_constructible_v<_Alloc,allo>,int> = 0>
-	indirect(allo&& alloc,T thing = T()): // NOLINT
+	explicit indirect(allo&& alloc,T thing = T()): // NOLINT
 		m_allocator(std::forward<allo>(alloc)),
 		m_data(new(m_allocator.allocate(1)) T(std::move(thing))){}
 
 	template<typename... Ts, std::enable_if_t<std::is_constructible_v<_Alloc, Ts...> && !std::is_constructible_v<T, Ts...>, int> = 0>
-	indirect(Ts&&... args):
+	explicit indirect(Ts&&... args):
 		m_allocator(std::forward<Ts>(args)...),
 		m_data(new(m_allocator.allocate(1)) T()){}
 
 	template<typename... Ts, std::enable_if_t<std::is_constructible_v<_Alloc, Ts...> && !std::is_constructible_v<T, Ts...>, int> = 0>
-	indirect(defer_construction,Ts&&... args) :
+	explicit indirect(defer_construction,Ts&&... args) :
 		m_allocator(std::forward<Ts>(args)...){}
 
 	template<typename... Ts, std::enable_if_t<std::is_constructible_v<T, Ts...>, int> = 0>
-	indirect(Ts&&... args):
+	explicit indirect(Ts&&... args):
 		m_data(new(m_allocator.allocate(1)) T(std::forward<Ts>(args)...)){}
 
 	template<typename ...Ts1, typename ...Ts2>
-	indirect(std::tuple<Ts1...> alloc_args,std::tuple<Ts2...> T_args):
+	explicit indirect(std::tuple<Ts1...> alloc_args,std::tuple<Ts2...> T_args):
 		m_allocator(std::make_from_tuple<_Alloc>(std::move(alloc_args))),
-		m_data(new (m_allocator.allocate(1)) T(std::make_from_tuple<T>(std::move(T_args)))){
-		
-	}
+		m_data(new (m_allocator.allocate(1)) T(std::make_from_tuple<T>(std::move(T_args)))){}
 
 	template<typename U>
-	indirect(std::initializer_list<U> li):
-	m_data(new(m_allocator.allocate(1)) T(li)) {
-		
-	}
+	indirect(std::initializer_list<U> li):m_data(new(m_allocator.allocate(1)) T(li)) {}
 
 	template<typename U>
 	indirect& operator=(std::initializer_list<U> li) {
 		*m_data = T(li);
 		return *this;
 	}
-
-	indirect(T stuff,_Alloc al = _Alloc()):
-		m_allocator(std::move(al)),
-		m_data(new(m_allocator.allocate(1)) T(std::move(stuff))){}
-
+	
 	indirect(const indirect& other):
 		m_allocator(other.m_allocator),
 		m_data(new(m_allocator.allocate(1)) T(*other.m_data)){}
@@ -70,6 +65,7 @@ struct indirect {
 		*m_data = *other.m_data;
 		return *this;
 	}
+
 	indirect& operator=(indirect&& other) noexcept{
 		this->~indirect();
 		m_allocator = std::move(other.m_allocator);
@@ -82,6 +78,7 @@ struct indirect {
 		*m_data = *other.m_data;
 		return *this;
 	}
+
 	template<typename U, typename A, std::enable_if_t<std::is_convertible_v<U, T> && !std::is_same_v<A, _Alloc>, int> = 0>
 	indirect& operator=(indirect<U,A>&& other) {		
 		*m_data = std::move(*other.m_data);
@@ -94,8 +91,10 @@ struct indirect {
 	}
 
 	~indirect(){
-		if(m_data)
+		if(m_data){
+			m_data->~T();
 			m_allocator.deallocate(m_data,1);
+		}
 	}
 	
 	T& value() noexcept{ return *m_data; }
@@ -160,6 +159,7 @@ private:
 	T* m_data = nullptr;
 	template<typename,typename> friend struct indirect;
 };
+
 /*
 #include "allocatey.h"
 #include <unordered_map>
@@ -228,3 +228,4 @@ inline void qwettrsffdh() {
 	std::cout << d << std::endl;
 }
 */
+

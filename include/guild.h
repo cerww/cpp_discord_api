@@ -8,6 +8,7 @@
 #include "voice_channel.h"
 #include "partial_guild.h"
 #include "voice_state.h"
+#include "optional_ref.h"
 
 class shard;
 
@@ -18,11 +19,11 @@ public:
 	bool large() const noexcept;
 	bool unavailable() const noexcept;
 	int member_count() const noexcept;
-	text_channel& general_channel() const noexcept;
+	const text_channel& general_channel() const noexcept;
 	const std::vector<guild_member>& members() const noexcept;
-	std::vector<guild_member>& members() noexcept;
+	const guild_member& owner()const noexcept;
 	
-	discord_obj_list<text_channel> text_channels()const;	
+	discord_obj_list<text_channel> text_channels()const;
 	discord_obj_list<voice_channel> voice_channels()const;	
 	discord_obj_list<channel_catagory> channel_catagories()const;
 
@@ -30,7 +31,7 @@ public:
 	const std::vector<snowflake>& channel_catagories_ids()const noexcept;
 	const std::vector<snowflake>& voice_channel_ids()const noexcept;	
 
-	voice_channel* afk_channel()const noexcept;
+	optional_ref<voice_channel> afk_channel()const noexcept;
 	const std::vector<voice_state>& voice_states() const noexcept;
 private:
 	timestamp m_joined_at = {};

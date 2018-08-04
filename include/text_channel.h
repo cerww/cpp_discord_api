@@ -10,7 +10,7 @@
 class text_channel:public guild_channel{
 public:
 	const std::vector<guild_text_message>& msg_cache() const noexcept;
-	std::vector<guild_text_message>& msg_cache() noexcept;
+	//std::vector<guild_text_message>& msg_cache() noexcept;
 	const std::string& topic() const noexcept;
 	snowflake last_message_id() const noexcept;
 private:
@@ -21,7 +21,7 @@ private:
 
 	dynamic_item_cache<guild_text_message> m_msg_cache = dynamic_item_cache<guild_text_message>(10ull,false);
 
-	void m_add_msg(guild_text_message msg);
+	guild_text_message& m_add_msg(guild_text_message msg);
 
 	friend void from_json(const nlohmann::json& json, text_channel& channel);
 	friend class shard;

@@ -1,6 +1,7 @@
 #pragma once
 #include "partial_channel.h"
 #include <experimental/generator>
+#include "range-like-stuffs.h"
 
 class channel_catagory;
 
@@ -9,17 +10,22 @@ class Guild;
 class guild_channel:public partial_channel{
 public:
 	snowflake guild_id() const noexcept;
-	Guild& guild() noexcept;
+	//Guild& guild() noexcept;
 	const Guild& guild() const noexcept;
 	const std::vector<permission_overwrite>& permission_overwrites() const noexcept;
 	bool nsfw() const noexcept;
 	int position() const noexcept;
 	snowflake catagory_id() const noexcept;
-	channel_catagory& parent() noexcept;
+	//channel_catagory& parent() noexcept;
 	const channel_catagory& parent() const noexcept;
 	bool has_parent() const noexcept;
 	const std::vector<permission_overwrite>& parent_overwrites()const noexcept;
-	std::experimental::generator<permission_overwrite> total_permissions()const;
+	std::experimental::generator<permission_overwrite> total_permissions()const {
+		if (m_parent)
+			return concat(permission_overwrites(), parent_overwrites());
+		return concat(permission_overwrites());
+	}
+	;
 private:
 	snowflake m_guild_id;
 	bool m_nsfw = false;

@@ -151,9 +151,9 @@ inline size_t find_first_if(string_t&& str, size_t off, pred&&... fn) {
 
 template<typename... fns>
 struct fnOr {
-	constexpr fnOr(fns... functions) :m_fns(std::make_tuple(std::forward<fns>(functions)...)) {}
+	constexpr explicit fnOr(fns&&... functions) :m_fns(std::make_tuple(std::forward<fns>(functions)...)) {}
 	template<typename... Args>
-	decltype(auto) operator()(Args... args){
+	decltype(auto) operator()(Args&&... args){
 		return operator_impl(std::forward_as_tuple(std::forward<Args>(args)...), std::index_sequence_for<fns...>()); 
 	}
 private:
@@ -165,7 +165,7 @@ private:
 };
 
 template<typename... fns>
-inline constexpr auto make_fnOr(fns... fn){
+inline constexpr auto make_fnOr(fns&&... fn){
 	return fnOr<fns...>(std::forward<fns>(fn)...);
 }
 
@@ -184,7 +184,7 @@ inline T breadthFirstSearch(T start,adjFn adj, predFn pred){
 }
 
 template<typename T, typename adjFn, typename predFn>
-inline T breadthFirstSearchMultiple(T start, adjFn adj, predFn pred) {
+inline T breadthFirstSearchMultiple(T&& start, adjFn&& adj, predFn&& pred) {
 	std::vector<T> queue(1, start);
 	std::vector<T> retVal;
 	while (queue.size()) {
@@ -200,7 +200,7 @@ inline T breadthFirstSearchMultiple(T start, adjFn adj, predFn pred) {
 }
 
 template<typename T,typename adjFn,typename predFn>
-inline std::pair<T,bool> depthFirstSearch(T start,adjFn adj,predFn pred){
+constexpr std::pair<T,bool> depthFirstSearch(T&& start,adjFn&& adj,predFn&& pred){
 	if (pred(start))
 		return { start,true };
 	for(auto&& next:adj(start)){
@@ -267,16 +267,17 @@ inline void remove_if_quick(container_t& thing,pred fn) {
 template<typename T>
 class view {//like std::string_view but for vectors!
 public:
-	view() = default;
-	view(T* t_data,size_t t_size):m_data(t_data),m_size(t_size){}
+	constexpr view() = default;
+	constexpr view(T* t_data,size_t t_size):m_data(t_data),m_size(t_size){}
 	view(const std::vector<T>& vec):m_data(vec.data()),m_size(vec.size()){};
-	const T& operator[](size_t index)const {
+
+	constexpr const T& operator[](size_t index)const {
 		return m_data[index];
 	}
-	void cut_right(const size_t len){
+	constexpr void cut_right(const size_t len){
 		m_size -= len;
 	}
-	void cut_left(const size_t len){
+	constexpr void cut_left(const size_t len){
 		m_data += len;
 		m_size -= len;
 	}
@@ -324,7 +325,7 @@ template<typename time_t,timerType type>
 class async_timer {
 public:
 	async_timer() = default;
-	async_timer(time_t t_timey,time_t t_interval = time_t(1)):
+	explicit async_timer(time_t t_timey,time_t t_interval = time_t(1)):
 		m_timey(t_timey),
 		m_interval(t_interval){}
 	~async_timer(){
@@ -419,7 +420,7 @@ struct propagate_fn<f1,fns...>:propagate_fn<fns...> {
 	using current_fn_ = f1;
 
 	template<typename f1_,typename ...rest_fns>
-	propagate_fn(f1_&& first,rest_fns&&... rest):propagate_fn<fns...>(std::forward<rest_fns>(rest)...),fun(std::forward<f1_>(first)) {
+	constexpr explicit propagate_fn(f1_&& first,rest_fns&&... rest):propagate_fn<fns...>(std::forward<rest_fns>(rest)...),fun(std::forward<f1_>(first)) {
 		static_assert(sizeof...(rest_fns) <= sizeof...(fns));
 	}
 
@@ -439,7 +440,7 @@ struct propagate_fn<f1,fns...>:propagate_fn<fns...> {
 
 template<typename comp,typename T>
 struct comparator {
-	constexpr comparator(T t_n):m_n(std::move(t_n)){}
+	constexpr explicit comparator(T t_n):m_n(std::move(t_n)){}
 
 	template<typename U>
 	constexpr bool operator()(const U& other)const{
@@ -583,10 +584,9 @@ inline std::vector<T> reorder2(const std::vector<T>& vec, const std::vector<int>
 
 
 
-inline unsigned swapEndianness(unsigned input) {
+constexpr unsigned swapEndianness(unsigned input) {
 	return input << 24 | input >> 24 | ((input << 8) & (0xFF << 16)) | ((input >> 8) & (0xFF << 8));
 }
-
 
 static constexpr uint64_t byte0 = 0xFF;
 static constexpr uint64_t byte1 = 0xFF00;
@@ -596,7 +596,6 @@ static constexpr uint64_t byte4 = 0xFF00000000;
 static constexpr uint64_t byte5 = 0xFF0000000000;
 static constexpr uint64_t byte6 = 0xFF000000000000;
 static constexpr uint64_t byte7 = 0xFF00000000000000;
-
 
 template<typename T>
 inline uint64_t readBit(const T* v, const size_t n) {
@@ -611,6 +610,7 @@ template<typename T>
 inline uint64_t readBit(const std::vector<T>& v, size_t n) {
 	return readBit((uint8_t*)v.data(), n);
 }
+
 template<typename T>
 inline size_t readBits(const T* v, size_t start, const size_t end) {
 	size_t retVal = 0;
@@ -636,6 +636,7 @@ inline size_t readBitsReversed(const T* v, size_t start, const size_t end) {
 		retVal = (retVal << 1) + readBit(v, start++);
 	return retVal;
 }
+
 template<typename T>
 inline size_t readBitsReversed(const std::vector<T>& v, size_t start, const size_t end) {
 	return readBitsReversed(v.data(), start, end);
@@ -847,7 +848,7 @@ outTuple dereferenceIn(inTuple& in,std::index_sequence<i...>) {
 }
 
 template<typename ... ranges>
-std::experimental::generator<std::tuple<decltype(*std::declval<ranges>().begin())... >> zip(ranges... Ranges) {
+std::experimental::generator<std::tuple<decltype(*std::declval<ranges>().begin())... >> zip(ranges&&... Ranges) {
 	using tuple_type = std::tuple<decltype(*std::begin(std::declval<ranges>()))... >;
 	const auto indexThing = std::index_sequence_for<ranges...>();
 
@@ -952,7 +953,8 @@ struct dereference {
 template<typename it,typename parent>
 struct iterator_adapter:private crtp<parent>{
 	iterator_adapter() = default;
-	iterator_adapter(it a):m_it(std::move(a)) {};
+	iterator_adapter(it a):m_it(std::move(a)) {}
+
 	parent& operator++() {
 		++m_it;
 		return this->self();
@@ -996,10 +998,10 @@ struct iterator_adapter:private crtp<parent>{
 		return m_it - other.m_it;
 	}
 	decltype(auto) operator*() {
-		return this->self().read();
+		return this->self().read(*m_it);
 	}
 	decltype(auto) operator*() const{
-		return this->self().read();
+		return this->self().read(*m_it);
 	}
 protected:
 	it m_it;
@@ -1018,17 +1020,10 @@ struct transform2{
 	template<typename it_t>
 	struct iterator:iterator_adapter<it_t,iterator<it_t>>{
 		iterator(fn& f, it_t it) :iterator_adapter<it_t, iterator<it_t>>(it), m_fn(f) {};
-		auto operator*()->decltype(m_fn(*static_cast<it_t&>(*this))) {
-			return m_fn(*static_cast<it_t&>(*this));
-		}
-		auto operator*()const->decltype(m_fn(*static_cast<const it_t&>(*this))) {
-			return m_fn(*static_cast<const it_t&>(*this));
-		}
-		auto operator->()->decltype(&m_fn(*static_cast<it_t&>(*this))) {
-			return m_fn(*static_cast<it_t&>(*this));
-		}
-		auto operator->()const->decltype(&m_fn(*static_cast<const it_t&>(*this))) {
-			return m_fn(*static_cast<const it_t&>(*this));
+
+		template<typename T>
+		decltype(auto) read(T&& t) const noexcept(noexcept(const_cast<fn&>(this->m_fn)(std::forward<T>(t)))){
+			return const_cast<fn&>(m_fn)(std::forward<T>(t));
 		}
 	private:
 		fn& m_fn;
@@ -1076,7 +1071,7 @@ struct no_compare:T{
 
 template<typename T>
 struct strong_type{
-	strong_type(T t_value):m_value(std::move(t_value)){}
+	explicit strong_type(T t_value):m_value(std::move(t_value)){}
 
 	T& get() {
 		return m_value;
@@ -1121,7 +1116,8 @@ struct view_facade{
 		//std::enable_if_t<>
 
 		private:
-			cursor m_cursor;
+
+		cursor m_cursor;
 	};
 };
 
@@ -1131,7 +1127,7 @@ inline std::string_view make_safe_to_parse(const std::string& str) {
 	int n = 1;
 	while (n) {
 		start = str.find_first_of("{}", start + 1);
-		if (start == str.npos)
+		if (start == std::string::npos)
 			throw std::runtime_error("unable to match {");
 		if (str[start] == '{')
 			++n;
@@ -1191,3 +1187,51 @@ struct in_tag{
 		return gety<N>(static_cast<D&>(*this));
 	}
 };
+
+template<typename T,typename U,typename = void>
+struct has_less_than :std::false_type{};
+
+template<typename T, typename U>
+struct has_less_than<T,U,std::void_t<decltype(std::declval<T>() < std::declval<U>())>> :std::true_type{};
+
+template<typename T, typename U, typename = void>
+struct has_greater_than :std::false_type {};
+
+template<typename T, typename U>
+struct has_greater_than<T, U, std::void_t<decltype(std::declval<T>() > std::declval<U>())>> :std::true_type{};
+
+template<typename T, typename U, typename = void>
+struct has_less_than_equal :std::false_type {};
+
+template<typename T, typename U>
+struct has_less_than_equal<T, U, std::void_t<decltype(std::declval<T>() <= std::declval<U>())>> :std::true_type{};
+
+template<typename T, typename U, typename = void>
+struct has_greater_than_equal :std::false_type {};
+
+template<typename T, typename U>
+struct has_greater_than_equal<T, U, std::void_t<decltype(std::declval<T>() >= std::declval<U>())>> :std::true_type{};
+
+template<typename T, typename U, typename = void>
+struct has_equal_to :std::false_type {};
+
+template<typename T, typename U>
+struct has_equal_to<T, U, std::void_t<decltype(std::declval<T>() == std::declval<U>())>> :std::true_type {};
+
+template<typename T, typename U, typename = void>
+struct has_not_equal_to :std::false_type {};
+
+template<typename T, typename U>
+struct has_not_equal_to<T, U, std::void_t<decltype(std::declval<T>() != std::declval<U>())>> :std::true_type {};
+
+
+
+
+
+
+
+
+
+
+
+

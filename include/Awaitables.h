@@ -93,7 +93,6 @@ namespace rq {
 				11
 			);
 		}
-		ref_count_ptr<shared_state> state;
 
 		void handle_errors() {
 			const auto status = state->res.result_int();
@@ -142,8 +141,8 @@ namespace rq {
 				return value();
 		}
 
-		decltype(auto) to_future() {			
-			return std::async(std::launch::async, [me = *this]()mutable {return me.get(); });
+		decltype(auto) to_future(std::launch thing = std::launch::async) {
+			return std::async(thing, [me = *this]()mutable {return me.get(); });
 		}
 
 		template<typename executor>
@@ -152,8 +151,8 @@ namespace rq {
 		}
 
 		template<typename fn>
-		auto then(fn&& Fun,std::launch = std::launch::async) {
-			return std::async(std::launch::async, [this,_fun = std::forward<fn>(Fun)](){
+		auto then(fn&& Fun,std::launch thing = std::launch::async) {
+			return std::async(thing, [this,_fun = std::forward<fn>(Fun)](){
 				if constexpr(!std::is_same_v<typename reqeust::return_type, void>)
 					return _fun(get());
 				else
@@ -170,7 +169,9 @@ namespace rq {
 					_fun();
 			});
 		}
+		ref_count_ptr<shared_state> state;
 	};
+
 	struct get_guild :request_base<get_guild> {
 		using return_type = partial_guild;
 		
@@ -179,6 +180,7 @@ namespace rq {
 			return fmt::format(fmt("/guilds/{}"), id.val);
 		}
 	};
+
 	struct send_message:request_base<send_message>,json_content_type,post_verb{
 		using return_type = partial_message;
 		static std::string target(const partial_channel& channel) {	
@@ -186,6 +188,7 @@ namespace rq {
 		}
 
 	};
+
 	struct add_role:request_base<add_role>,put_verb{
 		
 		using return_type = void;
@@ -194,6 +197,7 @@ namespace rq {
 			return fmt::format(fmt("/guilds/{}/members/{}/roles/{}"), g.id().val, m.id().val, r.id().val);
 		}
 	};
+
 	struct remove_role :request_base<remove_role>,delete_verb{
 		using return_type = void;
 
@@ -201,14 +205,15 @@ namespace rq {
 			return fmt::format(fmt("/guilds/{}/members/{}/roles/{}"), g.id().val, m.id().val, r.id().val);
 		}	
 	};
-	struct create_role:request_base<create_role>,post_verb{
-		static constexpr const char* content_type = application_json;
+
+	struct create_role:request_base<create_role>,post_verb,json_content_type{
 		using return_type = guild_role;
 
 		static std::string target(const partial_guild& g) {
 			return fmt::format(fmt("/guilds/{}/roles"),g.id().val);
 		}
 	};
+
 	struct delete_role:request_base<delete_role>,delete_verb{
 		using return_type = void;
 
@@ -216,6 +221,7 @@ namespace rq {
 			return fmt::format(fmt("/guilds/{}/roles/{}"), g.id().val, r.id().val);
 		}
 	};
+
 	struct modify_role:request_base<modify_role>,json_content_type,patch_verb{
 		using return_type = guild_role;
 

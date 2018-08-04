@@ -46,21 +46,22 @@ public:
 		return std::optional<T>(do_pop());
 	}
 
+	//false means that now >= time_point
 	template<typename time_point>
 	std::optional<T> try_pop_until(time_point end) {
 		if (time_point::clock::now() > end)return std::nullopt;
 		std::unique_lock<std::mutex> locky(m_mut);
-		if (m_cv.wait_until(locky, end, [this]() {return m_data.empty(); }))
-			return std::nullopt;
-		return do_pop();
+		if (m_cv.wait_until(locky, end, [this]() {return !m_data.empty(); }))
+			return do_pop();
+		return std::nullopt;
 	}
 
 	template<typename duration>
 	std::optional<T> try_pop_for(duration d) {
 		std::unique_lock<std::mutex> locky(m_mut);
-		if (m_cv.wait_for(locky, d, [this]() {return m_data.empty(); }))
-			return std::nullopt;
-		return do_pop();
+		if (m_cv.wait_for(locky, d, [this]() {return !m_data.empty(); }))
+			return do_pop();
+		return std::nullopt;
 	}
 
 	size_t size()const noexcept {
@@ -74,12 +75,23 @@ public:
 	auto begin() const noexcept{
 		return m_data.begin();
 	}
+
 	auto end()const noexcept {
 		return m_data.end();
 	}
+
 	auto end()noexcept {
 		return m_data.end();
 	}
+
+	auto cbegin()const noexcept {
+		return m_data.cbegin();
+	}
+
+	auto cend()const noexcept {
+		return m_data.cend();
+	}
+
 	decltype(auto) operator[](int i)const{
 		return m_data[i];
 	}

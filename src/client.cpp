@@ -52,7 +52,8 @@ client::client() {
 		}else{
 			m_shards.insert(std::make_pair(web_socket,std::make_unique<shard>(m_shards.size(), web_socket, this)));
 		}
-	});	
+	});
+
 	m_ws_hub.onError([&](void* user){
 		std::cout << "couldn't connect try again" << std::endl;
 	});
@@ -88,12 +89,11 @@ void client::set_up_request(boost::beast::http::request<boost::beast::http::stri
 	req.keep_alive(true);
 }
 
-
-void client::rated_limit_global(std::chrono::steady_clock::time_point tp) {
-	static std::mutex m;
+void client::rate_limit_global(const std::chrono::system_clock::time_point tp) {
+	static std::mutex m;//am lazy
 	std::lock_guard<std::mutex> locky(m);
-	if (m_last_global_rate_limit - std::chrono::steady_clock::now() < std::chrono::seconds(1)){//so i don't rate_limit myself twice
-		m_last_global_rate_limit = std::chrono::steady_clock::now();
+	if (m_last_global_rate_limit - std::chrono::system_clock::now() < std::chrono::seconds(1)){//so i don't rate_limit myself twice
+		m_last_global_rate_limit = std::chrono::system_clock::now();
 		for(auto& i:m_shards) {
 			i.second->rate_limit(tp);
 		}

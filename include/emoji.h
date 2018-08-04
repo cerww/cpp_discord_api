@@ -14,8 +14,7 @@ private:
 
 class emoji:public partial_emoji{
 public:
-	snowflake user_id()const noexcept { return m_user_id; }
-	std::vector<snowflake>& roles()noexcept { return m_roles; }
+	snowflake user_id()const noexcept { return m_user_id; }	
 	const std::vector<snowflake>& roles()const noexcept { return m_roles; }
 private:
 	std::vector<snowflake> m_roles;

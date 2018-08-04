@@ -4,7 +4,7 @@
 
 snowflake guild_channel::guild_id() const noexcept { return m_guild_id; }
 
-Guild& guild_channel::guild() noexcept { return *m_guild; }
+//Guild& guild_channel::guild() noexcept { return *m_guild; }
 
 const Guild& guild_channel::guild() const noexcept { return *m_guild; }
 
@@ -18,7 +18,7 @@ int guild_channel::position() const noexcept { return m_position; }
 
 snowflake guild_channel::catagory_id() const noexcept { return m_parent_id; }
 
-channel_catagory& guild_channel::parent() noexcept { return *m_parent; }
+//channel_catagory& guild_channel::parent() noexcept { return *m_parent; }
 
 const channel_catagory& guild_channel::parent() const noexcept { return *m_parent; }
 
@@ -37,8 +37,4 @@ const std::vector<permission_overwrite>& guild_channel::parent_overwrites() cons
 	return m_parent->permission_overwrites();
 }
 
-std::experimental::generator<permission_overwrite> guild_channel::total_permissions() const {
-	if(m_parent)
-		return concat(permission_overwrites(),parent_overwrites());
-	return concat(permission_overwrites());
-}
+//std::experimental::generator<permission_overwrite> guild_channel::total_permissions() const

@@ -25,15 +25,18 @@ template<typename T>
 class ref_count_ptr{
 public:
 	ref_count_ptr() = default;
+
 	ref_count_ptr(T* t)noexcept:m_self(t) {
 		m_self->increment_ref_count();
 	}
+
 	ref_count_ptr(const ref_count_ptr& other) noexcept:m_self(other.m_self) {
 		m_self->increment_ref_count();
 	}
-	ref_count_ptr(ref_count_ptr&& other) noexcept:m_self(other.m_self) {
-		other.m_self = nullptr;
+
+	ref_count_ptr(ref_count_ptr&& other) noexcept:m_self(std::exchange(other.m_self,nullptr)) {
 	}
+
 	~ref_count_ptr() {
 		if (!m_self) return;
 		m_self->decrement_ref_count();
@@ -54,20 +57,18 @@ public:
 		return *this;
 	}
 	ref_count_ptr& operator=(ref_count_ptr&& other) noexcept {
+		if (&other == this)//self move is bad ;-;
+			return *this;
 		this->~ref_count_ptr();
 		m_self = std::exchange(other.m_self,nullptr);
 		return *this;
 	}
-	T* get() noexcept{
+
+	T* get()const noexcept {
 		return m_self;
 	}
-	const T* get()const noexcept {
-		return m_self;
-	}
-	T* operator->() noexcept{ return m_self; }
-	T* operator*() noexcept { return m_self; }
-	const T* operator->() const noexcept { return m_self; }
-	const T* operator*() const noexcept { return m_self; }
+	T* operator->() const noexcept{ return m_self; }
+	T& operator*() const noexcept { return *m_self; }
 private:
 	T* m_self = nullptr;
 };

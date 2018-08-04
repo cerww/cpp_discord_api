@@ -63,16 +63,16 @@ struct has_id:std::false_type{};
 
 template<typename T>
 struct has_id<T, std::void_t<decltype(std::declval<T>().id())>>{
-	static constexpr bool value_type = std::is_same_v<decltype(std::declval<T>().id()), snowflake>;
+	static constexpr bool value = std::is_same_v<decltype(std::declval<T>().id()), snowflake>;
 };
 
 template<typename T>
-static constexpr bool has_id_v = has_id<T>::value_type;
+static constexpr bool has_id_v = has_id<T>::value;
 
 template<typename T>
 std::enable_if_t<has_id_v<T>,ska::bytell_hash_map<snowflake,T*,std::hash<snowflake>,std::equal_to<>,single_chunk_allocator<std::pair<const snowflake,T*>>>> to_map(std::vector<T>& stuffs) {
-	single_chunk_mem_pool pool(std::max(stuffs.size() * sizeof(std::pair<const snowflake, T*>) * 5,2048ull));//5 is random number
-	ska::bytell_hash_map<snowflake, T*, std::hash<snowflake>, std::equal_to<>, single_chunk_allocator<std::pair<const snowflake, T*>>> retVal(pool);//so long ;-;
+	single_chunk_mem_pool pool(std::max(stuffs.size() * sizeof(std::pair<const snowflake, T*>) * 2,2048ull));//5 is random number
+	ska::bytell_hash_map<snowflake, T*, std::hash<snowflake>, std::equal_to<>, single_chunk_allocator<std::pair<const snowflake, T*>>> retVal(std::move(pool));//so long ;-;
 	retVal.reserve(stuffs.size());
 	for(auto& item:stuffs) 
 		retVal[item.id()] = &item;
@@ -80,7 +80,7 @@ std::enable_if_t<has_id_v<T>,ska::bytell_hash_map<snowflake,T*,std::hash<snowfla
 }
 
 struct id_equal_to{
-	id_equal_to(snowflake i) : id(i) {};
+	explicit id_equal_to(snowflake i) : id(i) {};
 	template<typename T>
 	bool operator()(const T& thing){
 		return thing.id() == id;
@@ -88,66 +88,150 @@ struct id_equal_to{
 	const snowflake id;
 };
 
+//this is like a "map" view ;-;, i should just make one, then typedef this
 template<typename T>
-using discord_obj_map = rename_later_4<snowflake, T>;
-
-//just use auto
-template<typename T,template<typename,typename,typename...> typename map_t = rename_later_4>
-struct discord_obj_list{
-	discord_obj_list(map_t<snowflake,T>& a,const std::vector<snowflake>& b):m_wat(a),m_waty(b){};
+struct discord_obj_map{
+	discord_obj_map() = default;
+	discord_obj_map(const rename_later_4<snowflake,T>& data):m_data(&data){}
 	
-	template<typename value_type,int stride>
-	struct iterator_{
-		iterator_(discord_obj_list* t_parent,std::vector<snowflake>::const_iterator t_it):
-		m_parent(t_parent),
-		it(t_it){}
-		iterator_& operator++() {
-			it += stride;
+	template<typename it>
+	struct templated_iterator{
+		templated_iterator(it o):m_it(std::move(o)){}
+
+		const T& operator*() const{
+			return *m_it;
+		}
+
+		const T* operator->()const {
+			return &*m_it;
+		}
+
+		templated_iterator& operator++()noexcept {
+			++m_it;
 			return *this;
 		}
-		iterator_ operator++(int) {
-			auto other = *this;			
-			it += stride;
+
+		templated_iterator operator++(int) noexcept {
+			auto other = *this;
+			++m_it;
 			return other;
 		}
 
-		value_type& operator*() const noexcept{
-			return m_parent->m_wat.at(*it);
+		template<typename o>
+		bool operator==(const templated_iterator<o>& other)const noexcept {
+			return m_it == other.m_it;
+		}
+		
+		template<typename o>
+		bool operator!=(const templated_iterator<o>& other)const noexcept {
+			return m_it != other.m_it;
 		}
 
-		value_type* operator->()const noexcept {
-			return &m_parent->m_wat.at(*it);
+	private:
+		it m_it;
+		template<typename>
+		friend struct templated_iterator;
+	};
+
+	using iterator = templated_iterator<typename rename_later_4<snowflake, T>::const_iterator>;
+	using const_iterator = iterator;
+
+	const T& operator[](snowflake s)const{
+		return m_data->at(s);
+	}
+
+	const T& at(snowflake s) const{
+		return m_data->at(s);
+	}
+
+	iterator begin()const noexcept {
+		return m_data->begin();
+	}
+
+	iterator end()const noexcept {
+		return m_data->end();
+	}
+
+	const_iterator cbegin()const noexcept {
+		return m_data->begin();
+	}
+
+	const_iterator cend()const noexcept {
+		return m_data->end();
+	}
+
+	iterator find(snowflake s) const noexcept{
+		return m_data->find(s);
+	}
+
+	size_t size()const noexcept {
+		return m_data->size();
+	}
+private:
+	const rename_later_4<snowflake, T>* m_data;
+};
+
+
+//just use auto
+template<typename T>
+struct discord_obj_list{
+	discord_obj_list() = default;
+	explicit discord_obj_list(const discord_obj_map<T>& a,const std::vector<snowflake>& b):m_wat(a),m_waty(&b){};
+	
+	template<typename value_type,int stride>
+	struct iterator_{
+		explicit iterator_(discord_obj_list* t_parent, const std::vector<snowflake>::const_iterator t_it):
+		m_parent(t_parent),
+		m_it(t_it){}
+
+		iterator_& operator++() {
+			m_it += stride;
+			return *this;
+		}
+
+		iterator_ operator++(int) {
+			auto other = *this;			
+			m_it += stride;
+			return other;
+		}
+
+		std::add_const_t<value_type>& operator*() const noexcept{
+			return m_parent->m_wat.at(*m_it);
+		}
+
+		const value_type* operator->()const noexcept {
+			return &m_parent->m_wat.at(*m_it);
 		}
 
 		iterator_& operator--() noexcept{
-			it -= stride;
+			m_it -= stride;
 			return *this;
 		}
 		iterator_ operator--(int) noexcept {
 			auto other = *this;			
-			it -= stride;
+			m_it -= stride;
 			return other;
 		}
 		template<typename O,int N>
 		bool operator==(const iterator_<O, N>& other) {
-			return it == other.it;
+			return m_it == other.m_it;
 		}
 		template<typename O,int N>
 		bool operator!=(const iterator_<O, N>& other) {
-			return it != other.it;
+			return m_it != other.m_it;
 		}
 
 		template<typename O,int N>
 		size_t operator-(const iterator_<O, N>& other) {
-			return it - other.it;
+			return m_it - other.m_it;
 		}
 
 		iterator_& operator+=(size_t i) {
-			it += i * stride;
+			m_it += i * stride;
 			return *this;
 		}
 		iterator_& operator-=(size_t i) {
-			it -= i * stride;
+			m_it -= i * stride;
 			return *this;
 		}
 		iterator_ operator+(size_t i) {
@@ -159,14 +243,14 @@ struct discord_obj_list{
 			return retVal -= i;
 		}
 		decltype(auto) operator[](size_t i)const {
-			return m_parent->m_wat.at(it[i]);
+			return m_parent->m_wat.at(m_it[i]);
 		}
 		decltype(auto) operator[](size_t i) {
-			return m_parent->m_wat.at(it[i]);
+			return m_parent->m_wat.at(m_it[i]);
 		}
 	private:
 		discord_obj_list * const m_parent;
-		std::vector<snowflake>::const_iterator it;
+		std::vector<snowflake>::const_iterator m_it;
 	};
 
 	using iterator = iterator_<T,1>;
@@ -176,36 +260,40 @@ struct discord_obj_list{
 	using const_reverse_iterator = iterator_<const T, -1>;
 
 	iterator begin() {
-		return iterator{ this,m_waty.begin() };
+		return iterator{ this,ids().begin() };
 	}
 	iterator end() {
-		return iterator{ this,m_waty.end() };
+		return iterator{ this,ids().end() };
 	}
 	const_iterator begin() const {
-		return const_iterator{ this,m_waty.begin() };
+		return const_iterator{ this,ids().begin() };
 	}
 	const_iterator end() const{
-		return const_iterator{ this,m_waty.end() };
+		return const_iterator{ this,ids().end() };
 	}
 	T& operator[](size_t i){
-		return m_wat[m_waty[i]];
+		return m_wat[ids()[i]];
 	}
 	const T& operator[](size_t i)const {
-		return m_wat.at(m_waty[i]);
+		return m_wat.at(ids()[i]);
 	}
-	size_t size()const noexcept { return m_waty.size(); }
+	size_t size()const noexcept { return ids().size(); }
+
 	operator std::vector<T>()const{
 		std::vector<T> retVal;
 		retVal.reserve(size());
-		for(const auto& i:m_waty) 
+		for(const auto& i: ids())
 			retVal.push_back(m_wat.at(i));
 		return retVal;
 	}
-private:
-	map_t<snowflake, T>& m_wat;
-	const std::vector<snowflake>& m_waty;
-};
 
+private:
+	const std::vector<snowflake>& ids()const noexcept {
+		return *m_waty;
+	}
+	discord_obj_map<T> m_wat;
+	std::vector<snowflake> const* m_waty = nullptr;
+};
 //template<typename T,template<typename,typename...> typename map_t> discord_obj_list(map_t<snowflake, T>& a, const std::vector<snowflake>& b)->discord_obj_list<T, map_t>;
 
 const auto transform_to_pair = [](auto&& a, auto&& fn1,auto&& fn2){
@@ -225,3 +313,4 @@ std::pair<snowflake,T> get_with_id(const nlohmann::json& json) {
 static inline const auto id_comp = [](auto&& a, snowflake b) {return a.id() < b; };
 
 static inline const auto get_id = [](auto&& a) {return a.id(); };
+

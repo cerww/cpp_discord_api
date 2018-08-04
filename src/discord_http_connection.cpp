@@ -1,6 +1,5 @@
 #include "client.h"
 #include "discord_http_connection.h"
-#include <queue>
 
 size_t get_major_param_id(std::string_view s) {
 	s.remove_prefix(7);//sizeof("/api/v6") - 1;
@@ -13,34 +12,30 @@ size_t get_major_param_id(std::string_view s) {
 }
 
 discord_http_connection::discord_http_connection(client* t):m_client(t) {
-	const auto results = resolver.resolve("discordapp.com", "https");
-	boost::asio::connect(m_ssl_stream.next_layer(), results.begin(), results.end());	
-	m_ssl_stream.handshake(boost::asio::ssl::stream_base::client);
+	connect();
 	m_thread = std::thread([this](){
-		while (!m_done.load()) {			
-			if(m_rate_limited.empty())
+		while (!m_done.load()) {
+			if(m_rate_limited_requests.empty())
 				send_to_discord(m_request_queue.pop());
-			else{				
-				if(std::optional<discord_request> r = m_request_queue.try_pop_until(std::get<1>(m_rate_limited[0])); r) {
+			else if(std::optional<discord_request> r = m_request_queue.try_pop_until(std::get<1>(m_rate_limited_requests[0])); r) {
 					send_to_discord(std::move(r.value()));
-				}else {
-					auto thing = std::move(m_rate_limited[0]);
-					m_rate_limited.erase(m_rate_limited.begin());
-					for(auto& request:std::get<2>(thing))
-						send_to_discord(std::move(request));					
-				}
+			}else{//std::chrono::system_clock::now() >= std::get<1>(m_rate_limited_requests[0])
+				auto requests_to_send = std::move(m_rate_limited_requests[0]);
+				m_rate_limited_requests.erase(m_rate_limited_requests.begin());
+				for(auto& request:std::get<2>(requests_to_send))
+					send_to_discord(std::move(request));					
 			}
 		}
+		
 	});
 }
 
-void discord_http_connection::send_to_discord(discord_request r) {
-	std::cout << r.req << std::endl;	
+void discord_http_connection::send_to_discord(discord_request r) {	
 	const size_t major_param_id = get_major_param_id(std::string_view(r.req.target().data(), r.req.target().size()));
-	const auto it = std::find_if(m_rate_limited.begin(), m_rate_limited.end(), [&](const auto& thing){
+	const auto it = std::find_if(m_rate_limited_requests.begin(), m_rate_limited_requests.end(), [&](const auto& thing){
 		return std::get<0>(thing) == major_param_id;
 	});
-	if(it != m_rate_limited.end()) {
+	if(it != m_rate_limited_requests.end()) {
 		std::get<2>(*it).push_back(std::move(r));
 		return;
 	}
@@ -48,37 +43,84 @@ void discord_http_connection::send_to_discord(discord_request r) {
 		std::this_thread::sleep_until(m_rate_limted_until);
 		m_global_rate_limited.store(false);
 	}
-	send_to_discord_(r,major_param_id);
-	r.state->cv.notify_all();
+	if(send_to_discord_(r,major_param_id))
+		r.state->cv.notify_all();
 }
-
-void discord_http_connection::send_to_discord_(discord_request& r,size_t major_param_id_) {	
+//returns wether or not it's not local rate limited
+bool discord_http_connection::send_to_discord_(discord_request& r,size_t major_param_id_) {
 	std::lock_guard<std::mutex> locky(r.state->mut);
-	boost::beast::error_code ec;
-	boost::beast::http::write(m_ssl_stream, r.req, ec);
-	boost::beast::http::read(m_ssl_stream, m_buffer, r.state->res, ec);
-	if (ec) std::cout << "rawrrrrr " << ec << std::endl;
-	while (r.state->res.result_int() == 429) {
-		try {
-			if (r.state->res.at("X-RateLimit-Global") == "true")
-				m_client->rated_limit_global(std::chrono::steady_clock::now() + std::chrono::milliseconds(std::stoi(r.state->res.at("Retry-After").to_string())));
-		}catch (...) {}
-		r.state->res.clear();
-		r.state->res.body().clear();
-		std::this_thread::sleep_for(std::chrono::milliseconds(std::stoi(r.state->res.at("Retry-After").to_string())));
-		boost::beast::http::write(m_ssl_stream, r.req, ec);
-		boost::beast::http::read(m_ssl_stream, m_buffer, r.state->res, ec);
-		if (ec)std::cout << "rawrrrrr " << ec << std::endl;
-	}try {
+	boost::beast::error_code ec; 
+	send_rq(r);
+	//this is "while" not "if" because of global rate limits
+	//it shuld keep trying to send a request if it's global rate limted
+	//cuz if i doin't do this, the request will go into the queue, then it's sleep, then it'll prolyl send the request(it might sned a different request),
+	//i can skip adding the request into the queue by doing this
+	while (r.state->res.result_int() == 429) {//this shuoldb't be riunning often ;-;
+		std::cout << "rate limited" << std::endl;
+		nlohmann::json json_body = nlohmann::json::parse(r.state->res.body());
+		const auto tp = std::chrono::system_clock::now() + std::chrono::milliseconds(json_body["retry_after"].get<size_t>());
+		if(json_body["global"].get<bool>()) {
+			m_client->rate_limit_global(tp);
+			std::this_thread::sleep_until(tp);
+		}else{
+			r.state->res.clear();
+			r.state->res.body().clear();
+			std::get<2>(*m_rate_limited_requests.insert(std::upper_bound(m_rate_limited_requests.begin(), m_rate_limited_requests.end(), tp, [](const std::chrono::system_clock::time_point& a, const auto& b) {
+				return a < std::get<1>(b);
+			}), { major_param_id_,tp,{} })).push_back(std::move(r));			
+			return false;
+		}
+		send_rq(r);
+	}
+
+	try {
 		if (r.state->res.at("X-RateLimit-Remaining") == "0") {			
 			const auto time = std::chrono::system_clock::time_point(std::chrono::seconds(std::stoi(r.state->res.at("X-RateLimit-Reset").to_string())));
-			m_rate_limited.insert(std::upper_bound(m_rate_limited.begin(), m_rate_limited.end(), time, [](const std::chrono::system_clock::time_point& a, const auto& b) {
+			m_rate_limited_requests.insert(std::upper_bound(m_rate_limited_requests.begin(), m_rate_limited_requests.end(), time, [](const std::chrono::system_clock::time_point& a, const auto& b) {
 				return a < std::get<1>(b);
 			}), { major_param_id_,time,{} });
 		}
 	}catch (...) {}
+	std::cout << r.req << std::endl;
 	std::cout << r.state->res << std::endl;
 	r.state->done = true;
+	return true;
+}
+template<typename results_t>
+boost::system::error_code connect_with_no_delay(boost::asio::ip::tcp::socket& sock,results_t&& results) {
+	boost::system::error_code ec;
+	for (auto&& thing : results) {
+		sock.open(thing.endpoint().protocol());
+		sock.set_option(boost::asio::ip::tcp::no_delay(true));;
+		sock.connect(thing, ec);
+		if (!ec)
+			break;
+		sock.close();
+	}return ec;
+}
+
+void discord_http_connection::connect() {
+	const auto results = m_resolver.resolve("discordapp.com", "https");
+	//boost::asio::connect(m_ssl_stream.next_layer(), results.begin(), results.end());
+	connect_with_no_delay(m_ssl_stream.next_layer(), results);
+	m_ssl_stream.handshake(boost::asio::ssl::stream_base::client);
+}
+
+void discord_http_connection::reconnect() {	
+	m_ssl_stream.next_layer().close();
+	const auto results = m_resolver.resolve("discordapp.com", "https");
+	connect_with_no_delay(m_ssl_stream.next_layer(), results);
+	m_ssl_stream.handshake(boost::asio::ssl::stream_base::client);
+}
+
+void discord_http_connection::send_rq(discord_request& r) {
+	boost::beast::error_code ec;
+	boost::beast::http::write(m_ssl_stream, r.req, ec);
+	if (ec)
+		std::cout << "rawrrrrr " << ec << std::endl;
+	boost::beast::http::read(m_ssl_stream, m_buffer, r.state->res, ec);
+	if (ec)
+		std::cout << "rawrrrrr " << ec << std::endl;
 }
 
 

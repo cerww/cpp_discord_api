@@ -21,7 +21,7 @@ struct timed_task_executor{
 						locky.unlock();
 						execute_task();
 					}
-				}					
+				}
 			}
 		});
 	}
@@ -33,6 +33,7 @@ struct timed_task_executor{
 
 	~timed_task_executor() {
 		m_done.store(true);
+		execute([]() {}, std::chrono::steady_clock::now());//to trigger the cv
 		m_thread.join();
 	}
 
@@ -45,6 +46,20 @@ struct timed_task_executor{
 		m_tasks.insert(it,std::move(task));
 		}
 		m_cv.notify_one();
+	}
+
+	void execute(std::function<void()> task,std::chrono::steady_clock::time_point tp) {
+		execute(std::make_pair(std::move(task), tp));
+	}
+
+	template<typename duration>
+	void execute_after(std::pair<std::function<void()>, duration> task) {
+		execute(std::make_pair(std::move(task.first), task.second + std::chrono::steady_clock::now()));
+	}
+
+	template<typename duration>
+	void execute_after(std::function<void()> task, duration d) {
+		execute(std::make_pair(std::move(task), d + std::chrono::steady_clock::now()));
 	}
 
 private:

@@ -16,7 +16,7 @@ class client;
 
 class discord_http_connection{
 public:
-	void sleep_till(std::chrono::steady_clock::time_point time_point) {
+	void sleep_till(std::chrono::system_clock::time_point time_point) {
 		m_rate_limted_until = time_point;
 		m_global_rate_limited.store(true);
 	};
@@ -37,17 +37,17 @@ public:
 		m_request_queue.push(d);
 	}
 	void stop() {
-		m_done = true;
+		m_done.store(true);
 	}
 private:
-	std::chrono::steady_clock::time_point m_rate_limted_until = {};
+	std::chrono::system_clock::time_point m_rate_limted_until = {};
 	std::atomic<bool> m_global_rate_limited = false;
 
 	std::atomic<bool> m_done = false;
 	std::thread m_thread;
 
 	boost::asio::io_context m_ioc;
-	boost::asio::ip::tcp::resolver resolver{ m_ioc };
+	boost::asio::ip::tcp::resolver m_resolver{ m_ioc };
 
 	boost::asio::ssl::context m_sslCtx{ boost::asio::ssl::context::tlsv12_client };
 	boost::asio::ssl::stream<boost::asio::ip::tcp::socket> m_ssl_stream{ m_ioc, m_sslCtx };	
@@ -55,8 +55,13 @@ private:
 	concurrent_queue<discord_request> m_request_queue = {};
 	client* m_client = nullptr;
 	void send_to_discord(discord_request);
-	void send_to_discord_(discord_request&, size_t);
-	std::vector<std::tuple<size_t, std::chrono::system_clock::time_point, std::vector<discord_request>>> m_rate_limited;
+	bool send_to_discord_(discord_request&, size_t);
+	void connect();
+	void reconnect();
+
+	void send_rq(discord_request&);
+
+	std::vector<std::tuple<size_t, std::chrono::system_clock::time_point, std::vector<discord_request>>> m_rate_limited_requests{};
 };
 
 /*
