@@ -6,6 +6,7 @@
 #include "bytell_hash_map.hpp"
 #include "indirect.h"
 #include "rename_later_4.h"
+#include <charconv>
 
 struct snowflake{
 	size_t val = 0;
@@ -39,13 +40,18 @@ inline bool operator>=(const snowflake& a, const snowflake& b) {
 }
 
 inline void to_json(nlohmann::json& json,const snowflake& wawt) {
-	json = std::to_string(wawt.val);
+	char buffer[20] = {};
+	//json = std::to_string(wawt.val);
+	const auto r = std::to_chars(buffer, buffer + 20, wawt.val);
+	json = std::string(buffer, r.ptr);
 }
 
 inline void from_json(const nlohmann::json& in,snowflake& out) {
 	if (in.is_null()) return;
 	try{
-		out.val = std::stoull(in.get_ref<const std::string&>());
+		//out.val = std::stoull(in.get_ref<const std::string&>());
+		const auto& str = in.get_ref<const std::string&>();
+		std::from_chars(str.data(), str.data() + str.size(), out.val);		
 	}catch(...) {}
 }
 
@@ -62,16 +68,14 @@ template<typename T,typename = void>
 struct has_id:std::false_type{};
 
 template<typename T>
-struct has_id<T, std::void_t<decltype(std::declval<T>().id())>>{
-	static constexpr bool value = std::is_same_v<decltype(std::declval<T>().id()), snowflake>;
-};
+struct has_id<T, std::void_t<decltype(std::declval<T>().id())>> :std::is_same<decltype(std::declval<T>().id()), snowflake> {};
 
 template<typename T>
 static constexpr bool has_id_v = has_id<T>::value;
 
-template<typename T>
+template<typename T>//requires has_id_v<T>
 std::enable_if_t<has_id_v<T>,ska::bytell_hash_map<snowflake,T*,std::hash<snowflake>,std::equal_to<>,single_chunk_allocator<std::pair<const snowflake,T*>>>> to_map(std::vector<T>& stuffs) {
-	single_chunk_mem_pool pool(std::max(stuffs.size() * sizeof(std::pair<const snowflake, T*>) * 2,2048ull));//5 is random number
+	single_chunk_mem_pool pool(std::max(stuffs.size() * sizeof(std::pair<const snowflake, T*>) * 2,2048ull));//2048 and 2 are random numbers
 	ska::bytell_hash_map<snowflake, T*, std::hash<snowflake>, std::equal_to<>, single_chunk_allocator<std::pair<const snowflake, T*>>> retVal(std::move(pool));//so long ;-;
 	retVal.reserve(stuffs.size());
 	for(auto& item:stuffs) 
@@ -80,7 +84,7 @@ std::enable_if_t<has_id_v<T>,ska::bytell_hash_map<snowflake,T*,std::hash<snowfla
 }
 
 struct id_equal_to{
-	explicit id_equal_to(snowflake i) : id(i) {};
+	explicit id_equal_to(snowflake i) : id(std::move(i)) {};
 	template<typename T>
 	bool operator()(const T& thing){
 		return thing.id() == id;

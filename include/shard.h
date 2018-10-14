@@ -1,5 +1,7 @@
 #pragma once
+#pragma warning(push,0)
 #include <uWS/uWS.h>
+#pragma warning(pop)
 #include <boost/asio.hpp>
 #include <boost/beast.hpp>
 #include <nlohmann/json.hpp>
@@ -10,7 +12,7 @@
 #include "voice_channel.h"
 #include "channel_catagory.h"
 #include "partial_message.h"
-#include "Awaitables.h"
+#include "requests.h"
 #include "discord_http_connection.h"
 #include <type_traits>
 #include "range-like-stuffs.h"
@@ -259,6 +261,7 @@ private:
 };
 
 namespace rawrland{//rename later ;-;
+
 template<typename thingy, typename ... Args>
 std::pair<thingy, discord_request> get_default_stuffs(Args&&... args) {
 	std::pair<thingy, discord_request> retVal;
@@ -270,6 +273,7 @@ std::pair<thingy, discord_request> get_default_stuffs(Args&&... args) {
 	}
 	return retVal;
 }
+
 }
 
 template <typename T, typename ... args>
@@ -278,7 +282,7 @@ std::enable_if_t<rq::has_content_type_v<T>, T> shard::m_send_things(std::string&
 	set_up_request(r.req);
 	r.req.body() = std::move(body);
 	r.req.prepare_payload();
-	m_http_connection.add(std::move(r));
+	m_http_connection.send(std::move(r));
 	return std::move(retVal);//no nrvo
 }
 
@@ -287,7 +291,7 @@ std::enable_if_t<!rq::has_content_type_v<T>, T> shard::m_send_things(args&&... A
 	auto[retVal, r] = rawrland::get_default_stuffs<T>(std::forward<args>(Args)...);
 	set_up_request(r.req);
 	r.req.prepare_payload();
-	m_http_connection.add(std::move(r));
+	m_http_connection.send(std::move(r));
 	return std::move(retVal);//no nrvo
 }
 

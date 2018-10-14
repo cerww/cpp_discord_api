@@ -3,7 +3,7 @@
 #include <boost/asio/ssl.hpp>
 #include <boost/beast.hpp>
 #include <thread>
-#include "Awaitables.h"
+#include "requests.h"
 #include "concurrent_queue.h"
 //#include <variant>
 
@@ -33,7 +33,7 @@ public:
 		if (m_thread.joinable())
 			m_thread.join();
 	};
-	void add(discord_request&& d) {
+	void send(discord_request&& d) {
 		m_request_queue.push(d);
 	}
 	void stop() {
@@ -51,7 +51,7 @@ private:
 
 	boost::asio::ssl::context m_sslCtx{ boost::asio::ssl::context::tlsv12_client };
 	boost::asio::ssl::stream<boost::asio::ip::tcp::socket> m_ssl_stream{ m_ioc, m_sslCtx };	
-	boost::beast::flat_buffer m_buffer;//needed cuz read_some can read more than it should
+	boost::beast::flat_buffer m_buffer;
 	concurrent_queue<discord_request> m_request_queue = {};
 	client* m_client = nullptr;
 	void send_to_discord(discord_request);

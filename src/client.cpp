@@ -7,7 +7,7 @@
 client::client() {
 	m_ws_hub.onMessage([&](uWS::WebSocket<uWS::CLIENT>* clientu, char* msg_t, size_t size, uWS::OpCode op) {
 		if(op == uWS::OpCode::TEXT)
-			m_shards.at(clientu)->add_event(std::string(msg_t,msg_t + size));
+			m_shards[clientu]->add_event(std::string(msg_t,msg_t + size));
 		else if(op == uWS::OpCode::CLOSE) {
 			
 		}
@@ -15,7 +15,7 @@ client::client() {
 
 	m_ws_hub.onDisconnection([&](uWS::WebSocket<uWS::CLIENT>* clientu,int code,char* msg,size_t len){
 		if(code == 4000) {
-			m_shards.at(clientu)->reconnect();
+			m_shards[clientu]->reconnect();
 		}if(code == 4003) {
 			std::cout << "not authenticated" << std::endl;
 		}
@@ -26,14 +26,14 @@ client::client() {
 			std::cout << "already authenticated" << std::endl;
 		}
 		if(code == 4007) {
-			m_shards.at(clientu)->reconnect();
+			m_shards[clientu]->reconnect();
 		}
 		if(code == 4008) {
 			std::cout << "rate limited" << std::endl;
 		}
 		if(code == 4009) {
 			std::cout << "session timeout" << std::endl;
-			m_shards.at(clientu)->reconnect();
+			m_shards[clientu]->reconnect();
 		}
 		if(code == 4011) {
 			std::cout << "sharding required" << std::endl;
@@ -50,7 +50,7 @@ client::client() {
 			shard& shardy = *m_shards.insert(std::move(temp)).node.mapped();//wat
 			shardy.send_resume();
 		}else{
-			m_shards.insert(std::make_pair(web_socket,std::make_unique<shard>(m_shards.size(), web_socket, this)));
+			m_shards.insert(std::make_pair(web_socket,std::make_unique<shard>((int)m_shards.size(), web_socket, this)));
 		}
 	});
 
@@ -76,8 +76,6 @@ void client::setToken(const tokenType type, std::string token) {
 	default: break;
 	}
 }
-
-const std::string& client::getToken() const noexcept { return m_token; }
 
 void client::set_up_request(boost::beast::http::request<boost::beast::http::string_body>& req) const {
 	req.set("Application", "cerwy");

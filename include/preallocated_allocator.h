@@ -23,7 +23,7 @@ constexpr forward_it find_consecutive(forward_it a,const forward_it end,int n,bi
 
 template<int block_size, int n>
 struct pre_allocated_mem_pool:ref_counted{
-	pre_allocated_mem_pool():m_free(n),m_blocks(n) {
+	pre_allocated_mem_pool() {
 		std::iota(m_free.begin(), m_free.end(), 0);
 	}
 
@@ -87,9 +87,9 @@ struct pre_allocated_mem_pool:ref_counted{
 
 private:
 	std::mutex m_mut;
-
-	std::vector<int> m_free;
-	std::vector<std::aligned_storage_t<block_size>> m_blocks;
+	
+	std::vector<int> m_free = std::vector<int>(n);
+	std::vector<std::aligned_storage_t<block_size>> m_blocks = std::vector<std::aligned_storage_t<block_size>>(n);
 };
 
 

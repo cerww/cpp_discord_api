@@ -2,8 +2,7 @@
 #include <nlohmann/json.hpp>
 #include "snowflake.h"
 
-class voice_state{
-public:
+struct voice_state{
 	snowflake channel_id()const noexcept { return m_channel_id; }
 	snowflake user_id()const noexcept { return m_user_id; }
 	const std::string& session_id()const noexcept { return m_session_id; }
@@ -24,8 +23,7 @@ private:
 	friend void from_json(const nlohmann::json& json, voice_state& vs);
 };
 
-class voice_state2:public voice_state {
-public:
+struct voice_state2:voice_state {
 	snowflake guild_id()const noexcept { return m_guild_id; }
 private:
 	snowflake m_guild_id;
@@ -48,8 +46,7 @@ inline void from_json(const nlohmann::json& json, voice_state2& vs) {
 	vs.m_guild_id = json["guild_id"].get<snowflake>();
 }
 
-class voice_region{
-public:
+struct voice_region{
 	const std::string& id()const noexcept { return m_id; }
 	const std::string& name()const noexcept { return m_name; }
 	bool vip()const noexcept { return m_vip; }

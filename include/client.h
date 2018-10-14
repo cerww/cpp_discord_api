@@ -44,14 +44,13 @@ public:
 	~client() = default;
 	void run();
 
-	void setToken(tokenType type, std::string token);
-	const std::string& getToken() const noexcept;
+	void setToken(tokenType type, std::string token);	
 
 	void set_up_request(boost::beast::http::request<boost::beast::http::string_body>& req) const;
 
 	nlohmann::json presence()const;
 	const std::string& token()const { return m_token; }
-	user& getSelf() { return m_self; }
+	user& self_user() { return m_self; }
 	size_t num_shards()const noexcept { return m_num_shards; }
 	std::function<void(guild_text_message&, shard&)> on_guild_text_msg = nothing;
 	std::function<void(dm_message&, shard&)> on_dm_msg = nothing;

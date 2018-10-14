@@ -196,14 +196,14 @@ template<typename event_type>
 struct subscriber_thingy:subscriber_thingy_impl<event_type>{
 	[[nodiscard]]
 	std::future<void> add_event(event_type e){		
-		return std::async(std::launch::async, [_e = std::move(e), this]()mutable {auto t = stuff.pop(); *t.second = std::move(_e); t.first.resume(); });
+		return std::async(std::launch::async, [_e = std::move(e), this]()mutable {auto t = this->stuff.pop(); *t.second = std::move(_e); t.first.resume(); });
 	}
 };
 
 template<typename event_type>
 struct subscriber_thingy_no_async :subscriber_thingy_impl<event_type> {	
 	void add_event(event_type e) {
-		auto t = stuff.pop();
+		auto t = this->stuff.pop();
 		*t.second = std::move(e);
 		t.first.resume();
 	}
@@ -349,8 +349,7 @@ struct shared_ptr_ref{
 	shared_ptr_p<T>* parent = nullptr;
 	void die();
 	void decrement() {
-		--cnt;
-		if (cnt == 0)
+		if (cnt-- == 0)
 			die();
 	}
 	void increment() {
@@ -538,6 +537,7 @@ int main(){
 			*/
 		};
 		c.on_guild_typing_start = [&](guild_member& member,text_channel& channel,shard& s){
+			s.send_message(channel, "rawr");
 			/*
 			msgs.push_back(s.send_message(channel,member.username()+ " has started typing").get());
 			s.send_message(channel, member.username() + " has started typing");

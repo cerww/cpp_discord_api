@@ -1,5 +1,6 @@
 #include "client.h"
 #include "discord_http_connection.h"
+#include <charconv>
 
 size_t get_major_param_id(std::string_view s) {
 	s.remove_prefix(7);//sizeof("/api/v6") - 1;
@@ -7,8 +8,8 @@ size_t get_major_param_id(std::string_view s) {
 	if (start == std::string_view::npos) 
 		return 0;
 	s.remove_prefix(start);
-	const size_t end = s.find('/');
-	return std::stoull(std::string(s.begin(), s.begin() + (end != std::string_view::npos ? end : s.size())));	
+	const auto end = std::find(s.begin(), s.end(), '/');
+	return std::stoull(std::string(s.begin(), end));
 }
 
 discord_http_connection::discord_http_connection(client* t):m_client(t) {
@@ -46,6 +47,7 @@ void discord_http_connection::send_to_discord(discord_request r) {
 	if(send_to_discord_(r,major_param_id))
 		r.state->cv.notify_all();
 }
+
 //returns wether or not it's not local rate limited
 bool discord_http_connection::send_to_discord_(discord_request& r,size_t major_param_id_) {
 	std::lock_guard<std::mutex> locky(r.state->mut);
@@ -55,13 +57,14 @@ bool discord_http_connection::send_to_discord_(discord_request& r,size_t major_p
 	//it shuld keep trying to send a request if it's global rate limted
 	//cuz if i doin't do this, the request will go into the queue, then it's sleep, then it'll prolyl send the request(it might sned a different request),
 	//i can skip adding the request into the queue by doing this
-	while (r.state->res.result_int() == 429) {//this shuoldb't be riunning often ;-;
-		std::cout << "rate limited" << std::endl;
+	while (r.state->res.result_int() == 429) {
+		std::cout << "rate limited" << '\n';
 		nlohmann::json json_body = nlohmann::json::parse(r.state->res.body());
 		const auto tp = std::chrono::system_clock::now() + std::chrono::milliseconds(json_body["retry_after"].get<size_t>());
 		if(json_body["global"].get<bool>()) {
 			m_client->rate_limit_global(tp);
 			std::this_thread::sleep_until(tp);
+			send_rq(r);
 		}else{
 			r.state->res.clear();
 			r.state->res.body().clear();
@@ -70,22 +73,28 @@ bool discord_http_connection::send_to_discord_(discord_request& r,size_t major_p
 			}), { major_param_id_,tp,{} })).push_back(std::move(r));			
 			return false;
 		}
-		send_rq(r);
-	}
+	}//this shuoldb't be riunning often ;-;
 
-	try {
-		if (r.state->res.at("X-RateLimit-Remaining") == "0") {			
-			const auto time = std::chrono::system_clock::time_point(std::chrono::seconds(std::stoi(r.state->res.at("X-RateLimit-Reset").to_string())));
-			m_rate_limited_requests.insert(std::upper_bound(m_rate_limited_requests.begin(), m_rate_limited_requests.end(), time, [](const std::chrono::system_clock::time_point& a, const auto& b) {
-				return a < std::get<1>(b);
-			}), { major_param_id_,time,{} });
-		}
-	}catch (...) {}
+	
+	if (auto it = r.state->res.find("X-RateLimit-Remaining"); it!=r.state->res.end()) {
+		
+		const auto time = std::chrono::system_clock::time_point(std::chrono::seconds([&](){
+			int64_t seconds = 0;
+			std::from_chars(it->value().begin(), it->value().end(), seconds);
+			return seconds;
+		}()));
+
+		m_rate_limited_requests.insert(std::upper_bound(m_rate_limited_requests.begin(), m_rate_limited_requests.end(), time, [](const std::chrono::system_clock::time_point& a, const auto& b) {
+			return a < std::get<1>(b);
+		}), { major_param_id_,time,{} });
+	}
+	
 	std::cout << r.req << std::endl;
 	std::cout << r.state->res << std::endl;
 	r.state->done = true;
 	return true;
 }
+
 template<typename results_t>
 boost::system::error_code connect_with_no_delay(boost::asio::ip::tcp::socket& sock,results_t&& results) {
 	boost::system::error_code ec;

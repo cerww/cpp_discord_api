@@ -6,8 +6,7 @@
 #include "things2.h"
 #include "voice_channel.h"
 
-class partial_guild{
-public:
+struct partial_guild{
 	snowflake id() const noexcept;
 	discord_obj_map<guild_role> roles() const noexcept;
 	//rename_later_4<snowflake, guild_role>& roles() noexcept;
@@ -39,9 +38,9 @@ private:
 	int m_verification_level = 0;
 	int m_default_message_notifications = 0;//what is this for ;-;
 	bool m_explicit_content_filter = false;
-	rename_later_4<snowflake, guild_role> m_roles;
-	std::vector<emoji> m_emojis;
-	std::vector<std::string> m_features;
+	rename_later_4<snowflake, guild_role> m_roles{};
+	std::vector<emoji> m_emojis{};
+	std::vector<std::string> m_features{};
 	int m_mfa_level = 0;
 	//application_id
 	//widget_enabled

@@ -38,7 +38,8 @@ private:
 	bool m_large = false;
 	bool m_unavailable = false;
 	int m_member_count = 0;
-	std::vector<guild_member> m_members;
+	std::vector<guild_member> m_members;//;-; make this map?
+
 	std::vector<snowflake> m_text_channels;	
 	std::vector<snowflake> m_voice_channels;
 	std::vector<snowflake> m_channel_catagories;

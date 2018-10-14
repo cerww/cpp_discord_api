@@ -12,8 +12,8 @@ inline permission merge_permissions(permission p1, permission p2) {
 template<typename range>
 std::enable_if_t<is_range_of_v<range,permission_overwrite>,permission> merge_permissions(permission p ,range&& overwrites) {
 	for(auto&& overwrite:overwrites) {
-		p.addPermissions(overwrite.allow);
-		p.removePermissions(overwrite.deny);
+		p.addPermissions(overwrite.allow());
+		p.removePermissions(overwrite.deny());
 	}return p;
 }
 
@@ -27,9 +27,9 @@ inline permission merge_permissions(const guild_member& member) {
 template<typename rng>
 std::enable_if_t<is_range_of_v<rng,permission_overwrite>,permission> merge_permissions(const guild_member& member, rng&& range) {
 	return merge_permissions(merge_permissions(member), filter(range, [&](permission_overwrite p) {
-		if (p.type == overwrite_type::member) {
-			return member.id() == p.id;
-		}return member.has_role(p.id);
+		if (p.type() == overwrite_type::member) {
+			return member.id() == p.id();
+		}return member.has_role(p.id());
 	}));
 }
 

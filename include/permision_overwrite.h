@@ -19,10 +19,18 @@ overwrite_type string_to_overwrite_type(str_t&& str) {
 std::string overwrite_type_to_string(const overwrite_type e);
 
 struct permission_overwrite {
-	snowflake id;
-	overwrite_type type = overwrite_type::role;
-	size_t allow = 0;
-	size_t deny = 0;
+
+	snowflake id() const noexcept { return m_id; }
+	overwrite_type type() const noexcept { return m_type; }
+	size_t allow() const noexcept{ return m_allow; }
+	size_t deny()const noexcept { return m_deny; }
+private:
+	snowflake m_id;
+	overwrite_type m_type = overwrite_type::role;
+	size_t m_allow = 0;
+	size_t m_deny = 0;
+	friend void to_json(nlohmann::json& json, const permission_overwrite& data);
+	friend void from_json(const nlohmann::json& json, permission_overwrite& data);
 };
 
 void to_json(nlohmann::json& json, const permission_overwrite& data);

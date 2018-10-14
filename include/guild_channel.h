@@ -25,7 +25,6 @@ public:
 			return concat(permission_overwrites(), parent_overwrites());
 		return concat(permission_overwrites());
 	}
-	;
 private:
 	snowflake m_guild_id;
 	bool m_nsfw = false;
