@@ -12,12 +12,11 @@ struct partial_guild_member:user{
 
 	bool has_role(const snowflake role_id) const noexcept;
 	bool has_role(const guild_role& role) const noexcept;
-	bool has_role(guild_role&& role) const noexcept;
 
 private:
-	std::string m_nick;
-	std::vector<snowflake> m_roles;
-	timestamp m_joined_at;
+	std::string m_nick{};
+	std::vector<snowflake> m_roles{};
+	timestamp m_joined_at{};
 	bool m_deaf = false;
 	bool m_mute = false;
 

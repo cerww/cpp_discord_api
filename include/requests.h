@@ -8,11 +8,13 @@
 #include "invite.h"
 
 using namespace std::string_literals;
+using namespace fmt::literals;
+
 
 namespace rq {
 	struct bad_request :std::exception {
 		template<typename... args>
-		bad_request(args&&... s) :std::exception(std::forward<args>(s)...) {};
+		bad_request(args&&... s) :std::exception(std::forward<args>(s)...) {};		
 	};
 
 	struct unauthorized :std::exception {
@@ -45,7 +47,6 @@ namespace rq {
 		server_error(args&&... s) :std::exception(std::forward<args>(s)...) {};
 	};
 
-	static constexpr const char* application_json = "application/json";
 
 	struct shared_state:ref_counted{
 		std::condition_variable cv;
@@ -53,13 +54,14 @@ namespace rq {
 		bool done = false;
 		boost::beast::http::response<boost::beast::http::string_body> res = {};
 	};
-
-
+	
 	template<typename U, typename = void>
 	struct has_overload_value :std::false_type {};
 
 	template<typename U>
 	struct has_overload_value<U, std::void_t<decltype(std::declval<U>().overload_value())>> :std::true_type {};
+
+	static constexpr const char* application_json = "application/json";
 
 	struct json_content_type{
 		static constexpr const char* content_type = application_json;
@@ -86,7 +88,7 @@ namespace rq {
 	};
 
 	template<typename reqeust>
-	struct request_base:private crtp<reqeust> {//facade
+	struct request_base:private crtp<reqeust> {
 		template<typename ...Ts>
 		static auto request(Ts&&... t) {
 			return boost::beast::http::request<boost::beast::http::string_body>(
@@ -136,6 +138,7 @@ namespace rq {
 			else if constexpr(!std::is_same_v<void, typename reqeust::return_type>) 
 				return nlohmann::json::parse(state->res.body()).get<typename reqeust::return_type>();			
 		}
+
 		decltype(auto) get() {
 			wait();
 			handle_errors();
@@ -177,44 +180,48 @@ namespace rq {
 
 	struct get_guild :
 		request_base<get_guild>,
-		get_verb{
+		get_verb
+	{
 
 		using return_type = partial_guild;
 		
 		static std::string target(snowflake id) {
-			return fmt::format(fmt("/guilds/{}"), id.val);
+			return "/guilds/{}"_format(id.val);
 		}
 	};
 
 	struct send_message:
 		request_base<send_message>,
 		json_content_type,
-		post_verb{
+		post_verb
+	{
 		using return_type = partial_message;
 		static std::string target(const partial_channel& channel) {	
-			return fmt::format(fmt("/channels/{}/messages"), channel.id().val);
+			return "/channels/{}/messages"_format(channel.id().val);
 		}
 
 	};
 
 	struct add_role:
 		request_base<add_role>,
-		put_verb{
+		put_verb
+	{
 		
 		using return_type = void;
 
 		static std::string target(const partial_guild& g, const guild_member& m, const guild_role& r) {
-			return fmt::format(fmt("/guilds/{}/members/{}/roles/{}"), g.id().val, m.id().val, r.id().val);
+			return "/guilds/{}/members/{}/roles/{}"_format(g.id().val, m.id().val, r.id().val);
 		}
 	};
 
 	struct remove_role :
 		request_base<remove_role>,
-		delete_verb{
+		delete_verb
+	{
 		using return_type = void;
 
 		static std::string target(const partial_guild& g, const guild_member& m, const guild_role& r) {
-			return fmt::format(fmt("/guilds/{}/members/{}/roles/{}"), g.id().val, m.id().val, r.id().val);
+			return "/guilds/{}/members/{}/roles/{}"_format(g.id().val, m.id().val, r.id().val);
 		}	
 	};
 
@@ -225,123 +232,134 @@ namespace rq {
 		using return_type = guild_role;
 
 		static std::string target(const partial_guild& g) {
-			return fmt::format(fmt("/guilds/{}/roles"),g.id().val);
+			return "/guilds/{}/roles"_format(g.id().val);
 		}
 	};
 
 	struct delete_role:
 		request_base<delete_role>,
-		delete_verb{
+		delete_verb
+	{
 		using return_type = void;
 
 		static auto target(const partial_guild& g, const guild_role& r){
-			return fmt::format(fmt("/guilds/{}/roles/{}"), g.id().val, r.id().val);
+			return "/guilds/{}/roles/{}"_format(g.id().val, r.id().val);
 		}
 	};
 
 	struct modify_role:
 		request_base<modify_role>,
 		json_content_type,
-		patch_verb{
+		patch_verb
+	{
 		using return_type = guild_role;
 
 		static std::string target(const partial_guild& g, const guild_role& r) {
-			return fmt::format(fmt("/guilds/{}/roles/{}"), g.id().val, r.id().val);
+			return "/guilds/{}/roles/{}"_format(g.id().val, r.id().val);
 		}
 	};
 
 	struct kick_member:
 		request_base<kick_member>,
-		delete_verb{
+		delete_verb
+	{
 		using return_type = void;
 
 		static std::string target(const partial_guild& g, const guild_member& member) {
-			return fmt::format(fmt("/guilds/{}/members/{}"), g.id().val, member.id().val);
+			return "/guilds/{}/members/{}"_format(g.id().val,member.id().val);
 		}
 	};
 
 	struct ban_member:
-		request_base<ban_member> ,
+		request_base<ban_member>,
 		json_content_type,
-		put_verb{
+		put_verb
+	{
 		using return_type = void;
 
 		static std::string target(const partial_guild& g, const guild_member& member) {
-			return fmt::format(fmt("/guilds/{}/bans/{}"), g.id().val, member.id().val);
+			return "/guilds/{}/bans/{}"_format(g.id().val, member.id().val);
 		}
 	};
 
 	struct modify_member:
 		request_base<modify_member>,
 		json_content_type,
-		patch_verb{
+		patch_verb
+	{
 		using return_type = void;
 
 		static std::string target(const partial_guild& g, const user& member) {
-			return fmt::format(fmt("/guilds/{}/members/{}"), g.id().val, member.id().val);
+			return "/guilds/{}/members/{}"_format(g.id().val, member.id().val);
 		}
 	};
 
 	struct change_my_nick:
 		request_base<change_my_nick>,
 		json_content_type,
-		patch_verb{
+		patch_verb
+	{
 		using return_type = void;
 		static std::string target(const partial_guild& g) {
-			return fmt::format(fmt("/guilds/{}/members/@me/nick"),g.id().val);
+			return "/guilds/{}/members/@me/nick"_format(g.id().val);
 		}
 	};
 
 	struct delete_message:
 		request_base<delete_message>,
-		delete_verb {
+		delete_verb 
+	{
 		using return_type = void;
 
 		static std::string target(const partial_message& msg) {
-			return fmt::format(fmt("/channels/{}/messages/{}"), msg.channel_id().val, msg.id().val);
+			return "/channels/{}/messages/{}"_format(msg.channel_id().val, msg.id().val);
 		}
 	};
 
 	struct edit_message:
 		request_base<edit_message>,
 		patch_verb,
-		json_content_type{
+		json_content_type
+	{
 		using return_type = partial_message;
 
 		static std::string target(const partial_message& msg) {
-			return fmt::format(fmt("/channels/{}/messages/{}"),msg.channel_id().val,msg.id().val);
+			return "/channels/{}/messages/{}"_format(msg.channel_id().val,msg.id().val);
 		}
 	};
 	struct get_messages:
 		request_base<get_messages>,
 		json_content_type,
-		get_verb{
+		get_verb
+	{
 		using return_type = std::vector<partial_message>;
 
 		static std::string target(const partial_channel& channel) {
-			return fmt::format(fmt("/channels/{}/messages"),channel.id().val);
+			return "/channels/{}/messages"_format(channel.id().val);
 		}
 	};
 
 	struct unban_member:
 		request_base<unban_member>,
-		delete_verb {
+		delete_verb 
+	{
 		using return_type = void;
 
 		static std::string target(const partial_guild& guild, const snowflake& user_id) {
-			return fmt::format(fmt("/guilds/{}/bans/{}"), guild.id().val, user_id.val);
+			return "/guilds/{}/bans/{}"_format(guild.id().val, user_id.val);
 		}
 	};
 
 	struct create_text_channel:
 		request_base<create_text_channel>,
 		json_content_type,
-		post_verb {
+		post_verb 
+	{
 
 		using return_type = snowflake;
 
 		static std::string target(const partial_guild& guild) {
-			return fmt::format(fmt("/guilds/{}/channels"), guild.id().val);
+			return "/guilds/{}/channels"_format(guild.id().val);
 		}
 		snowflake overload_value() const{
 			return nlohmann::json::parse(state->res.body())["id"].get<snowflake>();
@@ -351,70 +369,76 @@ namespace rq {
 	struct create_voice_channel :
 		request_base<create_voice_channel>,
 		post_verb,
-		json_content_type {
+		json_content_type 
+	{
 		using return_type = snowflake;
 
 		static std::string target(const partial_guild& guild) {
-			return fmt::format(fmt("/guilds/{}/channels"),guild.id().val);
+			return "/guilds/{}/channels"_format(guild.id().val);
 		}
 		snowflake overload_value() const{
 			return nlohmann::json::parse(state->res.body())["id"].get<snowflake>();
 		}
 	};
+
 	struct create_channel_catagory :
 		request_base<create_channel_catagory>,
 		post_verb,
-		json_content_type {
+		json_content_type 
+	{
 		using return_type = snowflake;
 
 		static std::string target(const partial_guild& guild) {
-			return fmt::format(fmt("/guilds/{}/channels"),guild.id().val);
+			return "/guilds/{}/channels"_format(guild.id().val);
 		}
 	};
 
 	struct delete_emoji:
 		request_base<delete_emoji>,
-		delete_verb {
-
+		delete_verb 
+	{
 		using return_type = void;
 
 		static std::string target(const partial_guild& guild, const emoji& e) {
-			return fmt::format(fmt("/guilds/{}/emojis/{}"),guild.id().val,e.id().val);
+			return "/guilds/{}/emojis/{}"_format(guild.id().val,e.id().val);
 		}
 	};
 
 	struct modify_emoji:
 		request_base<modify_emoji>,
-		patch_verb {
+		json_content_type,
+		patch_verb 
+	{
 		using return_type = emoji;
-
 		static std::string target(const partial_guild& guild, const emoji& e) {
-			return fmt::format(fmt("/guilds/{}/emojis/{}"),guild.id().val,e.id().val);
+			return "/guilds/{}/emojis/{}"_format(guild.id().val,e.id().val);
 		}
 	};
 
 	struct delete_message_bulk :
 		request_base<delete_message_bulk>,
 		post_verb,
-		json_content_type {
+		json_content_type 
+	{
 		using return_type = void;
 		static std::string target(const partial_channel& channel) {
-			return fmt::format(fmt("/channels/{}/messages/bulk-delete"),channel.id().val);
+			return "/channels/{}/messages/bulk-delete"_format(channel.id().val);
 		}
 	};
 
 	struct leave_guild:
 		request_base<leave_guild>,
-		delete_verb {
+		delete_verb 
+	{
 		using return_type = void;
-
 		static std::string target(const partial_guild& g) {
-			return fmt::format(fmt("/@me/guilds/{}"),g.id().val);
+			return "/@me/guilds/{}"_format(g.id().val);
 		}
 	};
 
 	struct get_voice_regions:
-		request_base<get_voice_regions>{
+		request_base<get_voice_regions>
+	{
 
 		using return_type = std::vector<voice_region>;
 		static constexpr auto verb = boost::beast::http::verb::get;
@@ -425,7 +449,8 @@ namespace rq {
 
 	struct current_guilds:
 		request_base<current_guilds>,
-		get_verb{
+		get_verb
+	{
 		using return_type = std::vector<partial_guild>;
 		static std::string target() {
 			return "/users/@me/guilds";
@@ -433,31 +458,31 @@ namespace rq {
 	};
 	struct add_reaction:
 		request_base<add_reaction>,
-		put_verb{
-
+		put_verb
+	{
 		using return_type = void;
 		static std::string target(const partial_message& msg,const partial_emoji& emo) {
-			return fmt::format(fmt("/channel/{}/messages/{}/reactions/{}:{}/@me"), msg.channel_id().val, msg.id().val, emo.id().val, emo.name());
+			return "/channel/{}/messages/{}/reactions/{}:{}/@me"_format(msg.channel_id().val, msg.id().val, emo.id().val, emo.name());
 		}
 	};
 
 	struct typing_start:
 		request_base<typing_start>,
-		post_verb{
-
+		post_verb
+	{
 		using return_type = void;
 		static std::string target(const partial_channel& ch) {
-			return fmt::format(fmt("/channel/{}/typing"),ch.id().val);
+			return "/channel/{}/typing"_format(ch.id().val);
 		}
 	};
 
 	struct delete_channel_permission:
 		request_base<delete_channel_permission>,
-		delete_verb{
-
+		delete_verb
+	{
 		using return_type = void;
 		static std::string target(const guild_channel& ch, const permission_overwrite& o) {
-			return fmt::format(fmt("/channels/{}/permissions/{}"),ch.id().val,o.id().val);
+			return "/channels/{}/permissions/{}"_format(ch.id().val,o.id().val);
 		}
 	};
 
@@ -468,29 +493,29 @@ namespace rq {
 
 		using return_type = partial_guild;
 		static std::string target(const partial_guild& g) {
-			return fmt::format(fmt("/guild/{}"),g.id().val);
+			return "/guild/{}"_format(g.id().val);
 		}
 	};
 
 	struct modify_channel_positions :
 		request_base<modify_channel_positions>,
 		patch_verb,
-		json_content_type{
-
+		json_content_type
+	{
 		using return_type = void;
 		static std::string target(const partial_guild& g) {
-			return fmt::format(fmt("/guilds/{}/channels"),g.id().val);
+			return "/guilds/{}/channels"_format(g.id().val);
 		}
 	};
 
 	struct add_guild_member:
 		request_base<add_guild_member>,
 		put_verb,
-		json_content_type{
-
+		json_content_type
+	{
 		using return_type = snowflake;
 		static std::string target(const partial_guild& g,snowflake id) {
-			return fmt::format(fmt("/guilds/{}/members/{}"),g.id().val,id.val);
+			return "/guilds/{}/members/{}"_format(g.id().val,id.val);
 		}
 		snowflake overload_value() const {
 			return nlohmann::json::parse(state->res.body())["id"].get<snowflake>();
@@ -499,41 +524,42 @@ namespace rq {
 
 	struct delete_channel:
 		request_base<delete_channel>,
-		delete_verb{
-
+		delete_verb
+	{
 		using return_type = void;
 		static std::string target(const partial_channel& ch) {
-			return fmt::format(fmt("/channels/{}"),ch.id().val);
+			return "/channels/{}"_format(ch.id().val);
 		}
 	};
 
 	struct add_pinned_msg:
 		request_base<add_pinned_msg>,
-		put_verb{
-
+		put_verb
+	{
 		using return_type = void;
 		static std::string target(const partial_channel& ch,const partial_message& msg) {
-			return fmt::format(fmt("/channels/{}/pins/{}"), ch.id().val, msg.id().val);
+			return "/channels/{}/pins/{}"_format(ch.id().val, msg.id().val);
 		}
 	};
 
 	struct remove_pinned_msg:
 		request_base<remove_pinned_msg>,
-		delete_verb {
-
+		delete_verb 
+	{
 		using return_type = void;
 		static std::string target(const partial_channel& ch, const partial_message& msg) {
-			return fmt::format(fmt("/channels/{}/pins/{}"), ch.id().val, msg.id().val);
+			return "/channels/{}/pins/{}"_format(ch.id().val, msg.id().val);
 		}
 	};
 
 	struct list_guild_members:
 		request_base<list_guild_members>,
 		get_verb,
-		json_content_type{
+		json_content_type
+	{
 		using return_type = std::vector<guild_member>;
 		static std::string target(const partial_guild& g) {
-			return fmt::format(fmt("/guilds/{}/members"), g.id().val);
+			return "/guilds/{}/members"_format(g.id().val);
 		}
 
 	};
@@ -541,19 +567,19 @@ namespace rq {
 	struct edit_channel_permissions:
 		request_base<edit_channel_permissions>,
 		put_verb,
-		json_content_type{
-
+		json_content_type
+	{
 		using return_type = void;
 		static std::string target(const guild_channel& c,const permission_overwrite& p) {
-			return fmt::format(fmt("/channels/{}/permissions/{}"), c.id().val, p.id().val);
+			return "/channels/{}/permissions/{}"_format(c.id().val, p.id().val);
 		};
 	};
 
 	struct create_dm:
 		request_base<create_dm>,
 		post_verb,
-		json_content_type{
-
+		json_content_type
+	{
 		using return_type = snowflake;
 		static std::string target() {
 			return "/users/@me/channels";
@@ -567,8 +593,8 @@ namespace rq {
 	struct create_group_dm :
 		request_base<create_group_dm>, 
 		post_verb, 
-		json_content_type {
-
+		json_content_type 
+	{
 		using return_type = snowflake;
 		static std::string target() {
 			return "/users/@me/channels";
@@ -582,13 +608,52 @@ namespace rq {
 	struct create_channel_invite:
 		request_base<create_channel_invite>,
 		post_verb,
-		json_content_type{
+		json_content_type
+	{
 		using return_type = invite;
 		static std::string target(const guild_channel& ch) {
-			return fmt::format(fmt("/channels/{}/invites"), ch.id().val);
+			return "/channels/{}/invites"_format(ch.id().val);
 		}
 	};
-	
+
+	struct get_invite:
+		request_base<get_invite>,
+		get_verb,
+		json_content_type
+	{
+		using return_type = invite;
+
+		static std::string target(const std::string_view code) {
+			return "/invites/{}"_format(code);
+		}
+	};
+
+	struct delete_invite :
+		request_base<delete_invite>,
+		delete_verb 
+	{
+		using return_type = invite;
+
+		static std::string target(const std::string_view code) {
+			return "/invites/{}"_format(code);
+		}
+	};
+	/*
+	struct create_group_dm:
+		request_base<create_group_dm>,
+		post_verb,
+		json_content_type
+	{
+		using return_type = snowflake;
+		static std::string target() {
+			return "/users/@me/channels";
+		}
+
+		return_type overload_value() const {
+			return nlohmann::json::parse(state->res.body())["id"].get<snowflake>();
+		}
+	};
+	*/
 	//not needed ;-;
 	struct get_guild_channels :
 		request_base<get_guild_channels>,
@@ -596,7 +661,7 @@ namespace rq {
 
 		using return_type = std::vector<snowflake>;
 		static std::string target(const partial_guild& g) {
-			return fmt::format(fmt("/guilds/{}/channels"), g.id().val);
+			return "/guilds/{}/channels"_format(g.id().val);
 		}
 	};
 	//

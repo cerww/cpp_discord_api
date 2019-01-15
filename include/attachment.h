@@ -6,7 +6,7 @@
 struct attachment{
 	snowflake id;
 	std::string filename;
-	int size;
+	int size = 0;
 	std::string url;
 	std::string proxy_url;
 	int width = 0;

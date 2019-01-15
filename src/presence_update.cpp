@@ -1,4 +1,6 @@
 #include "presence_update.h"
+
+
 const std::string& activity::name() const noexcept { return m_name; }
 activity_type activity::type() const noexcept { return m_type; }
 const std::optional<std::string>& activity::url() const noexcept { return m_url; }
@@ -10,7 +12,7 @@ void from_json(const nlohmann::json& json, activity& thing) {
 
 snowflake partial_presence_update::id() const noexcept { return m_id; }
 Status partial_presence_update::status() const noexcept { return m_status; }
-std::optional<activity>& partial_presence_update::game() noexcept { return m_game; }
+
 const std::optional<activity>& partial_presence_update::game() const noexcept { return m_game; }
 
 void from_json(const nlohmann::json& json, partial_presence_update& thing) {

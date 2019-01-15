@@ -77,7 +77,7 @@ struct single_chunk_allocator {
 	T* allocate(size_t n) {
 		return m_mem_pool->allocate<T>(n);
 	}
-	static void deallocate(T*, int) {}
+	static void deallocate(T*, size_t) {}
 
 
 private:

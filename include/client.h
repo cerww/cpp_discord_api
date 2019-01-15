@@ -50,7 +50,7 @@ public:
 
 	nlohmann::json presence()const;
 	const std::string& token()const { return m_token; }
-	user& self_user() { return m_self; }
+		
 	size_t num_shards()const noexcept { return m_num_shards; }
 	std::function<void(guild_text_message&, shard&)> on_guild_text_msg = nothing;
 	std::function<void(dm_message&, shard&)> on_dm_msg = nothing;
@@ -94,9 +94,10 @@ public:
 	void reconnect(shard* s,int shardNumber) {
 		m_ws_hub.connect(m_gateway);
 	}
-	timed_task_executor heartbeat_sender;	
+
 	Status status = Status::online;
 	std::string gameName = "";
+ 	timed_task_executor heartbeat_sender;
 private:
 	using wsClient = uWS::WebSocket<uWS::CLIENT>;
 	void m_getGateway();
@@ -110,7 +111,6 @@ private:
 	uWS::Hub m_ws_hub;
 	//
 	std::unordered_map<wsClient*, std::unique_ptr<shard>> m_shards = {};
-	user m_self;	
 };
 
 

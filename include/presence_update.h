@@ -25,7 +25,6 @@ void from_json(const nlohmann::json& json, activity& thing);
 struct partial_presence_update{
 	snowflake id() const noexcept;
 	Status status() const noexcept;
-	std::optional<activity>& game() noexcept;
 	const std::optional<activity>& game() const noexcept;
 private:
 	snowflake m_id;

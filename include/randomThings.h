@@ -84,14 +84,15 @@ inline std::string getFileContents(const std::string& filePath,decltype(std::ios
 	return fileContents;
 }
 
-constexpr int roundToNearest(const int num, const int multiply) {
+constexpr int round_up_to(const int num, const int multiply) {
 	return (num / multiply)*multiply + multiply * !!(num%multiply);
 }
 
 template<int multiply>
-constexpr int roundToNearestT(const int num) {
+constexpr int round_up_to_template(const int num) {
 	return (num / multiply)*multiply + multiply * !!(num%multiply);
 }
+
 template<typename T1, typename T2, size_t size, size_t... i>
 constexpr inline std::array<T1, size> array_cast_impl(const std::array<T2, size>& oldArray, std::index_sequence<i...>) {
 	return { static_cast<T1>(oldArray[i])... };
@@ -105,7 +106,6 @@ constexpr inline std::array<T1, size> array_cast2(const std::array<T2, size>& ol
 inline bool isLetter(const char let) {
 	return (let >= 'a' && let <= 'z' )|| (let >= 'A' && let <= 'Z');
 }
-
 
 template<typename string_t>
 inline std::vector<string_t> split(string_t&& string, char letter = ' ') {
@@ -121,11 +121,10 @@ inline std::vector<string_t> split(string_t&& string, char letter = ' ') {
 	return retVal;
 }
 
-inline bool isNumber(char let){
+constexpr bool isNumber(char let)noexcept{
 	return let >= '0'&&let <= '9';
 }
 
-constexpr size_t out_of_range = -1;
 template<typename string_t, typename... pred>
 inline size_t find_first_if_not(string_t&& str, size_t off, pred... fn) {
 	for (; off < str.size(); ++off){
@@ -191,11 +190,12 @@ inline T breadthFirstSearchMultiple(T&& start, adjFn&& adj, predFn&& pred) {
 		std::vector<T> next;
 		next.reserve(queue.size());
 		for (T& node : queue) {
-			for (T& newNode : adj(node))
-				next.push_back(std::move(newNode));
+			for (auto&& newNode : adj(node))
+				next.push_back(std::forward<decltype(newNode)>(newNode));
 			if (pred(node))
 				retVal.push_back(std::move(node));
-		}queue = std::move(next);
+		}
+		queue = std::move(next);
 	}return retVal;
 }
 
@@ -350,7 +350,7 @@ public:
 
 	void resume(){
 		m_running = true;
-		m_thready = std::thread([&, this]() {run(); });
+		m_thready = std::thread([this]() {run(); });
 	};
 	void stop(){
 		m_running = false;
@@ -367,10 +367,11 @@ private:
 	std::atomic<bool> m_running = false;
 	std::thread m_thready;
 	void run() {
-		while (m_running && m_timey.count()>0) {
+		while (m_running) {
 			std::this_thread::sleep_for(m_interval);
 			if constexpr(type==timerType::DOWN){
-				--m_timey;
+				if (--m_timey == 0)
+					break;
 			}else{
 				++m_timey;
 			}
@@ -379,21 +380,14 @@ private:
 }; 
 
 template <typename T>
-struct crtp
-{
+struct crtp{
 	T& self() { return static_cast<T&>(*this); }
 	T const& self() const { return static_cast<T const&>(*this); }	
 };
 
-
 template<typename T,bool b>
 struct addRefIf {
-	using type = T;
-};
-
-template<typename T>
-struct addRefIf<T, true> {
-	using type = std::add_lvalue_reference_t<T>;
+	using type = std::conditional_t<b, T, T&>;
 };
 
 template<typename T,bool b>
@@ -401,7 +395,7 @@ using addRefIf_t = typename addRefIf<T, b>::type;
 
 struct NOT {
 	template<typename T>
-	constexpr decltype(auto) operator()(T input) {
+	constexpr auto operator()(T&& input)const noexcept->decltype(!input) {
 		return !input;
 	}
 };
@@ -498,16 +492,20 @@ struct enumerate2{
 	std::pair<decltype(*(std::declval<Range>().begin())), size_t> operator*(){
 		return { *m_current,i };
 	}
+
 	decltype(auto) operator++(){
+		auto r = *this;
 		++m_current;
 		++i;
-		return *this;
+		return r;
 	}
+
 	decltype(auto) operator++(int) {
 		++m_current;
 		++i;
 		return *this;
 	}
+
 	struct endy{};
 	endy end(){
 		return endy();
@@ -541,14 +539,28 @@ public:
 		m_ends.clear();
 	}
 
-	template<typename time_t>
-	time_t getTime()const{
-		return
-			(m_starts.size() > m_ends.size() ? std::chrono::duration_cast<time_t>(std::chrono::system_clock::now() - m_starts.back()) : time_t(0)) + 
-			std::inner_product(m_ends.begin(), m_ends.end(), m_starts.begin(), time_t(0), std::plus<>(), [](auto a, auto b){
+	bool is_running()const noexcept {
+		return m_starts.size() > m_ends.size();
+	}
+
+	template<typename time_t = std::chrono::milliseconds>
+	time_t running_for()const noexcept {
+		return (is_running() ? std::chrono::duration_cast<time_t>(std::chrono::steady_clock::now() - m_starts.back()) : time_t(0));
+	}
+
+	template<typename time_t = std::chrono::milliseconds>
+	time_t total_running_time()const{
+		return running_for<time_t>() + running_time_since_till_last_pause();			
+	}
+
+	template<typename time_t = std::chrono::milliseconds>
+	time_t running_time_since_till_last_pause() const noexcept{//TODO make name better
+		return 
+			std::inner_product(m_ends.begin(), m_ends.end(), m_starts.begin(), time_t(0), std::plus<>(), [](auto a, auto b) {
 				return std::chrono::duration_cast<time_t>(a - b);
 			});
 	}
+
 private:
 	std::vector<std::chrono::steady_clock::time_point> m_starts;
 	std::vector<std::chrono::steady_clock::time_point> m_ends;
@@ -684,43 +696,6 @@ template<typename it>
 strideIterator(it, size_t)->strideIterator<it>;
 */
 
-template<typename T>
-class copy_on_write {
-	struct ref_t {
-		ref_t() = default;
-		ref_t(T t_self) :self(std::move(t_self)) {};
-		T self;
-		size_t ref_count = 1;
-	};
-public:
-	copy_on_write() = default;
-	copy_on_write(T thing):m_self(new ref_t(std::move(thing))) {
-	};
-	~copy_on_write() {
-		if (!m_self) return;
-		--m_self->ref_count;
-		if (!m_self->ref_count)
-			delete m_self;
-	}
-
-	copy_on_write(const copy_on_write& other) {
-		~copy_on_write();
-		m_self = other.m_self;
-		++m_self->ref_count;
-	}
-	copy_on_write(copy_on_write&& other)noexcept {
-		~copy_on_write();
-		std::swap(other.m_self, m_self);
-	}
-	copy_on_write& operator=(const copy_on_write& other) {
-		~copy_on_write();
-		m_self = other.m_self;
-		++m_self->ref_count;
-		return *this;
-	}
-private:
-	ref_t * m_self = new ref_t;
-};
 
 
 inline unsigned reverseBits(const unsigned stuffs, const int numBits) {
@@ -863,7 +838,7 @@ std::experimental::generator<std::tuple<decltype(*std::declval<ranges>().begin()
 
 
 template<typename T1,typename T2>
-std::vector<T1> vector_cast(std::vector<T2>&& other) {
+std::vector<T1> vector_cast(const std::vector<T2>& other) {
 	std::vector<T1> retVal(other.size());
 	for (size_t i = 0; i < other.size(); ++i)
 		retVal[i] = static_cast<T1>(other[i]);
@@ -926,7 +901,7 @@ constexpr bool erase_first_quick(rng&& range, U&& val) {
 template<typename rng, typename U>
 [[maybe_unused]]
 constexpr int erase_if_quick(rng&& range, U&& fn) {
-	const auto it = std::partition(range.begin(), range.end(), std::not1(fn));
+	const auto it = std::remove_if(range.begin(), range.end(), fn);
 	const int retVal = std::distance(it, range.end());
 	range.erase(it, range.end());
 	return retVal;
@@ -982,19 +957,19 @@ struct iterator_adapter:private crtp<parent>{
 		return this->self();
 	}
 
-	parent operator+(int i) {
+	parent operator+(int i) const {
 		parent o = this->self();
 		o.m_it += i;
 		return o;
 	}
 
-	parent operator-(int i) {
+	parent operator-(int i) const {
 		parent o = this->self();
 		o.m_it -= i;
 		return o;
 	}
 
-	int operator-(const iterator_adapter& other) {
+	int operator-(const iterator_adapter& other)const {
 		return m_it - other.m_it;
 	}
 	decltype(auto) operator*() {

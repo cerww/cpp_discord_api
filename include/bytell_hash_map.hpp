@@ -161,9 +161,8 @@ public:
     using pointer = value_type *;
     using const_pointer = const value_type *;
 
-    sherwood_v8_table()
-    {
-    }
+	sherwood_v8_table() = default;
+	
     explicit sherwood_v8_table(size_type bucket_count, const ArgumentHash & hash = ArgumentHash(), const ArgumentEqual & equal = ArgumentEqual(), const ArgumentAlloc & alloc = ArgumentAlloc())
         : ByteAlloc(alloc), Hasher(hash), Equal(equal)
     {
@@ -782,9 +781,8 @@ private:
         size_t index = 0;
         BlockPointer block = nullptr;
 
-        LinkedListIt()
-        {
-        }
+		LinkedListIt() = default;
+
         LinkedListIt(size_t index, BlockPointer block)
             : index(index), block(block)
         {
@@ -991,7 +989,7 @@ private:
             ++num_blocks;
         size_t memory = calculate_memory_requirement(num_blocks);
         unsigned char * as_byte_pointer = reinterpret_cast<unsigned char *>(begin);
-        AllocatorTraits::deallocate(*this, typename AllocatorTraits::pointer(as_byte_pointer), memory);
+        AllocatorTraits::deallocate(*this, typename AllocatorTraits::pointer(as_byte_pointer), (int)memory);
     }
 
     void reset_to_empty_state()
@@ -1098,11 +1096,9 @@ public:
     using mapped_type = V;
 
     using Table::Table;
-    bytell_hash_map()
-    {
-    }
+    bytell_hash_map() = default;
 
-    inline V & operator[](const K & key)
+	inline V & operator[](const K & key)
     {
         return emplace(key, convertible_to_value()).first->second;
     }

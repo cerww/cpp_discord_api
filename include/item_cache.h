@@ -5,7 +5,7 @@
 #include <memory>
 
 template<typename T,size_t size>
-class static_item_cache{
+class stack_item_cache{
 public:
 	void add(T item) {
 		m_cache[m_position++] = std::move(item);
@@ -14,7 +14,7 @@ public:
 	std::array<T, size>& data() noexcept { return m_cache; }
 	const std::array<T, size>& data() const noexcept{ return m_cache; }
 private:
-	std::array<T, size> m_cache;
+	std::array<T, size> m_cache{};
 	int m_position = 0;
 };
 
@@ -60,6 +60,6 @@ public:
 	std::array<std::unique_ptr<T>, size>& data() noexcept { return m_cache; }
 	const std::array<std::unique_ptr<T>, size>& data() const noexcept { return m_cache; }
 private:
-	std::array<std::unique_ptr<T>, size> m_cache;
+	std::array<std::unique_ptr<T>, size> m_cache{};
 	int m_position = 0;
 };

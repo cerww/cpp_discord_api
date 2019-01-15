@@ -3,24 +3,18 @@
 #include <atomic>
 #include <functional>
 #include <algorithm>
-#include <mutex>
+#include "timer_queue.h"
 
 struct timed_task_executor{
 	timed_task_executor() {
 		m_thread = std::thread([this](){
-			while(!m_done) {
-				std::unique_lock<std::mutex> locky(m_mut);
-				if (m_tasks.empty()) {
-					m_cv.wait(locky, [this]() {return !m_tasks.empty(); });
-					if(m_tasks[0].second <= std::chrono::steady_clock::now()) {
-						locky.unlock();
-						execute_task();
-					}
-				}else {
-					if (m_cv.wait_until(locky, m_tasks[0].second, [&]() {return m_tasks[0].second <= std::chrono::steady_clock::now(); })){
-						locky.unlock();
-						execute_task();
-					}
+			while(!m_done.load(std::memory_order_relaxed)) {
+				auto t = m_queue.try_pop_next_time_blocking();
+				if(t.first) {
+					std::invoke(*t.first);
+				}
+				if(t.second) {
+					std::this_thread::sleep_until(*t.second);
 				}
 			}
 		});
@@ -38,14 +32,7 @@ struct timed_task_executor{
 	}
 
 	void execute(std::pair<std::function<void()>,std::chrono::steady_clock::time_point> task) {
-		{
-		std::unique_lock<std::mutex> locky(m_mut);
-		const auto it = std::upper_bound(m_tasks.begin(),m_tasks.end(),task,[](const auto& a,const auto& b){
-			return a.second < b.second;
-		});
-		m_tasks.insert(it,std::move(task));
-		}
-		m_cv.notify_one();
+		m_queue.push(std::move(task.first),task.second);
 	}
 
 	void execute(std::function<void()> task,std::chrono::steady_clock::time_point tp) {
@@ -63,14 +50,7 @@ struct timed_task_executor{
 	}
 
 private:
-	void execute_task() {		
-		auto t = std::move(m_tasks[0]);
-		m_tasks.erase(m_tasks.begin());
-		t.first();
-	}
 	std::thread m_thread;
 	std::atomic<bool> m_done = false;
-	std::mutex m_mut;
-	std::condition_variable m_cv;
-	std::vector<std::pair<std::function<void()>, std::chrono::steady_clock::time_point>> m_tasks = {};
+	concurrent_timer_queue<std::function<void()>> m_queue{};
 };

@@ -1,4 +1,7 @@
 #include "reaction.h"
+
+
+
 int reaction::count() const noexcept { return m_count; }
 bool reaction::me() const noexcept { return m_me; }
 const partial_emoji& reaction::emoji() const noexcept { return m_emoji; }

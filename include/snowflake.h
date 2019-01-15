@@ -10,32 +10,36 @@
 
 struct snowflake{
 	size_t val = 0;
-	bool operator==(const snowflake& other) const noexcept{ return val == other.val; }
-	snowflake() = default;
+	constexpr bool operator==(const snowflake& other) const noexcept{ return val == other.val; }
+	constexpr snowflake() = default;
 	~snowflake() = default;
-	snowflake& operator=(snowflake&& other)noexcept { val = std::exchange(other.val, 0); return *this; }
-	snowflake& operator=(const snowflake& other) = default;
-	snowflake(snowflake&& other)noexcept :val(other.val) { other.val = 0; }
-	snowflake(const snowflake& other) = default;
+	constexpr snowflake& operator=(snowflake&& other)noexcept {
+		val = other.val;
+		other.val = 0;
+		return *this;
+	}
+	constexpr snowflake& operator=(const snowflake& other) = default;
+	constexpr snowflake(snowflake&& other)noexcept :val(other.val) { other.val = 0; }
+	constexpr snowflake(const snowflake& other) = default;
 };
 
-inline bool operator!=(const snowflake& a,const snowflake& b) {
+constexpr bool operator!=(const snowflake& a,const snowflake& b) {
 	return a.val != b.val;
 }
 
-inline bool operator<(const snowflake& a,const snowflake& b) {
+constexpr bool operator<(const snowflake& a,const snowflake& b) {
 	return a.val < b.val;
 }
 
-inline bool operator>(const snowflake& a, const snowflake& b) {
+constexpr bool operator>(const snowflake& a, const snowflake& b) {
 	return a.val > b.val;
 }
 
-inline bool operator<=(const snowflake& a, const snowflake& b) {
+constexpr bool operator<=(const snowflake& a, const snowflake& b) {
 	return a.val <= b.val;
 }
 
-inline bool operator>=(const snowflake& a, const snowflake& b) {
+constexpr bool operator>=(const snowflake& a, const snowflake& b) {
 	return a.val >= b.val;
 }
 
@@ -49,7 +53,6 @@ inline void to_json(nlohmann::json& json,const snowflake& wawt) {
 inline void from_json(const nlohmann::json& in,snowflake& out) {
 	if (in.is_null()) return;
 	try{
-		//out.val = std::stoull(in.get_ref<const std::string&>());
 		const auto& str = in.get_ref<const std::string&>();
 		std::from_chars(str.data(), str.data() + str.size(), out.val);		
 	}catch(...) {}
@@ -84,15 +87,15 @@ std::enable_if_t<has_id_v<T>,ska::bytell_hash_map<snowflake,T*,std::hash<snowfla
 }
 
 struct id_equal_to{
-	explicit id_equal_to(snowflake i) : id(std::move(i)) {};
+	explicit id_equal_to(snowflake i) : id(std::move(i)) {}
 	template<typename T>
-	bool operator()(const T& thing){
+	constexpr bool operator()(T&& thing){
 		return thing.id() == id;
 	}
 	const snowflake id;
 };
 
-//this is like a "map" view ;-;, i should just make one, then typedef this
+//this is like a map_view ;-;, i should just make one, then typedef this
 template<typename T>
 struct discord_obj_map{
 	discord_obj_map() = default;
@@ -102,11 +105,11 @@ struct discord_obj_map{
 	struct templated_iterator{
 		templated_iterator(it o):m_it(std::move(o)){}
 
-		const T& operator*() const{
+		const T& operator*() const noexcept{
 			return *m_it;
 		}
 
-		const T* operator->()const {
+		const T* operator->()const noexcept{
 			return &*m_it;
 		}
 
@@ -224,33 +227,37 @@ struct discord_obj_list{
 		bool operator!=(const iterator_<O, N>& other) {
 			return m_it != other.m_it;
 		}
+		template<typename O,int N>
+		bool operator<(const iterator_<O,N> o)const noexcept {
+			return m_it < o.m_it;
+		}
 
 		template<typename O,int N>
 		size_t operator-(const iterator_<O, N>& other) {
 			return m_it - other.m_it;
 		}
 
-		iterator_& operator+=(size_t i) {
+		iterator_& operator+=(int i) {
 			m_it += i * stride;
 			return *this;
 		}
-		iterator_& operator-=(size_t i) {
+		iterator_& operator-=(int i) {
 			m_it -= i * stride;
 			return *this;
 		}
-		iterator_ operator+(size_t i) {
+		iterator_ operator+(int i) const {
 			iterator_ retVal = *this;
 			return retVal+=i;
 		}
-		iterator_ operator-(size_t i) {
+		iterator_ operator-(int i) const{
 			iterator_ retVal = *this;
 			return retVal -= i;
 		}
-		decltype(auto) operator[](size_t i)const {
-			return m_parent->m_wat.at(m_it[i]);
+		decltype(auto) operator[](int i)const {
+			return m_parent->m_wat.at(m_it[i * stride]);
 		}
-		decltype(auto) operator[](size_t i) {
-			return m_parent->m_wat.at(m_it[i]);
+		decltype(auto) operator[](int i) {
+			return m_parent->m_wat.at(m_it[i * stride]);
 		}
 	private:
 		discord_obj_list * const m_parent;
@@ -300,15 +307,15 @@ private:
 };
 //template<typename T,template<typename,typename...> typename map_t> discord_obj_list(map_t<snowflake, T>& a, const std::vector<snowflake>& b)->discord_obj_list<T, map_t>;
 
-const auto transform_to_pair = [](auto&& a, auto&& fn1,auto&& fn2){
+static inline constexpr auto transform_to_pair = [](auto&& a, auto&& fn1,auto&& fn2){
 	//evaluation order is undefined ;-;, so i can't inline this
 	auto ret = std::invoke(std::forward(fn1),a);
 	auto other = std::invoke(std::forward(fn2),ret);
-	return std::make_pair(std::move(other), std::move(ret));
+	return std::make_pair(std::move(ret), std::move(other));
 };
 
 template<typename T>
-std::pair<snowflake,T> get_with_id(const nlohmann::json& json) {
+std::pair<snowflake,T> get_return_id(const nlohmann::json& json) {
 	auto ret = json.get<T>();
 	const snowflake id = ret.id();
 	return { id,std::move(ret) };

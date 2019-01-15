@@ -2,7 +2,7 @@
 #include "partial_channel.h"
 #include "snowflake.h"
 #include "timestamp.h"
-#include "guildMember.h"
+#include "guild_member.h"
 #include "partial_message.h"
 #include "guild_channel.h"
 #include "item_cache.h"

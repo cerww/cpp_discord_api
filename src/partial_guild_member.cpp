@@ -17,8 +17,3 @@ bool partial_guild_member::has_role(const snowflake role_id) const noexcept {
 bool partial_guild_member::has_role(const guild_role& role) const noexcept {
 	return std::find(m_roles.begin(), m_roles.end(), role.id()) != m_roles.end();
 }
-
-bool partial_guild_member::has_role(guild_role&& role) const noexcept {
-	return std::find(m_roles.begin(), m_roles.end(), role.id()) != m_roles.end();
-}
-

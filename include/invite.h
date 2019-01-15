@@ -47,6 +47,9 @@ private:
 
 
 struct invite_metadata{
+	const auto& User() const noexcept{ return m_user; }
+	int uses() const noexcept { return m_uses; }
+	int max_uses()const noexcept { return m_max_uses; }
 private:
 	std::optional<user> m_user;
 	int m_uses = 0;

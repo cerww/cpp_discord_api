@@ -19,16 +19,16 @@ discord_http_connection::discord_http_connection(client* t):m_client(t) {
 			if(m_rate_limited_requests.empty())
 				send_to_discord(m_request_queue.pop());
 			else if(std::optional<discord_request> r = m_request_queue.try_pop_until(std::get<1>(m_rate_limited_requests[0])); r) {
-					send_to_discord(std::move(r.value()));
+				send_to_discord(std::move(r.value()));
 			}else{//std::chrono::system_clock::now() >= std::get<1>(m_rate_limited_requests[0])
 				auto requests_to_send = std::move(m_rate_limited_requests[0]);
 				m_rate_limited_requests.erase(m_rate_limited_requests.begin());
 				for(auto& request:std::get<2>(requests_to_send))
 					send_to_discord(std::move(request));					
 			}
-		}
-		
+		}		
 	});
+	
 }
 
 void discord_http_connection::send_to_discord(discord_request r) {	
@@ -68,9 +68,11 @@ bool discord_http_connection::send_to_discord_(discord_request& r,size_t major_p
 		}else{
 			r.state->res.clear();
 			r.state->res.body().clear();
+			//add the request to the right queue in order
 			std::get<2>(*m_rate_limited_requests.insert(std::upper_bound(m_rate_limited_requests.begin(), m_rate_limited_requests.end(), tp, [](const std::chrono::system_clock::time_point& a, const auto& b) {
 				return a < std::get<1>(b);
-			}), { major_param_id_,tp,{} })).push_back(std::move(r));			
+			}), { major_param_id_,tp,{} }))
+				.push_back(std::move(r));			
 			return false;
 		}
 	}//this shuoldb't be riunning often ;-;
@@ -111,23 +113,23 @@ boost::system::error_code connect_with_no_delay(boost::asio::ip::tcp::socket& so
 void discord_http_connection::connect() {
 	const auto results = m_resolver.resolve("discordapp.com", "https");
 	//boost::asio::connect(m_ssl_stream.next_layer(), results.begin(), results.end());
-	connect_with_no_delay(m_ssl_stream.next_layer(), results);
-	m_ssl_stream.handshake(boost::asio::ssl::stream_base::client);
+	connect_with_no_delay(m_socket.next_layer(), results);
+	m_socket.handshake(boost::asio::ssl::stream_base::client);
 }
 
 void discord_http_connection::reconnect() {	
-	m_ssl_stream.next_layer().close();
+	m_socket.next_layer().close();
 	const auto results = m_resolver.resolve("discordapp.com", "https");
-	connect_with_no_delay(m_ssl_stream.next_layer(), results);
-	m_ssl_stream.handshake(boost::asio::ssl::stream_base::client);
+	connect_with_no_delay(m_socket.next_layer(), results);
+	m_socket.handshake(boost::asio::ssl::stream_base::client);
 }
 
 void discord_http_connection::send_rq(discord_request& r) {
 	boost::beast::error_code ec;
-	boost::beast::http::write(m_ssl_stream, r.req, ec);
+	boost::beast::http::write(m_socket, r.req, ec);
 	if (ec)
 		std::cout << "rawrrrrr " << ec << std::endl;
-	boost::beast::http::read(m_ssl_stream, m_buffer, r.state->res, ec);
+	boost::beast::http::read(m_socket, m_buffer, r.state->res, ec);
 	if (ec)
 		std::cout << "rawrrrrr " << ec << std::endl;
 }

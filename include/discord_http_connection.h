@@ -14,8 +14,7 @@ struct discord_request {
 
 class client;
 
-class discord_http_connection{
-public:
+struct discord_http_connection{
 	void sleep_till(std::chrono::system_clock::time_point time_point) {
 		m_rate_limted_until = time_point;
 		m_global_rate_limited.store(true);
@@ -50,7 +49,7 @@ private:
 	boost::asio::ip::tcp::resolver m_resolver{ m_ioc };
 
 	boost::asio::ssl::context m_sslCtx{ boost::asio::ssl::context::tlsv12_client };
-	boost::asio::ssl::stream<boost::asio::ip::tcp::socket> m_ssl_stream{ m_ioc, m_sslCtx };	
+	boost::asio::ssl::stream<boost::asio::ip::tcp::socket> m_socket{ m_ioc, m_sslCtx };	
 	boost::beast::flat_buffer m_buffer;
 	concurrent_queue<discord_request> m_request_queue = {};
 	client* m_client = nullptr;

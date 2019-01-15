@@ -8,11 +8,9 @@
 #include "presence_update.h"
 #include "partial_guild_member.h"
 
-class Guild;
+struct Guild;
 
-class guild_member:public partial_guild_member{
-public:
-	//Guild& guild() noexcept;
+struct guild_member:partial_guild_member{
 	const Guild& guild() const noexcept;;
 	discord_obj_list<guild_role> roles()const;
 	Status status() const noexcept;;

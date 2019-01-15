@@ -5,7 +5,7 @@
 
 class channel_catagory;
 
-class Guild;
+struct Guild;
 
 class guild_channel:public partial_channel{
 public:

@@ -1,7 +1,7 @@
 #pragma once
 #include "partial_channel.h"
 #include "text_channel.h"
-#include "guildMember.h"
+#include "guild_member.h"
 #include <nlohmann/json.hpp>
 #include "snowflake.h"
 #include "timestamp.h"
@@ -12,9 +12,8 @@
 
 class shard;
 
-class Guild:public partial_guild
-{
-public:
+struct Guild:partial_guild{
+
 	timestamp joined_at() const noexcept;
 	bool large() const noexcept;
 	bool unavailable() const noexcept;
@@ -38,15 +37,17 @@ private:
 	bool m_large = false;
 	bool m_unavailable = false;
 	int m_member_count = 0;
-	std::vector<guild_member> m_members;//;-; make this map?
+	std::vector<guild_member> m_members{};//;-; make this map?
 
-	std::vector<snowflake> m_text_channels;	
-	std::vector<snowflake> m_voice_channels;
-	std::vector<snowflake> m_channel_catagories;
-	std::vector<voice_state> m_voice_states;
+	std::vector<snowflake> m_text_channels{};	
+	std::vector<snowflake> m_voice_channels{};
+	std::vector<snowflake> m_channel_catagories{};
+	std::vector<voice_state> m_voice_states{};
 	
 	shard* m_shard = nullptr;
-	
+
+	bool m_is_ready = true;
+
 	friend void from_json(const nlohmann::json& json, Guild& guild);
 	friend class shard;
 };

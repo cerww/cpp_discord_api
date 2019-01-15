@@ -23,6 +23,8 @@ class client;
 
 class shard {
 public:
+	static constexpr int large_threshold = 250;
+
 	using wsClient = uWS::WebSocket<uWS::CLIENT>;
 	explicit shard(int shardN, wsClient* t_client, client* t_parent) :
 		m_shard_number(shardN),
@@ -47,20 +49,20 @@ public:
 			m_main_thread.join();
 	}
 	
-	rename_later_4<snowflake, text_channel> & text_channels() noexcept { return m_text_channels; }
-	const rename_later_4<snowflake, text_channel> & text_channels() const noexcept { return m_text_channels; }
+	rename_later_4<snowflake, text_channel> & text_channels() noexcept { return m_text_channel_map; }
+	const rename_later_4<snowflake, text_channel> & text_channels() const noexcept { return m_text_channel_map; }
 
 	rename_later_4<snowflake, dm_channel>& dm_channels()noexcept { return m_dm_channels; }
 	const rename_later_4<snowflake, dm_channel>& dm_channels()const noexcept { return m_dm_channels; }
 
-	rename_later_4<snowflake, voice_channel>& voice_channels() noexcept { return m_voice_channels; }
-	const rename_later_4<snowflake, voice_channel>& voice_channels() const noexcept { return m_voice_channels; }
+	rename_later_4<snowflake, voice_channel>& voice_channels() noexcept { return m_voice_channel_map; }
+	const rename_later_4<snowflake, voice_channel>& voice_channels() const noexcept { return m_voice_channel_map; }
 
-	rename_later_4<snowflake, channel_catagory>& channel_catagories()noexcept { return m_channel_catagories; }
-	const rename_later_4<snowflake, channel_catagory>& channel_catagories()const noexcept { return m_channel_catagories; }
+	rename_later_4<snowflake, channel_catagory>& channel_catagories()noexcept { return m_channel_catagory_map; }
+	const rename_later_4<snowflake, channel_catagory>& channel_catagories()const noexcept { return m_channel_catagory_map; }
 	
-	rq::send_message send_message(const text_channel& channel, std::string content);
-	rq::send_message send_message(const dm_channel& channel, std::string content);
+	rq::send_message send_message(const text_channel& channel, std::string_view content);
+	rq::send_message send_message(const dm_channel& channel, std::string_view content);
 
 	rq::add_role add_role(const partial_guild&, const guild_member&, const guild_role&);
 	rq::remove_role remove_role(const partial_guild&, const  guild_member&, const guild_role&);
@@ -69,11 +71,11 @@ public:
 	rq::create_role create_role(const partial_guild&, std::string_view, permission, int color = 0xffffff/*white*/, bool hoist = true, bool mentionable = true);
 	rq::delete_role delete_role(const partial_guild&, const guild_role&);
 
-	rq::modify_member change_nick(const guild_member&, std::string);
-	rq::modify_member change_nick(const partial_guild&, const user&, std::string);
+	rq::modify_member change_nick(const guild_member&, std::string_view);
+	rq::modify_member change_nick(const partial_guild&, const user&, std::string_view);
 	rq::change_my_nick change_my_nick(const partial_guild&, std::string_view);
 	rq::kick_member kick_member(const partial_guild&, const  guild_member&);
-	rq::ban_member ban_member(const partial_guild& g, const guild_member& member, std::string reason = "", int days_to_delete_msg = 0);
+	rq::ban_member ban_member(const partial_guild& g, const guild_member& member, std::string_view reason = "", int days_to_delete_msg = 0);
 	rq::unban_member unban_member(const Guild&, snowflake id);
 	rq::get_messages get_messages(const partial_channel&,int = 100);
 	rq::get_messages get_messages_before(const partial_channel&,snowflake, int = 100);
@@ -82,20 +84,19 @@ public:
 	rq::get_messages get_messages_before(const partial_channel&, const partial_message&, int = 100);
 	rq::get_messages get_messages_after(const partial_channel&, const partial_message&, int = 100);
 	rq::get_messages get_messages_around(const partial_channel&, const partial_message&, int = 100);
-	rq::create_text_channel create_text_channel(const Guild&, std::string,std::vector<permission_overwrite> = {},bool = false);
-	rq::edit_message edit_message(const partial_message&,std::string);
-	rq::create_voice_channel create_voice_channel(const Guild&, std::string, std::vector<permission_overwrite> = {}, bool = false, int = 96);
-	rq::create_channel_catagory create_channel_catagory(const Guild&, std::string, std::vector<permission_overwrite> = {}, bool = false);
+	rq::create_text_channel create_text_channel(const Guild&, std::string_view,std::vector<permission_overwrite> = {},bool = false);
+	rq::edit_message edit_message(const partial_message&,std::string_view);
+	rq::create_voice_channel create_voice_channel(const Guild&, std::string_view, std::vector<permission_overwrite> = {}, bool = false, int = 96);
+	rq::create_channel_catagory create_channel_catagory(const Guild&, std::string_view, std::vector<permission_overwrite> = {}, bool = false);
 	rq::delete_emoji delete_emoji(const partial_guild&, const emoji&);
-	//Awaitables::modify_emoji modify_emoji(Guild&, emoji&, std::string, std::vector<snowflake>);
+	rq::modify_emoji modify_emoji(Guild&, emoji&, std::string_view, std::vector<snowflake>);
 	rq::delete_message delete_message(const partial_message&);
 	rq::delete_message_bulk delete_message_bulk(const partial_channel&, const std::vector<partial_message>&);
 	rq::delete_message_bulk delete_message_bulk(const partial_channel&,std::vector<snowflake>);
 	rq::leave_guild leave_guild(const Guild&);
 	rq::add_reaction add_reaction(const partial_message&, const partial_emoji&);
 	rq::typing_start typing_start(const partial_channel&);
-	rq::delete_channel_permission delete_channel_permissions(const guild_channel&, const permission_overwrite&);
-	//Awaitables::modfiy_guild 
+	rq::delete_channel_permission delete_channel_permissions(const guild_channel&, const permission_overwrite&);	
 	rq::modify_channel_positions modify_channel_positions(const Guild&, const std::vector<std::pair<snowflake,int>>&);
 	rq::list_guild_members list_guild_members(const partial_guild&,int n = 1,snowflake after = {});
 	rq::edit_channel_permissions edit_channel_permissions(const guild_channel&, const permission_overwrite&);
@@ -114,14 +115,18 @@ public:
 	rq::remove_pinned_msg remove_pinned_msg(const partial_channel&, const partial_message&);
 	rq::get_voice_regions get_voice_regions();
 	rq::create_channel_invite create_channel_invite(const guild_channel&, int max_age = 86400, int max_uses = 0, bool temporary = false, bool unique = false);
-
-
-
+	
+	rq::get_invite get_invite(std::string_view, int = 0);
+	rq::delete_invite delete_invite(std::string_view);
 
 	bool is_disconnected() const {
 		return m_is_disconnected;
 	}
 	void update_presence(Status,std::string);
+
+	const user& self_user()const noexcept {
+		return m_self_user;
+	}
 
 private:
 	void add_event(std::string t) {
@@ -149,7 +154,6 @@ private:
 	bool m_is_disconnected = false;
 	
 	void set_up_request(boost::beast::http::request<boost::beast::http::string_body>&)const;
-
 
 	void request_guild_members(Guild& g)const {
 		m_opcode8(g.id());
@@ -221,6 +225,8 @@ private:
 
 	template<int n>
 	static reaction& update_reactions(std::vector<reaction>&, partial_emoji&, snowflake, snowflake my_id);
+	static reaction& add_reaction(std::vector<reaction>&, partial_emoji&, snowflake, snowflake my_id);
+	static reaction& remove_reaction(std::vector<reaction>&, partial_emoji&, snowflake, snowflake my_id);
 
 
 	template<typename msg_t,typename channel_t,typename map_t>
@@ -239,10 +245,11 @@ private:
 	//discord object stuffs
 
 	rename_later_4<snowflake, Guild> m_guilds;
-	rename_later_4<snowflake, text_channel> m_text_channels;
-	rename_later_4<snowflake, voice_channel> m_voice_channels;
-	rename_later_4<snowflake, channel_catagory> m_channel_catagories;
+	rename_later_4<snowflake, text_channel> m_text_channel_map;
+	rename_later_4<snowflake, voice_channel> m_voice_channel_map;
+	rename_later_4<snowflake, channel_catagory> m_channel_catagory_map;
 	rename_later_4<snowflake, dm_channel> m_dm_channels;
+	user m_self_user;
 
 	std::string session_id;
 	size_t m_seqNum = 0;
@@ -257,7 +264,12 @@ private:
 	std::thread m_main_thread;
 	concurrent_queue<std::string, std::vector<std::string>> m_event_queue;
 
+
 	friend class client;
+
+	static void init_members(Guild&);
+
+
 };
 
 namespace rawrland{//rename later ;-;
@@ -346,15 +358,18 @@ msg_t shard::createMsg(channel_t& ch, const nlohmann::json& stuffs,map_t&& membe
 	retVal.m_channel = &ch;
 	retVal.m_author = members[retVal.author_id()];
 	retVal.m_mentions.reserve(stuffs["mentions"].size());
-	for (const auto& mention : stuffs["mentions"])
-		retVal.m_mentions.push_back(members[mention["id"].get<snowflake>()]);
+	for (const auto& mention : stuffs["mentions"]) {
+		auto t = members[mention["id"].get<snowflake>()];
+		if (t)
+			retVal.m_mentions.push_back(t);
+	}
 
 	if constexpr(std::is_same_v<msg_t,guild_text_message>){
 		retVal.m_mention_roles_ids = stuffs["mention_roles"].get<std::vector<snowflake>>();
 		const Guild& guild = *ch.m_guild;
 		retVal.m_mention_roles.reserve(retVal.m_mention_roles_ids.size());
 		for(const auto& role_id:retVal.m_mention_roles_ids) 
-			retVal.m_mention_roles.push_back(&guild.m_roles.at(role_id));				
+			retVal.m_mention_roles.push_back(&guild.m_roles.at(role_id));	
 	}
 	return retVal;
 }
@@ -368,11 +383,13 @@ msg_t shard::createMsgUpdate(channel_t& ch, const nlohmann::json& stuffs, map_t&
 	if(retVal.m_author_id.val) {
 		retVal.m_author = members[retVal.m_author_id];
 	}
-	auto it = stuffs.find("mentions");
-	if(it != stuffs.end())
-		for (const auto& mention : *it)//*it is list of users
-			retVal.m_mentions.push_back(members[mention["id"].get<snowflake>()]);
-
+	auto it_to_mentions = stuffs.find("mentions");
+	if(it_to_mentions != stuffs.end())
+		for (const auto& mention : *it_to_mentions)/* *it is list of users*/{
+			auto t = members[mention["id"].get<snowflake>()];
+			if(t)
+				retVal.m_mentions.push_back(t);
+		}
 	if constexpr(std::is_same_v<msg_t, guild_text_message>)
 		retVal.m_mention_roles_ids = stuffs.value("mention_roles", std::vector<snowflake>());
 
@@ -383,6 +400,15 @@ constexpr bool is_positive(int n) {
 	return n > 0;
 }
 
+inline reaction& shard::add_reaction(std::vector<reaction>& a, partial_emoji& b, snowflake c, snowflake d) {
+	return update_reactions<1>(a, b, c, d);
+}
+
+inline reaction& shard::remove_reaction(std::vector<reaction>& a, partial_emoji& b, snowflake c, snowflake d) {
+	return update_reactions<-1>(a, b, c, d);
+}
+
+//this function is super hacky ;-;
 template<int n>
 reaction& shard::update_reactions(std::vector<reaction>& reactions, partial_emoji& emoji, snowflake user_id, snowflake my_id) {
 	static_assert(n == -1 || n == 1);

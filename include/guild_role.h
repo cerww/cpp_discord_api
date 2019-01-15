@@ -5,8 +5,7 @@
 #include "permission.h"
 
 
-class guild_role{
-public:
+struct guild_role{
 	snowflake id() const noexcept;;
 	int position() const noexcept;
 	permission permissions() const noexcept;

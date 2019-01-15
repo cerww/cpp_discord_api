@@ -91,14 +91,15 @@ struct optional_ref{
 		return *m_self;
 	}
 
+	constexpr T& value_or(T&&) noexcept = delete;
+	constexpr T& value_or(T&&) const noexcept = delete;
+
 	constexpr T& value_or(T& other) noexcept{
 		if (has_value())
 			return *m_self;
 		return other;
 	}
 
-	constexpr T& value_or(T&&) noexcept = delete;
-	constexpr T& value_or(T&&) const noexcept = delete;
 	constexpr const T& value_or(const T& other)const noexcept {
 		if (has_value())
 			return *m_self;

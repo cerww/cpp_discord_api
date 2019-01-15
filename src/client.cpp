@@ -99,11 +99,11 @@ void client::rate_limit_global(const std::chrono::system_clock::time_point tp) {
 }
 
 void client::m_getGateway() {
-	boost::asio::io_context m_ioc;
-	boost::asio::ip::tcp::resolver resolver{ m_ioc };
+	boost::asio::io_context ioc;
+	boost::asio::ip::tcp::resolver resolver{ ioc };
 
 	boost::asio::ssl::context m_sslCtx{ boost::asio::ssl::context::tlsv12_client };
-	boost::asio::ssl::stream<boost::asio::ip::tcp::socket> m_ssl_stream{ m_ioc, m_sslCtx };
+	boost::asio::ssl::stream<boost::asio::ip::tcp::socket> m_ssl_stream{ ioc, m_sslCtx };
 	boost::beast::flat_buffer m_buffer;
 
 	const auto results = resolver.resolve("discordapp.com", "https");
@@ -115,9 +115,12 @@ void client::m_getGateway() {
 	req.set("Host", "discordapp.com"s);
 	req.set("Upgrade-Insecure-Requests", "1");
 	req.set(boost::beast::http::field::user_agent, "watland");
+		
 	req.keep_alive(true);
+
 	req.set(boost::beast::http::field::accept, "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
 	//req.set(boost::beast::http::field::accept_encoding, "gzip,deflate,br");
+
 	req.set(boost::beast::http::field::accept_language, "en-US,en;q=0.5");
 
 	req.prepare_payload();

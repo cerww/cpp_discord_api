@@ -1,5 +1,5 @@
 #pragma once
-#include <unordered_map>
+#include <utility>
 
 
 template<typename map_type>
@@ -26,28 +26,24 @@ struct map_view{
 		decltype(auto) operator*() const{
 			return *m_it;
 		}
-
-		decltype(auto) operator*() const{
-			return &*m_it;
-		}
-
-		templated_iterator& operator++(){
+				
+		templated_iterator& operator++(int){
 			++m_it;
 			return *this;
 		}
 
-		templated_iterator operator++(int) {
+		templated_iterator operator++() {
 			auto other = *this;
 			++m_it;
 			return other;
 		}
 
-		templated_iterator& operator--() {
+		templated_iterator& operator--(int) {
 			--m_it;
 			return *this;
 		}
 
-		templated_iterator operator--(int) {
+		templated_iterator operator--() {
 			auto other = *this;
 			--m_it;
 			return other;

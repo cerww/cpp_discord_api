@@ -1,29 +1,28 @@
 #pragma once
 #include <utility>
 #include <memory>
-#include <memory_resource>
 
 struct defer_construction{};
 
-template<typename T,typename _Alloc = std::allocator<T>>
+template<typename T,typename Allocator = std::allocator<T>>
 struct indirect {
 	indirect():m_data(new(m_allocator.allocate(1)) T()){};
 
-	indirect(T stuff, _Alloc al = _Alloc()) :
+	indirect(T stuff, Allocator al = Allocator()) :
 		m_allocator(std::move(al)),
 		m_data(new(m_allocator.allocate(1)) T(std::move(stuff))) {}
 
-	template<typename allo, std::enable_if_t<std::is_constructible_v<_Alloc,allo>,int> = 0>
+	template<typename allo, std::enable_if_t<std::is_constructible_v<Allocator,allo>,int> = 0>
 	explicit indirect(allo&& alloc,T thing = T()): // NOLINT
 		m_allocator(std::forward<allo>(alloc)),
 		m_data(new(m_allocator.allocate(1)) T(std::move(thing))){}
 
-	template<typename... Ts, std::enable_if_t<std::is_constructible_v<_Alloc, Ts...> && !std::is_constructible_v<T, Ts...>, int> = 0>
+	template<typename... Ts, std::enable_if_t<std::is_constructible_v<Allocator, Ts...> && !std::is_constructible_v<T, Ts...>, int> = 0>
 	explicit indirect(Ts&&... args):
 		m_allocator(std::forward<Ts>(args)...),
 		m_data(new(m_allocator.allocate(1)) T()){}
 
-	template<typename... Ts, std::enable_if_t<std::is_constructible_v<_Alloc, Ts...> && !std::is_constructible_v<T, Ts...>, int> = 0>
+	template<typename... Ts, std::enable_if_t<std::is_constructible_v<Allocator, Ts...> && !std::is_constructible_v<T, Ts...>, int> = 0>
 	explicit indirect(defer_construction,Ts&&... args) :
 		m_allocator(std::forward<Ts>(args)...){}
 
@@ -33,7 +32,7 @@ struct indirect {
 
 	template<typename ...Ts1, typename ...Ts2>
 	explicit indirect(std::tuple<Ts1...> alloc_args,std::tuple<Ts2...> T_args):
-		m_allocator(std::make_from_tuple<_Alloc>(std::move(alloc_args))),
+		m_allocator(std::make_from_tuple<Allocator>(std::move(alloc_args))),
 		m_data(new (m_allocator.allocate(1)) T(std::make_from_tuple<T>(std::move(T_args)))){}
 
 	template<typename U>
@@ -53,11 +52,11 @@ struct indirect {
 		m_allocator(std::move(other.m_allocator)),
 		m_data(std::exchange(other.m_data,nullptr)) {}
 	
-	template<typename U, typename A, std::enable_if_t<!std::is_same_v<A, _Alloc>, int> = 0>
+	template<typename U, typename A, std::enable_if_t<!std::is_same_v<A, Allocator>, int> = 0>
 	indirect(const indirect<U,A>& other) :
 		m_data(new(m_allocator.allocate(1)) T(*other.m_data)){}
 
-	template<typename U, typename A, std::enable_if_t<!std::is_same_v<A, _Alloc>, int> = 0>
+	template<typename U, typename A, std::enable_if_t<!std::is_same_v<A, Allocator>, int> = 0>
 	indirect(indirect<U, A>&& other):
 		m_data(new(m_allocator.allocate(1)) T(std::move(*other.m_data))) {}
 	
@@ -73,13 +72,13 @@ struct indirect {
 		return *this;
 	}
 	
-	template<typename U,typename A, std::enable_if_t<std::is_convertible_v<U, T> && !std::is_same_v<A, _Alloc>,int> = 0>
+	template<typename U,typename A, std::enable_if_t<std::is_convertible_v<U, T> && !std::is_same_v<A, Allocator>,int> = 0>
 	indirect& operator=(const indirect<U,A>& other) {
 		*m_data = *other.m_data;
 		return *this;
 	}
 
-	template<typename U, typename A, std::enable_if_t<std::is_convertible_v<U, T> && !std::is_same_v<A, _Alloc>, int> = 0>
+	template<typename U, typename A, std::enable_if_t<std::is_convertible_v<U, T> && !std::is_same_v<A, Allocator>, int> = 0>
 	indirect& operator=(indirect<U,A>&& other) {		
 		*m_data = std::move(*other.m_data);
 		return *this;
@@ -92,7 +91,7 @@ struct indirect {
 
 	~indirect(){
 		if(m_data){
-			m_data->~T();
+			std::allocator_traits<Allocator>::destroy(m_allocator, m_data);
 			m_allocator.deallocate(m_data,1);
 		}
 	}
@@ -111,41 +110,46 @@ struct indirect {
 		return *m_data;
 	}
 
-	T& operator*() { return *m_data; }
-	const T& operator*()const { return *m_data; }
-	T* operator->() { return m_data; }
-	const T* operator->()const { return m_data; }
+	T& operator*() noexcept{ return *m_data; }
+	const T& operator*()const noexcept{ return *m_data; }
+	T* operator->() noexcept{ return m_data; }
+	const T* operator->()const noexcept{ return m_data; }
 	
 	template<typename U>
-	bool operator==(U&& other) {
+	bool operator==(U&& other)const {
 		return other == *m_data;
 	}
 
 	template<typename U>
-	bool operator<(U&& other) {
+	bool operator!=(U&& other)const {
+		return other == *m_data;
+	}
+	//why do i use std::less
+	template<typename U>
+	bool operator<(U&& other)const {
 		return std::less<>()(*m_data,other);
 	}
 
 	template<typename U>
-	bool operator>=(U&& other) {
+	bool operator>=(U&& other)const {
 		return !std::less<>()(*m_data, other);
 	}
 
 	template<typename U>
-	bool operator>(U&& other){
+	bool operator>(U&& other)const {
 		return std::less<>()(other, *m_data);
 	}
 
 	template<typename U>
-	bool operator<=(U&& other) {
+	bool operator<=(U&& other)const {
 		return !std::less<>()(other, *m_data);
 	}
 	
-	_Alloc& get_allocator() {
+	Allocator& allocator() {
 		return m_allocator;
 	}
 
-	const _Alloc& get_allocator() const{
+	const Allocator& allocator() const{
 		return m_allocator;
 	}
 
@@ -155,12 +159,13 @@ struct indirect {
 	}
 
 private:
-	_Alloc m_allocator{};
+	Allocator m_allocator{};
 	T* m_data = nullptr;
 	template<typename,typename> friend struct indirect;
 };
 
 /*
+#include <memory_resource>
 #include "allocatey.h"
 #include <unordered_map>
 

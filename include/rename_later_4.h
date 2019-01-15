@@ -16,7 +16,7 @@ struct rename_later_4{
 		}
 
 		template<typename value_t2, typename iterator_t2, std::enable_if_t<std::is_convertible_v<iterator_t2,iterator_t>> = 0>
-		templated_iterator(templated_iterator<value_t2,iterator_t2> other):templated_iterator(other.m_it,other.m_first) {
+		explicit templated_iterator(templated_iterator<value_t2,iterator_t2> other):templated_iterator(other.m_it,other.m_first) {
 			
 		}
 
@@ -73,7 +73,8 @@ struct rename_later_4{
 		}
 		iterator_t m_it;
 		iterator_t m_end;
-		std::optional<value_t> m_stuff;
+		std::optional<value_t> m_stuff;//;-;
+
 		friend struct rename_later_4;
 		template<typename, typename> friend struct templated_iterator;
 	};
@@ -93,8 +94,8 @@ struct rename_later_4{
 			return *m_data.second;
 		}
 	private:
-		std::pair<K, indirect<V>> m_data;
 		friend struct rename_later_4;
+		std::pair<K, indirect<V>> m_data;
 	};
 
 	using iterator = templated_iterator<reference, typename map_t::iterator>;
@@ -133,6 +134,10 @@ struct rename_later_4{
 
 	const_iterator find(const K& key) const noexcept {
 		return const_iterator(m_data.find(key),m_data.end);
+	}
+
+	bool contains(const K& key)const noexcept {
+		return find(key) != end();
 	}
 
 	void erase(const K& key) {

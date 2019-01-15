@@ -114,13 +114,13 @@ private:
 		else return false;
 		return true;
 	}
-	std::pair<std::map<std::string, std::pair<int, int>, genericComp>::iterator,bool> is_in_map(const std::string_view thing){
+	std::pair<std::map<std::string, std::pair<int, int>, transparent_less>::iterator,bool> is_in_map(const std::string_view thing){
 		const auto it = m_options.find(thing);
 		return { it,it != m_options.end() };
 	}
 	
 	std::vector<std::pair<functionType, std::vector<std::vector<std::string_view>>>> m_fns;
-	std::map<std::string, std::pair<int, int>, genericComp> m_options;//first is index,second is number of things needed after
+	std::map<std::string, std::pair<int, int>, transparent_less> m_options;//first is index,second is number of things needed after
 	std::string m_line;
 	size_t m_required = 0;
 	std::pair<defaultFunctionType, std::vector<std::string_view>> m_defaultFn;
@@ -144,5 +144,5 @@ struct command_thingy{
 
 	}
 private:
-	std::map<std::string, commandLineParser,genericComp> m_commands;
+	std::map<std::string, commandLineParser, transparent_less> m_commands;
 };

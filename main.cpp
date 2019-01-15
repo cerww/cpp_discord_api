@@ -12,7 +12,8 @@
 #include "bytell_hash_map.hpp"
 #include <unordered_set>
 #include "rename_later_4.h"
-#include "preallocated_allocator.h"
+#include <boost/sort/sort.hpp>
+#include "dereferenced_view.h"
 
 using namespace std::string_literals;
 using namespace std::chrono_literals;
@@ -452,17 +453,13 @@ template<typename T>
 struct logging_allocator{
 	using value_type = T;
 
-	struct rebind{
-		template<typename U>
-		using other = logging_allocator<U>;
-	};
-
-	T* allocate(size_t n) {
-		std::cout << "allocating" << std::endl;
+	T* allocate(size_t n)const {
+		std::cerr << "allocating\n";
 		return malloc(n * sizeof(T));
 	}
 
-	void deallocate(T* t,size_t) {
+	void deallocate(T* t,size_t)const {
+		std::cerr << "deallocating\n";
 		free(t);
 	}
 };
@@ -474,13 +471,14 @@ struct fat_obj{
 };
 
 struct testy{
-	testy(int n) { data.reserve(n); }
+	explicit testy(int n) { data.reserve(n); }
 	void test_fat_obj_thing_1(std::vector<fat_obj> s) {
 		for(auto& t:s) {
 			data.push_back(std::move(t));
 		}
-		std::sort(data.begin(), data.end(), [](const auto& a, const auto& b) {return a.rawr < b.rawr; });
+		//std::sort(data.begin(), data.end(), [](const auto& a, const auto& b) {return a.rawr < b.rawr; });
 		//radix_sort(data.begin(), data.end(), [](const auto& t) {return t.rawr; });
+		//boost::sort::pdqsort_branchless(data.begin(), data.end(), [](const auto& a, const auto& b) {return a.rawr < b.rawr; });
 	}
 
 	void test_fat_obj_thing_2(std::vector<fat_obj> s) {
@@ -506,16 +504,16 @@ struct testy{
 };
 
 int main(){
+	std::cin.get();
+	return 0;
 	try{
 		client c;
 		std::vector<partial_message> msgs;
-		c.on_guild_text_msg = [&](guild_text_message& wat,shard& s){
-			/*
-			
+		c.on_guild_text_msg = [&](guild_text_message& wat,shard& s){			
 			if(wat.content() == "watland") {
 				//s.delete_message(msgs.back()).get();
 				//msgs.pop_back();
-			}else if(wat.content()== "make new channel") {
+			}else if(wat.content() == "make new channel") {
 				s.create_text_channel(wat.guild(),"blargylandy").get();
 			}else if(wat.content() == "rolesy") {
 				std::string stuff;
@@ -528,13 +526,14 @@ int main(){
 			}
 			//s.change_nick(wat.author(), wat.content());
 
-			for(auto& i:wat.mentions()){
+			for(const auto& i:wat.mentions()){
 				s.change_nick(wat.guild(), *i, wat.content());
 			}
-			if (wat.author().id() != c.getSelf().id())
+
+			if (wat.author().id() != s.self_user().id())
 				s.send_message(wat.channel(), std::to_string(wat.author().id().val));
 			//s.add_reaction(wat,wat.guild().emojis().back());
-			*/
+			
 		};
 		c.on_guild_typing_start = [&](guild_member& member,text_channel& channel,shard& s){
 			s.send_message(channel, "rawr");
