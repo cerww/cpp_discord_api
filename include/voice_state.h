@@ -5,7 +5,7 @@
 struct voice_state{
 	snowflake channel_id()const noexcept { return m_channel_id; }
 	snowflake user_id()const noexcept { return m_user_id; }
-	const std::string& session_id()const noexcept { return m_session_id; }
+	std::string_view session_id()const noexcept { return m_session_id; }
 	bool deaf()const noexcept { return m_deaf; }
 	bool mute()const noexcept { return m_mute; }
 	bool self_deaf()const noexcept { return m_self_deaf; }
@@ -47,8 +47,8 @@ inline void from_json(const nlohmann::json& json, voice_state2& vs) {
 }
 
 struct voice_region{
-	const std::string& id()const noexcept { return m_id; }
-	const std::string& name()const noexcept { return m_name; }
+	std::string_view id()const noexcept { return m_id; }
+	std::string_view name()const noexcept { return m_name; }
 	bool vip()const noexcept { return m_vip; }
 	bool optimal()const noexcept { return m_optimal; }
 	bool depricated()const noexcept { return m_depricated; }

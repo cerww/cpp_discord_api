@@ -33,8 +33,7 @@ struct permissions {
 	static constexpr size_t MANAGE_EMOJIS = 1073741824;
 };
 
-class permission {
-public:
+struct permission {
 	permission(size_t t):m_permission(t){}
 	permission() = default;
 	void addPermissions(size_t p) {

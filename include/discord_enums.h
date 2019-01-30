@@ -1,4 +1,7 @@
 #pragma once
+#include <string>
+#include <string_view>
+
 enum class Status {
 	dnd,
 	online,
@@ -45,7 +48,7 @@ enum class eventName {
 	WEBHOOKS_UPDATE
 };
 
-inline eventName to_event_name(const std::string& name) {
+inline eventName to_event_name(std::string_view name) {
 	if (name == "HELLO") return eventName::HELLO;
 	if (name == "READY")return eventName::READY;
 	if (name == "RESUMED")return eventName::RESUMED;
@@ -86,6 +89,7 @@ inline eventName to_event_name(const std::string& name) {
 	return {};
 
 }
+
 template<typename str_t>
 inline Status string_to_status(str_t&& string) {
 	if (string == "dnd") return Status::dnd;
@@ -98,11 +102,11 @@ inline Status string_to_status(str_t&& string) {
 
 inline std::string enum_to_string(const Status s) {
 	switch (s) {
-	case Status::dnd:return "dnd"; break;
-	case Status::online: return "online"; break;
-	case Status::idle: return "idle"; break;
-	case Status::invisible: return "invisible"; break;
-	case Status::offline: return "offline"; break;
-	default: return "";
+		case Status::dnd:return "dnd"; break;
+		case Status::online: return "online"; break;
+		case Status::idle: return "idle"; break;
+		case Status::invisible: return "invisible"; break;
+		case Status::offline: return "offline"; break;
+		default: return "";
 	}
 }

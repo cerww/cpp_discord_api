@@ -2,25 +2,26 @@
 #include "partial_channel.h"
 #include <experimental/generator>
 #include "range-like-stuffs.h"
+#include <range/v3/all.hpp>
 
-class channel_catagory;
+struct channel_catagory;
 
 struct Guild;
 
-class guild_channel:public partial_channel{
-public:
+struct guild_channel: partial_channel{
 	snowflake guild_id() const noexcept;
-	//Guild& guild() noexcept;
 	const Guild& guild() const noexcept;
-	const std::vector<permission_overwrite>& permission_overwrites() const noexcept;
+	auto permission_overwrites() const noexcept {
+		return m_permission_overwrites | ranges::view::all;
+	};
 	bool nsfw() const noexcept;
 	int position() const noexcept;
 	snowflake catagory_id() const noexcept;
-	//channel_catagory& parent() noexcept;
+	ranges::view::all_t<const std::vector<permission_overwrite>&> parent_overwrites()const noexcept;
 	const channel_catagory& parent() const noexcept;
 	bool has_parent() const noexcept;
-	const std::vector<permission_overwrite>& parent_overwrites()const noexcept;
-	std::experimental::generator<permission_overwrite> total_permissions()const {
+
+	std::experimental::generator<permission_overwrite> total_permissions()const {//fix this somehow
 		if (m_parent)
 			return concat(permission_overwrites(), parent_overwrites());
 		return concat(permission_overwrites());
@@ -34,9 +35,9 @@ private:
 	snowflake m_parent_id;
 	channel_catagory* m_parent = nullptr;
 
-	Guild * m_guild = nullptr;
+	Guild* m_guild = nullptr;
 
-	friend class shard;
+	friend struct shard;
 	friend void from_json(const nlohmann::json&, guild_channel& g);
 };
 

@@ -1,9 +1,8 @@
 #include "text_channel.h"
 
 
-const std::vector<guild_text_message>& text_channel::msg_cache() const noexcept { return m_msg_cache.data(); }
 
-const std::string& text_channel::topic() const noexcept { return m_topic; }
+std::string_view text_channel::topic() const noexcept { return m_topic; }
 
 snowflake text_channel::last_message_id() const noexcept { return m_last_message_id; }
 

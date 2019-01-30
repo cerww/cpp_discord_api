@@ -14,6 +14,7 @@
 #include "rename_later_4.h"
 #include <boost/sort/sort.hpp>
 #include "dereferenced_view.h"
+#include "concepts_test.h"
 
 using namespace std::string_literals;
 using namespace std::chrono_literals;
@@ -63,12 +64,6 @@ std::experimental::generator<int> permutations_bad(it s, it e) {
 		//and since it won't change the order of 2 items, it won't change the order of 3 items
 	}
 }
-struct s{
-	int qa;
-	guild_member b;
-	std::allocator<int> v;
-};
-
 
 template<typename T>
 struct async_generator{	
@@ -503,35 +498,85 @@ struct testy{
 	std::vector<fat_obj> data;
 };
 
+
+struct rawrlandia4 {
+	struct iterator{
+		using difference_type = ptrdiff_t;
+		static inline int a = 20;
+		bool operator==(iterator)const {
+			return false;
+		}
+
+		bool operator!=(iterator)const {
+			return true;
+		}
+		int& operator*() const{
+			return a;
+		}
+		iterator operator++(int) const{
+			return *this;
+		}
+		iterator& operator++() {
+			return *this;
+		}
+	};
+};
+
+
+#include "iterator_facade.h"
+struct test_iterator_facade{
+	struct cursor{
+		void next() {
+			
+		}
+		int read() const{
+			return 8;
+		}
+		bool operator==(cursor) const{
+			return true;
+		}
+	};
+
+	using iterator = iterator_facade<cursor>;
+	iterator begin() {
+		return {};
+	}
+
+	iterator end() {
+		return {};
+	}
+};
+using namespace std::literals;
 int main(){
-	std::cin.get();
-	return 0;
+
 	try{
 		client c;
 		std::vector<partial_message> msgs;
-		c.on_guild_text_msg = [&](guild_text_message& wat,shard& s){			
-			if(wat.content() == "watland") {
+		c.on_guild_text_msg = [&](guild_text_message& msg,shard& s){			
+			if(msg.content() == "watland") {
 				//s.delete_message(msgs.back()).get();
 				//msgs.pop_back();
-			}else if(wat.content() == "make new channel") {
-				s.create_text_channel(wat.guild(),"blargylandy").get();
-			}else if(wat.content() == "rolesy") {
-				std::string stuff;
-				for (const auto& r : wat.author().roles())
-					stuff += r.name() + " ";
-				s.send_message(wat.channel(),stuff);
+			}else if(msg.content() == "make new channel") {
+				s.create_text_channel(msg.guild(),"blargylandy").wait();
+			}else if(msg.content() == "rolesy") {
+				std::string stuff = 
+					msg.author().roles() |
+					ranges::view::transform(&guild_role::name) |
+					ranges::view::join(" "sv) | 
+					ranges::to_<std::string>();
+				s.send_message(msg.channel(),stuff);
 			}
-			if(wat.content() == "invite"){
-				s.create_channel_invite(wat.channel()).wait();
+			if(msg.content() == "invite"){
+				s.create_channel_invite(msg.channel()).wait();
 			}
 			//s.change_nick(wat.author(), wat.content());
 
-			for(const auto& i:wat.mentions()){
-				s.change_nick(wat.guild(), *i, wat.content());
+			for(const auto& i:msg.mentions()){
+				s.change_nick(msg.guild(), i, std::string(msg.content()));
 			}
 
-			if (wat.author().id() != s.self_user().id())
-				s.send_message(wat.channel(), std::to_string(wat.author().id().val));
+			if (msg.author().id() != s.self_user().id())
+				s.send_message(msg.channel(), std::to_string(msg.author().id().val));
 			//s.add_reaction(wat,wat.guild().emojis().back());
 			
 		};

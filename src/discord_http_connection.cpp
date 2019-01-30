@@ -1,6 +1,7 @@
 #include "client.h"
 #include "discord_http_connection.h"
 #include <charconv>
+#include <range/v3/core.hpp>
 
 size_t get_major_param_id(std::string_view s) {
 	s.remove_prefix(7);//sizeof("/api/v6") - 1;
@@ -9,7 +10,10 @@ size_t get_major_param_id(std::string_view s) {
 		return 0;
 	s.remove_prefix(start);
 	const auto end = std::find(s.begin(), s.end(), '/');
-	return std::stoull(std::string(s.begin(), end));
+	const auto length = std::distance(s.begin(), end);
+	size_t ret = 0;
+	std::from_chars(s.data(), s.data() + length,ret);
+	return ret;
 }
 
 discord_http_connection::discord_http_connection(client* t):m_client(t) {
@@ -48,14 +52,22 @@ void discord_http_connection::send_to_discord(discord_request r) {
 		r.state->cv.notify_all();
 }
 
+template<int i>
+struct get_n{
+	template<typename T>
+	constexpr decltype(auto) operator()(T&& t) const{
+		return std::get<i>(std::forward<T>(t));
+	}
+};
+
 //returns wether or not it's not local rate limited
 bool discord_http_connection::send_to_discord_(discord_request& r,size_t major_param_id_) {
 	std::lock_guard<std::mutex> locky(r.state->mut);
 	boost::beast::error_code ec; 
 	send_rq(r);
 	//this is "while" not "if" because of global rate limits
-	//it shuld keep trying to send a request if it's global rate limted
-	//cuz if i doin't do this, the request will go into the queue, then it's sleep, then it'll prolyl send the request(it might sned a different request),
+	//it shuld keep trying to send the same request if it's global rate limited
+	//cuz if i doin't do this, the request will go into the queue, then it'll sleep, then it'll prolyl send the request(it might sned a different request),
 	//i can skip adding the request into the queue by doing this
 	while (r.state->res.result_int() == 429) {
 		std::cout << "rate limited" << '\n';
@@ -64,15 +76,16 @@ bool discord_http_connection::send_to_discord_(discord_request& r,size_t major_p
 		if(json_body["global"].get<bool>()) {
 			m_client->rate_limit_global(tp);
 			std::this_thread::sleep_until(tp);
+			r.state->res.clear();
+			r.state->res.body().clear();
 			send_rq(r);
 		}else{
 			r.state->res.clear();
 			r.state->res.body().clear();
 			//add the request to the right queue in order
-			std::get<2>(*m_rate_limited_requests.insert(std::upper_bound(m_rate_limited_requests.begin(), m_rate_limited_requests.end(), tp, [](const std::chrono::system_clock::time_point& a, const auto& b) {
-				return a < std::get<1>(b);
-			}), { major_param_id_,tp,{} }))
-				.push_back(std::move(r));			
+			auto it = m_rate_limited_requests.insert(ranges::upper_bound(m_rate_limited_requests, tp, std::less<>{}, get_n<1>{}), 
+													 { major_param_id_,tp,{} });
+			std::get<2>(*it).push_back(std::move(r));
 			return false;
 		}
 	}//this shuoldb't be riunning often ;-;

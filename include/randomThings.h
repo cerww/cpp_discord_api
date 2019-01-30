@@ -20,6 +20,8 @@
 #include <mutex>
 #include <numeric>
 #include <execution>
+#include "crtp_stuff.h"
+
 
 //#include <ppl.h>
 //#include <ppltasks.h>
@@ -379,11 +381,6 @@ private:
 	};
 }; 
 
-template <typename T>
-struct crtp{
-	T& self() { return static_cast<T&>(*this); }
-	T const& self() const { return static_cast<T const&>(*this); }	
-};
 
 template<typename T,bool b>
 struct addRefIf {
@@ -520,8 +517,7 @@ private:
 	size_t i = 0;
 };
 
-class sync_timer {
-public:
+struct sync_timer {
 	sync_timer() = default;
 	
 	void start(){

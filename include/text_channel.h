@@ -7,11 +7,11 @@
 #include "guild_channel.h"
 #include "item_cache.h"
 
-class text_channel:public guild_channel{
-public:
-	const std::vector<guild_text_message>& msg_cache() const noexcept;
-	//std::vector<guild_text_message>& msg_cache() noexcept;
-	const std::string& topic() const noexcept;
+struct text_channel: guild_channel{
+	auto msg_cache() const noexcept {
+		return m_msg_cache.data() | ranges::view::all;
+	};
+	std::string_view topic() const noexcept;
 	snowflake last_message_id() const noexcept;
 private:
 	std::string m_topic;
@@ -24,7 +24,7 @@ private:
 	guild_text_message& m_add_msg(guild_text_message msg);
 
 	friend void from_json(const nlohmann::json& json, text_channel& channel);
-	friend class shard;
+	friend struct shard;
 };
 
 void from_json(const nlohmann::json& json, text_channel& channel);

@@ -12,7 +12,7 @@ struct discord_request {
 	ref_count_ptr<rq::shared_state> state;
 };
 
-class client;
+struct client;
 
 struct discord_http_connection{
 	void sleep_till(std::chrono::system_clock::time_point time_point) {
@@ -31,10 +31,12 @@ struct discord_http_connection{
 		m_done.store(true);
 		if (m_thread.joinable())
 			m_thread.join();
-	};
+	}
+
 	void send(discord_request&& d) {
 		m_request_queue.push(d);
 	}
+
 	void stop() {
 		m_done.store(true);
 	}
@@ -43,14 +45,14 @@ private:
 	std::atomic<bool> m_global_rate_limited = false;
 
 	std::atomic<bool> m_done = false;
-	std::thread m_thread;
+	std::thread m_thread{};
 
-	boost::asio::io_context m_ioc;
+	boost::asio::io_context m_ioc{};
 	boost::asio::ip::tcp::resolver m_resolver{ m_ioc };
 
 	boost::asio::ssl::context m_sslCtx{ boost::asio::ssl::context::tlsv12_client };
 	boost::asio::ssl::stream<boost::asio::ip::tcp::socket> m_socket{ m_ioc, m_sslCtx };	
-	boost::beast::flat_buffer m_buffer;
+	boost::beast::flat_buffer m_buffer{};
 	concurrent_queue<discord_request> m_request_queue = {};
 	client* m_client = nullptr;
 	void send_to_discord(discord_request);
@@ -62,6 +64,7 @@ private:
 
 	std::vector<std::tuple<size_t, std::chrono::system_clock::time_point, std::vector<discord_request>>> m_rate_limited_requests{};
 };
+
 
 /*
 #include <experimental/coroutine>

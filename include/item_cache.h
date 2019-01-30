@@ -5,8 +5,7 @@
 #include <memory>
 
 template<typename T,size_t size>
-class stack_item_cache{
-public:
+struct stack_item_cache{
 	void add(T item) {
 		m_cache[m_position++] = std::move(item);
 		m_position = m_position % size;
@@ -19,8 +18,7 @@ private:
 };
 
 template<typename T>
-class dynamic_item_cache{
-public:
+struct dynamic_item_cache{
 	dynamic_item_cache(const size_t cache_size, const bool reserve_before = false):m_cache_size(cache_size) {
 		if (reserve_before)
 			m_cache.reserve(m_cache_size);
@@ -51,8 +49,7 @@ private:
 };
 
 template<typename T, size_t size>
-class static_heap_allocated_item_cache {
-public:
+struct static_heap_allocated_item_cache {
 	void add(T item) {
 		m_cache[m_position++] = std::make_unique<T>(std::move(item));
 		m_position = m_position % size;

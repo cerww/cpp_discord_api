@@ -12,7 +12,7 @@ struct guild_role{
 	bool managed() const noexcept;
 	bool mentionable() const noexcept;
 	bool hoist() const noexcept;
-	const std::string& name() const noexcept;
+	std::string_view name() const noexcept;
 private:
 	snowflake m_id;
 	std::string m_name;

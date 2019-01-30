@@ -2,10 +2,13 @@
 #include "user.h"
 #include "timestamp.h"
 #include "guild_role.h"
+#include <range/v3/view/all.hpp>
 
 struct partial_guild_member:user{
-	const std::string& nick() const noexcept;
-	const std::vector<snowflake>& role_ids() const noexcept;
+	std::string_view nick() const noexcept;
+	auto role_ids() const noexcept {
+		return m_roles | ranges::view::all;
+	}
 	timestamp joined_at() const noexcept;
 	bool deaf() const noexcept;
 	bool mute() const noexcept;
@@ -21,7 +24,7 @@ private:
 	bool m_mute = false;
 
 	friend void from_json(const nlohmann::json&, partial_guild_member&);
-	friend class shard;
+	friend struct shard;
 };
 
 

@@ -35,7 +35,7 @@ inline void from_json(const nlohmann::json& json, partial_channel& g) {
 }
 
 struct invite{
-	const std::string& code()const noexcept { return m_code; }
+	std::string_view code()const noexcept { return m_code; }
 	const invite_internal::partial_guild& guild()const noexcept { return  m_guild; }
 	const invite_internal::partial_channel& channel()const noexcept { return  m_channel; }
 private:
@@ -51,7 +51,7 @@ struct invite_metadata{
 	int uses() const noexcept { return m_uses; }
 	int max_uses()const noexcept { return m_max_uses; }
 private:
-	std::optional<user> m_user;
+	std::optional<user> m_user = std::nullopt;
 	int m_uses = 0;
 	int m_max_uses = 0;
 	friend void from_json(const nlohmann::json& j, invite_metadata& stuff);

@@ -5,24 +5,28 @@
 #include "emoji.h"
 #include "things2.h"
 #include "voice_channel.h"
+#include <range/v3/all.hpp>
 
 struct partial_guild{
 	snowflake id() const noexcept;
 	discord_obj_map<guild_role> roles() const noexcept;
-	//rename_later_4<snowflake, guild_role>& roles() noexcept;
-	const std::string& name() const noexcept;
-	const std::string& icon() const noexcept;
+	std::string_view name() const noexcept;
+	std::string_view icon() const noexcept;
 	snowflake owner_id() const noexcept;
-	const std::vector<emoji>& emojis() const noexcept;
+	auto emojis() const noexcept {
+		return m_emojis | ranges::view::all;
+	}
 	snowflake general_channel_id()const noexcept;
-	const std::string& region() const noexcept;
+	std::string_view region() const noexcept;
 	int afk_timeout() const noexcept;
 	snowflake afk_channel_id() const noexcept;
 	bool embed_enabled() const noexcept;
 	snowflake embed_channel_id() const noexcept;
 	int verification_level() const noexcept;
 	bool explicit_content_filter() const noexcept;
-	const std::vector<std::string>& features() const noexcept;
+	auto features() const noexcept {
+		return m_features | ranges::view::all;
+	}
 private:
 	snowflake m_id;
 	std::string m_name;
@@ -42,14 +46,12 @@ private:
 	std::vector<emoji> m_emojis{};
 	std::vector<std::string> m_features{};
 	int m_mfa_level = 0;
-	//application_id
-	//widget_enabled
-	//widget_channel_id
+	std::optional<snowflake> m_application_id = std::nullopt;
+	bool m_widget_enabled = false;
+	std::optional<snowflake> m_widget_channel_id = std::nullopt;
 	snowflake m_system_channel_id;
 	friend void from_json(const nlohmann::json& json, partial_guild& guild);
-	friend class shard;
-
-	//
+	friend struct shard;
 };
 
 

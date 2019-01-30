@@ -61,7 +61,8 @@ client::client() {
 
 void client::run() {
 	m_getGateway();
-	m_ws_hub.connect(m_gateway);
+	for(int i = 0;i<m_num_shards;++i)
+		m_ws_hub.connect(m_gateway);
 
 	m_ws_hub.run();
 }
@@ -88,10 +89,14 @@ void client::set_up_request(boost::beast::http::request<boost::beast::http::stri
 }
 
 void client::rate_limit_global(const std::chrono::system_clock::time_point tp) {
-	static std::mutex m;//am lazy
-	std::lock_guard<std::mutex> locky(m);
-	if (m_last_global_rate_limit - std::chrono::system_clock::now() < std::chrono::seconds(1)){//so i don't rate_limit myself twice
-		m_last_global_rate_limit = std::chrono::system_clock::now();
+	std::unique_lock<std::mutex> locky(m_global_rate_limit_mut,std::try_to_lock);
+	//only 1 shard needs to rate limit every shard
+	if(!locky) {
+		return;
+	}
+	const auto now = std::chrono::system_clock::now();
+	if (m_last_global_rate_limit - now < std::chrono::seconds(5)){//so i don't rate_limit myself twice
+		m_last_global_rate_limit = now;
 		for(auto& i:m_shards) {
 			i.second->rate_limit(tp);
 		}
@@ -133,6 +138,7 @@ void client::m_getGateway() {
 
 	m_gateway = yay["url"].get<std::string>() +"/?v=6&encoding=json"s;
 	m_num_shards = yay["shards"].get<int>();
+	//m_num_shards = 2;
 	std::cout << m_gateway << std::endl;
 }
 

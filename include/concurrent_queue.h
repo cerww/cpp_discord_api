@@ -2,7 +2,6 @@
 #include <boost/container/deque.hpp>
 #include <condition_variable>
 
-
 template<typename U, typename = void>
 struct has_pop_front :std::false_type {};
 
@@ -10,8 +9,7 @@ template<typename U>
 struct has_pop_front<U, std::void_t<decltype(std::declval<U>().pop_front())>> :std::true_type {};
 
 template<typename T, typename container = boost::container::deque<T>>
-class concurrent_queue{
-public:
+struct concurrent_queue{
 	void push(T t) {
 		{	
 			std::lock_guard<std::mutex> locky(m_mut);
@@ -43,7 +41,8 @@ public:
 
 	std::optional<T> try_pop() {
 		std::unique_lock<std::mutex> locky(m_mut);
-		if (m_data.empty()) return std::nullopt;
+		if (m_data.empty()) 
+			return std::nullopt;
 		return std::optional<T>(do_pop());
 	}
 

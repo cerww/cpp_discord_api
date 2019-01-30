@@ -2,8 +2,7 @@
 #include <nlohmann/json.hpp>
 #include "snowflake.h"
 
-class partial_emoji{
-public:
+struct partial_emoji{
 	snowflake id() const noexcept;
 	const std::string& name() const noexcept;
 private:
@@ -12,10 +11,11 @@ private:
 	friend void from_json(const nlohmann::json&, partial_emoji&);
 };
 
-class emoji:public partial_emoji{
-public:
+struct emoji:partial_emoji{
 	snowflake user_id()const noexcept { return m_user_id; }	
-	const std::vector<snowflake>& roles()const noexcept { return m_roles; }
+	auto roles()const noexcept {
+		return m_roles | ranges::view::all;
+	}
 private:
 	std::vector<snowflake> m_roles;
 	snowflake m_user_id;

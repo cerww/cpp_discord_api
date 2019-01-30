@@ -32,8 +32,7 @@ private:
 };
 
 template<typename T>
-class ref_count_ptr {
-public:
+struct ref_count_ptr {
 	ref_count_ptr() = default;
 
 	ref_count_ptr(T* t)noexcept :m_self(t) {
@@ -81,7 +80,7 @@ public:
 		return *this;
 	}
 
-	operator ref_count_ptr<const T>() {
+	operator ref_count_ptr<const T>()const {
 		return ref_count_ptr<const T>(m_self);
 	}
 

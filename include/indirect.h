@@ -17,12 +17,22 @@ struct indirect {
 		m_allocator(std::forward<allo>(alloc)),
 		m_data(new(m_allocator.allocate(1)) T(std::move(thing))){}
 
-	template<typename... Ts, std::enable_if_t<std::is_constructible_v<Allocator, Ts...> && !std::is_constructible_v<T, Ts...>, int> = 0>
+	template<
+		typename... Ts, 
+		std::enable_if_t<
+			std::is_constructible_v<Allocator, Ts...> && 
+			!std::is_constructible_v<T, Ts...>,
+		int> = 0 >
 	explicit indirect(Ts&&... args):
 		m_allocator(std::forward<Ts>(args)...),
 		m_data(new(m_allocator.allocate(1)) T()){}
 
-	template<typename... Ts, std::enable_if_t<std::is_constructible_v<Allocator, Ts...> && !std::is_constructible_v<T, Ts...>, int> = 0>
+	template<
+		typename... Ts, 
+		std::enable_if_t<
+			std::is_constructible_v<Allocator, Ts...> && 
+			!std::is_constructible_v<T, Ts...>,
+		int> = 0>
 	explicit indirect(defer_construction,Ts&&... args) :
 		m_allocator(std::forward<Ts>(args)...){}
 
@@ -127,7 +137,7 @@ struct indirect {
 	//why do i use std::less
 	template<typename U>
 	bool operator<(U&& other)const {
-		return std::less<>()(*m_data,other);
+		return std::less<>()(*m_data,other);//why do i use std::less
 	}
 
 	template<typename U>

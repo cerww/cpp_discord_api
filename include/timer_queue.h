@@ -10,7 +10,7 @@
 template<typename comp>
 struct compare_second {
 	template<typename T1, typename T2, typename U1, typename U2>
-	bool operator()(const std::pair<T1, T2>& a, const std::pair<U1, U2>& b) const noexcept(noexcept(comp{}(a.second, b.second))) {
+	constexpr bool operator()(const std::pair<T1, T2>& a, const std::pair<U1, U2>& b) const noexcept(noexcept(comp{}(a.second, b.second))) {
 		return comp{}(a.second, b.second);
 	}
 };

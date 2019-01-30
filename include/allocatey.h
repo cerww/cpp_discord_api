@@ -4,7 +4,7 @@
 #include "randomThings.h"
 
 struct mem_pool_ :ref_counted {
-	mem_pool_(size_t size) {
+	explicit mem_pool_(size_t size) {
 		start = static_cast<char*>(malloc(size));
 		end = start;
 		cap = start + size;
@@ -45,9 +45,9 @@ struct single_chunk_allocator {
 
 	template<typename o> struct rebind { using other = single_chunk_allocator<o>; };
 
-	single_chunk_allocator(size_t s = 2048):m_mem_pool(make_ref_count_ptr<mem_pool_>(s)){}
+	explicit single_chunk_allocator(size_t s = 2048):m_mem_pool(make_ref_count_ptr<mem_pool_>(s)){}
 
-	single_chunk_allocator(ref_count_ptr<mem_pool_> t):m_mem_pool(std::move(t)) {}
+	explicit single_chunk_allocator(ref_count_ptr<mem_pool_> t):m_mem_pool(std::move(t)) {}
 
 	template<typename U>
 	single_chunk_allocator(const single_chunk_allocator<U>& other) :m_mem_pool(other.m_mem_pool){
@@ -88,7 +88,7 @@ private:
 };
 
 struct single_chunk_mem_pool{
-	single_chunk_mem_pool(size_t s = 2048):m_stuff(make_ref_count_ptr<mem_pool_>(s)){}
+	explicit single_chunk_mem_pool(size_t s = 2048):m_stuff(make_ref_count_ptr<mem_pool_>(s)){}
 	template<typename T>
 	operator single_chunk_allocator<T>(){
 		return single_chunk_allocator<T>(m_stuff);

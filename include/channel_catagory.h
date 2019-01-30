@@ -2,14 +2,13 @@
 #include "partial_channel.h"
 #include "guild_channel.h"
 
-class channel_catagory:public guild_channel{
-public:
+struct channel_catagory:guild_channel{
 	//wat
 private:
 	
 	friend void from_json(const nlohmann::json& json, channel_catagory& c);
-	friend class shard;
-	friend class client;
+	friend struct shard;
+	friend struct client;
 	
 };
 

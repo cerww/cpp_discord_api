@@ -1,8 +1,8 @@
 #pragma once
 #include <nlohmann/json.hpp>
 #include "emoji.h"
-class reaction{
-public:
+
+struct reaction{
 	int count() const noexcept;;
 	bool me() const noexcept;
 	const partial_emoji& emoji() const noexcept;
@@ -12,7 +12,7 @@ private:
 	partial_emoji m_emoji;
 
 	friend void from_json(const nlohmann::json&, reaction&);
-	friend class shard;
+	friend struct shard;
 };
 
 void from_json(const nlohmann::json& json, reaction& r);

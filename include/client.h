@@ -4,22 +4,21 @@
 #include "shard.h"
 #include <chrono>
 #include <thread>
-#include "constant_stuffs.h"
+#include "discord_enums.h"
 #include "guild.h"
 #include "text_channel.h"
 #include "dm_channel.h"
 #include "timed_task_executor.h"
 #include "optional_ref.h"
 
-using namespace std::string_literals;
-using namespace std::chrono_literals;
+using namespace std::literals;
 
 enum class tokenType {
 	BOT,
 	BEARER
 };
 
-static const auto nothing = [](auto&&...) {};//so i don't get std::bad_function
+static constexpr auto nothing = [](auto&&...) {};//so i don't get std::bad_function
 
 struct empty_function_t{
 	template<typename ret,typename...args>
@@ -32,11 +31,10 @@ struct empty_function_t{
 	}
 };
 
-static inline empty_function_t empty_function;
+static inline constexpr empty_function_t empty_function;
 
-class client {//<(^.^)>
-public:
-	client();
+struct client {//<(^.^)>
+	explicit client();
 	client(client&&) = delete;
 	client(const client&) = delete;
 	client& operator=(client&&) = delete;
@@ -110,6 +108,7 @@ private:
 	std::string m_token = "";
 	uWS::Hub m_ws_hub;
 	//
+	std::mutex m_global_rate_limit_mut;
 	std::unordered_map<wsClient*, std::unique_ptr<shard>> m_shards = {};
 };
 

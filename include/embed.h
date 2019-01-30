@@ -1,7 +1,7 @@
 #pragma once
 #include <nlohmann/json.hpp>
 
-class embed{
+struct embed{
 	
 };
 

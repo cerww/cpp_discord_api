@@ -2,10 +2,7 @@
 #include "partial_channel.h"
 #include "guild_channel.h"
 
-class voice_channel :
-	public guild_channel
-{
-public:
+struct voice_channel :guild_channel {
 	int user_limit() const noexcept;
 	int bitrate() const noexcept;
 
@@ -14,7 +11,7 @@ private:
 	int m_bitrate = 0;
 
 	friend void from_json(const nlohmann::json& json, voice_channel& out);
-	friend class shard;
+	friend struct shard;
 };
 
 void from_json(const nlohmann::json& json, voice_channel& out);

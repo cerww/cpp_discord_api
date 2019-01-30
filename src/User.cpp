@@ -3,7 +3,7 @@
 snowflake user::id() const noexcept { return m_id; }
 bool user::is_bot() const noexcept { return m_bot; }
 
-const std::string& user::username() const noexcept {
+std::string_view user::username() const noexcept {
 	return m_username;
 }
 

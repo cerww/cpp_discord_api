@@ -1,9 +1,9 @@
 #pragma once
 #include "snowflake.h"
-#include "constant_stuffs.h"
+#include "discord_enums.h"
 #include <optional>
 
-enum class activity_type{
+enum struct activity_type{
 	game,
 	streaming,
 	listening

@@ -14,9 +14,9 @@ void from_json(const nlohmann::json& in, guild_member& out) {
 	from_json(in, static_cast<partial_guild_member&>(out));
 }
 
-discord_obj_list<guild_role> guild_member::roles() const {
-	return discord_obj_list<guild_role>(guild().roles(), role_ids());
-}
+discord_obj_map<guild_role> guild_member::parent_roles()const noexcept {
+	return m_guild->roles();
+};
 
 void guild_member::set_presence(const partial_presence_update& presence_update) {
 	m_status = presence_update.status();

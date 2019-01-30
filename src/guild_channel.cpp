@@ -4,21 +4,13 @@
 
 snowflake guild_channel::guild_id() const noexcept { return m_guild_id; }
 
-//Guild& guild_channel::guild() noexcept { return *m_guild; }
-
 const Guild& guild_channel::guild() const noexcept { return *m_guild; }
-
-const std::vector<permission_overwrite>& guild_channel::permission_overwrites() const noexcept {
-	return m_permission_overwrites;
-}
 
 bool guild_channel::nsfw() const noexcept { return m_nsfw; }
 
 int guild_channel::position() const noexcept { return m_position; }
 
 snowflake guild_channel::catagory_id() const noexcept { return m_parent_id; }
-
-//channel_catagory& guild_channel::parent() noexcept { return *m_parent; }
 
 const channel_catagory& guild_channel::parent() const noexcept { return *m_parent; }
 
@@ -33,7 +25,7 @@ void from_json(const nlohmann::json& json, guild_channel& g) {
 	g.m_parent_id = json.value("parent_id", snowflake());
 }
 
-const std::vector<permission_overwrite>& guild_channel::parent_overwrites() const noexcept {
+ranges::view::all_t<const std::vector<permission_overwrite>&> guild_channel::parent_overwrites() const noexcept {
 	return m_parent->permission_overwrites();
 }
 

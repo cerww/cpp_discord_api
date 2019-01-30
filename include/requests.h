@@ -49,8 +49,8 @@ namespace rq {
 
 
 	struct shared_state:ref_counted{
-		std::condition_variable cv;
-		std::mutex mut;
+		std::condition_variable cv{};
+		std::mutex mut{};
 		bool done = false;
 		boost::beast::http::response<boost::beast::http::string_body> res = {};
 	};
@@ -128,14 +128,14 @@ namespace rq {
 		}
 
 		decltype(auto) await_resume() {	
-			if constexpr(!std::is_same_v<void, typename reqeust::return_type>)
+			if constexpr(!std::is_void_v<typename reqeust::return_type>)
 				return value();			
 		}
 
 		decltype(auto) value() const{
 			if constexpr(has_overload_value<reqeust>::value)
 				return this->self().overload_value();
-			else if constexpr(!std::is_same_v<void, typename reqeust::return_type>) 
+			else if constexpr(!std::is_void_v<typename reqeust::return_type>) 
 				return nlohmann::json::parse(state->res.body()).get<typename reqeust::return_type>();			
 		}
 
@@ -228,7 +228,8 @@ namespace rq {
 	struct create_role:
 		request_base<create_role>,
 		post_verb,
-		json_content_type{
+		json_content_type
+	{
 		using return_type = guild_role;
 
 		static std::string target(const partial_guild& g) {

@@ -5,7 +5,6 @@
 #include <boost/asio.hpp>
 #include <boost/beast.hpp>
 #include <nlohmann/json.hpp>
-#include "constant_stuffs.h"
 #include "snowflake.h"
 #include "guild.h"
 #include "dm_channel.h"
@@ -16,13 +15,13 @@
 #include "discord_http_connection.h"
 #include <type_traits>
 #include "range-like-stuffs.h"
+#include "discord_enums.h"
 
 using namespace std::string_literals;
 using namespace std::chrono_literals;
-class client;
+struct client;
 
-class shard {
-public:
+struct shard {
 	static constexpr int large_threshold = 250;
 
 	using wsClient = uWS::WebSocket<uWS::CLIENT>;
@@ -30,7 +29,8 @@ public:
 		m_shard_number(shardN),
 		m_parent(t_parent), 
 		m_client(t_client),
-		m_http_connection(t_parent)	{
+		m_http_connection(t_parent)	
+	{
 		m_main_thread = std::thread([&]() {	
 			while (!m_done) {
 				doStuff(nlohmann::json::parse(m_event_queue.pop()));
@@ -61,21 +61,21 @@ public:
 	rename_later_4<snowflake, channel_catagory>& channel_catagories()noexcept { return m_channel_catagory_map; }
 	const rename_later_4<snowflake, channel_catagory>& channel_catagories()const noexcept { return m_channel_catagory_map; }
 	
-	rq::send_message send_message(const text_channel& channel, std::string_view content);
-	rq::send_message send_message(const dm_channel& channel, std::string_view content);
+	rq::send_message send_message(const text_channel& channel, std::string content);
+	rq::send_message send_message(const dm_channel& channel, std::string content);
 
 	rq::add_role add_role(const partial_guild&, const guild_member&, const guild_role&);
 	rq::remove_role remove_role(const partial_guild&, const  guild_member&, const guild_role&);
 	rq::modify_member remove_all_roles(const partial_guild&, const guild_member&);
 
-	rq::create_role create_role(const partial_guild&, std::string_view, permission, int color = 0xffffff/*white*/, bool hoist = true, bool mentionable = true);
+	rq::create_role create_role(const partial_guild&, std::string, permission, int color = 0xffffff/*white*/, bool hoist = true, bool mentionable = true);
 	rq::delete_role delete_role(const partial_guild&, const guild_role&);
 
-	rq::modify_member change_nick(const guild_member&, std::string_view);
-	rq::modify_member change_nick(const partial_guild&, const user&, std::string_view);
-	rq::change_my_nick change_my_nick(const partial_guild&, std::string_view);
+	rq::modify_member change_nick(const guild_member&, std::string);
+	rq::modify_member change_nick(const partial_guild&, const user&, std::string);
+	rq::change_my_nick change_my_nick(const partial_guild&, std::string);
 	rq::kick_member kick_member(const partial_guild&, const  guild_member&);
-	rq::ban_member ban_member(const partial_guild& g, const guild_member& member, std::string_view reason = "", int days_to_delete_msg = 0);
+	rq::ban_member ban_member(const partial_guild& g, const guild_member& member, std::string reason = "", int days_to_delete_msg = 0);
 	rq::unban_member unban_member(const Guild&, snowflake id);
 	rq::get_messages get_messages(const partial_channel&,int = 100);
 	rq::get_messages get_messages_before(const partial_channel&,snowflake, int = 100);
@@ -84,12 +84,12 @@ public:
 	rq::get_messages get_messages_before(const partial_channel&, const partial_message&, int = 100);
 	rq::get_messages get_messages_after(const partial_channel&, const partial_message&, int = 100);
 	rq::get_messages get_messages_around(const partial_channel&, const partial_message&, int = 100);
-	rq::create_text_channel create_text_channel(const Guild&, std::string_view,std::vector<permission_overwrite> = {},bool = false);
-	rq::edit_message edit_message(const partial_message&,std::string_view);
-	rq::create_voice_channel create_voice_channel(const Guild&, std::string_view, std::vector<permission_overwrite> = {}, bool = false, int = 96);
-	rq::create_channel_catagory create_channel_catagory(const Guild&, std::string_view, std::vector<permission_overwrite> = {}, bool = false);
+	rq::create_text_channel create_text_channel(const Guild&, std::string,std::vector<permission_overwrite> = {},bool = false);
+	rq::edit_message edit_message(const partial_message&,std::string);
+	rq::create_voice_channel create_voice_channel(const Guild&, std::string, std::vector<permission_overwrite> = {}, bool = false, int = 96);
+	rq::create_channel_catagory create_channel_catagory(const Guild&, std::string, std::vector<permission_overwrite> = {}, bool = false);
 	rq::delete_emoji delete_emoji(const partial_guild&, const emoji&);
-	rq::modify_emoji modify_emoji(Guild&, emoji&, std::string_view, std::vector<snowflake>);
+	rq::modify_emoji modify_emoji(Guild&, emoji&, std::string, std::vector<snowflake>);
 	rq::delete_message delete_message(const partial_message&);
 	rq::delete_message_bulk delete_message_bulk(const partial_channel&, const std::vector<partial_message>&);
 	rq::delete_message_bulk delete_message_bulk(const partial_channel&,std::vector<snowflake>);
@@ -116,8 +116,8 @@ public:
 	rq::get_voice_regions get_voice_regions();
 	rq::create_channel_invite create_channel_invite(const guild_channel&, int max_age = 86400, int max_uses = 0, bool temporary = false, bool unique = false);
 	
-	rq::get_invite get_invite(std::string_view, int = 0);
-	rq::delete_invite delete_invite(std::string_view);
+	rq::get_invite get_invite(std::string, int = 0);
+	rq::delete_invite delete_invite(std::string);
 
 	bool is_disconnected() const {
 		return m_is_disconnected;
@@ -230,7 +230,7 @@ private:
 
 
 	template<typename msg_t,typename channel_t,typename map_t>
-	msg_t createMsg(channel_t&, const nlohmann::json&,map_t&&);
+	msg_t create_msg(channel_t&, const nlohmann::json&,map_t&&);
 
 	template<typename msg_t, typename channel_t, typename map_t>
 	msg_t createMsgUpdate(channel_t&, const nlohmann::json&, map_t&&);
@@ -265,7 +265,7 @@ private:
 	concurrent_queue<std::string, std::vector<std::string>> m_event_queue;
 
 
-	friend class client;
+	friend struct client;
 
 	static void init_members(Guild&);
 
@@ -352,16 +352,17 @@ template <eventName e>
 void shard::m_procces_event(const nlohmann::json&) {}
 
 template <typename msg_t, typename channel_t,typename map_t>
-msg_t shard::createMsg(channel_t& ch, const nlohmann::json& stuffs,map_t&& members) {
+msg_t shard::create_msg(channel_t& ch, const nlohmann::json& stuffs,map_t&& members) {
 	msg_t retVal;
 	from_json(stuffs, static_cast<partial_message&>(retVal));
 	retVal.m_channel = &ch;
-	retVal.m_author = members[retVal.author_id()];
+	retVal.m_author = &members[retVal.author_id()];
 	retVal.m_mentions.reserve(stuffs["mentions"].size());
-	for (const auto& mention : stuffs["mentions"]) {
-		auto t = members[mention["id"].get<snowflake>()];
-		if (t)
-			retVal.m_mentions.push_back(t);
+	for (const auto& mention : stuffs["mentions"]) {		
+		const auto it = members.find(mention["id"].get<snowflake>());
+		if(it == members.end())
+			continue;
+		retVal.m_mentions.push_back(&((*it).second));
 	}
 
 	if constexpr(std::is_same_v<msg_t,guild_text_message>){
@@ -381,14 +382,13 @@ msg_t shard::createMsgUpdate(channel_t& ch, const nlohmann::json& stuffs, map_t&
 	retVal.m_channel = &ch;
 	//retVal.m_author = members[stuffs["author"]["id"]];
 	if(retVal.m_author_id.val) {
-		retVal.m_author = members[retVal.m_author_id];
+		retVal.m_author = &members[retVal.m_author_id];
 	}
 	auto it_to_mentions = stuffs.find("mentions");
 	if(it_to_mentions != stuffs.end())
 		for (const auto& mention : *it_to_mentions)/* *it is list of users*/{
-			auto t = members[mention["id"].get<snowflake>()];
-			if(t)
-				retVal.m_mentions.push_back(t);
+			auto& t = members[mention["id"].get<snowflake>()];			
+			retVal.m_mentions.push_back(&t);
 		}
 	if constexpr(std::is_same_v<msg_t, guild_text_message>)
 		retVal.m_mention_roles_ids = stuffs.value("mention_roles", std::vector<snowflake>());
