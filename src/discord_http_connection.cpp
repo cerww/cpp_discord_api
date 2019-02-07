@@ -82,7 +82,7 @@ bool discord_http_connection::send_to_discord_(discord_request& r,size_t major_p
 		}else{
 			r.state->res.clear();
 			r.state->res.body().clear();
-			//add the request to the right queue in order
+			//add the request to the right queue in sorted order, by time
 			auto it = m_rate_limited_requests.insert(ranges::upper_bound(m_rate_limited_requests, tp, std::less<>{}, get_n<1>{}), 
 													 { major_param_id_,tp,{} });
 			std::get<2>(*it).push_back(std::move(r));

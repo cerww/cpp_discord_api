@@ -119,7 +119,7 @@ struct shard {
 	rq::get_invite get_invite(std::string, int = 0);
 	rq::delete_invite delete_invite(std::string);
 
-	bool is_disconnected() const {
+	bool is_disconnected() const noexcept{
 		return m_is_disconnected;
 	}
 	void update_presence(Status,std::string);
@@ -127,7 +127,13 @@ struct shard {
 	const user& self_user()const noexcept {
 		return m_self_user;
 	}
+	/*
+	//place holder syntax
+	task<void> start(){
+		
+	}
 
+	*/
 private:
 	void add_event(std::string t) {
 		m_event_queue.push(std::move(t));

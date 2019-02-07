@@ -61,7 +61,7 @@ client::client() {
 
 void client::run() {
 	m_getGateway();
-	for(int i = 0;i<m_num_shards;++i)
+	for (int i = 0; i < m_num_shards; ++i)
 		m_ws_hub.connect(m_gateway);
 
 	m_ws_hub.run();
@@ -136,7 +136,7 @@ void client::m_getGateway() {
 
 	nlohmann::json yay = nlohmann::json::parse(response.body());
 
-	m_gateway = yay["url"].get<std::string>() +"/?v=6&encoding=json"s;
+	m_gateway = yay["url"].get<std::string>() +"/?v=6&encoding=json";
 	m_num_shards = yay["shards"].get<int>();
 	//m_num_shards = 2;
 	std::cout << m_gateway << std::endl;
