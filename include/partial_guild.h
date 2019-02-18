@@ -6,6 +6,7 @@
 #include "things2.h"
 #include "voice_channel.h"
 #include <range/v3/all.hpp>
+#include <optional>
 
 struct partial_guild{
 	snowflake id() const noexcept;

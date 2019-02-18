@@ -11,6 +11,7 @@
 #include "timed_task_executor.h"
 #include "optional_ref.h"
 
+
 using namespace std::literals;
 
 enum class tokenType {
@@ -20,6 +21,7 @@ enum class tokenType {
 
 static constexpr auto nothing = [](auto&&...) {};//so i don't get std::bad_function
 
+/*
 struct empty_function_t{
 	template<typename ret,typename...args>
 	operator std::function<ret(args...)>()const noexcept{
@@ -32,9 +34,9 @@ struct empty_function_t{
 };
 
 static inline constexpr empty_function_t empty_function;
-
+*/
 struct client {//<(^.^)>
-	explicit client();
+	explicit client(int = 1);
 	client(client&&) = delete;
 	client(const client&) = delete;
 	client& operator=(client&&) = delete;
@@ -89,16 +91,18 @@ struct client {//<(^.^)>
 	std::function<void(std::vector<snowflake>, dm_channel&, shard&)> on_dm_message_bulk = nothing;
 	
 	void rate_limit_global(const std::chrono::system_clock::time_point);
-	void reconnect(shard* s,int shardNumber) {
-		m_ws_hub.connect(m_gateway);
-	}
 
 	Status status = Status::online;
 	std::string gameName = "";
  	timed_task_executor heartbeat_sender;
-private:
-	using wsClient = uWS::WebSocket<uWS::CLIENT>;
+
+	void add_shard(shard* sh) {
+		std::lock_guard a(m_shard_mut);
+		m_shards_vec.push_back(sh);
+	}
+private:	
 	void m_getGateway();
+	boost::asio::io_context m_ioc{};
 	std::chrono::system_clock::time_point m_last_global_rate_limit = std::chrono::system_clock::now();
 	std::string m_endpoint;
 		
@@ -106,10 +110,11 @@ private:
 	std::string m_gateway = ""s;
 	size_t m_num_shards = 0;
 	std::string m_token = "";
-	uWS::Hub m_ws_hub;
 	//
 	std::mutex m_global_rate_limit_mut;
-	std::unordered_map<wsClient*, std::unique_ptr<shard>> m_shards = {};
+
+	std::mutex m_shard_mut;
+	std::vector<shard*> m_shards_vec;
 };
 
 

@@ -633,11 +633,6 @@ inline size_t readBits(const std::vector<T>& v, const size_t start, const size_t
 }
 
 template<typename T>
-inline T round_to_multiple(const T in, const T m) {
-	return ((in / m) + !!(in % m)) * m;
-}
-
-template<typename T>
 inline size_t readBitsReversed(const T* v, size_t start, const size_t end) {
 	size_t retVal = 0;
 	for (int bit = 0; start < end; ++bit)
@@ -883,25 +878,7 @@ constexpr int erase_quick(rng&& range,U&& val) {
 	return retVal;
 }
 
-template<typename rng, typename U>
-[[maybe_unused]]
-constexpr bool erase_first_quick(rng&& range, U&& val) {
-	const auto it = std::find(range.begin(), range.end(), std::forward<U>(val));
-	if (it == range.end())
-		return false;
-	std::swap(range.back(), *it);
-	range.pop_back();
-	return true;
-}
 
-template<typename rng, typename U>
-[[maybe_unused]]
-constexpr int erase_if_quick(rng&& range, U&& fn) {
-	const auto it = std::remove_if(range.begin(), range.end(), fn);
-	const int retVal = std::distance(it, range.end());
-	range.erase(it, range.end());
-	return retVal;
-}
 
 template<typename rng, typename U>
 [[maybe_unused]]

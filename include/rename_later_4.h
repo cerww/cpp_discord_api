@@ -1,7 +1,8 @@
 #pragma once
 #include "bytell_hash_map.hpp"
 #include "indirect.h"
-#include <range/v3/core.hpp>
+#include <range/v3/utility/common_tuple.hpp>
+#include "arrow_proxy.h"
 
 template<typename K,typename V,typename H = std::hash<K>,typename E = std::equal_to<>,typename A = std::allocator<std::pair<const K,indirect<V>>>>
 struct rename_later_4 {
@@ -16,6 +17,7 @@ struct rename_later_4 {
 		using difference_type = ptrdiff_t;
 		using value_type = std::pair<const K, V>;
 		using reference = value_type_;
+		using pointer = arrow_proxy<reference>;
 		
 
 		templated_iterator() = default;
@@ -28,6 +30,10 @@ struct rename_later_4 {
 
 		reference operator*() const{
 			return reference((*m_it).first,(*m_it).second);
+		}
+
+		pointer operator->()const {
+			return pointer({ **this });
 		}
 
 		templated_iterator& operator++() {
@@ -278,6 +284,7 @@ private:
 	map_t m_data;
 };
 
+/*
 inline void asdhasdjkasdh() {
 	rename_later_4<int, int> blargus;
 	//auto qwe = blargus | ranges::view::all;
@@ -297,7 +304,8 @@ inline void asdhasdjkasdh2(const rename_later_4<int,int>& aaa) {
 	for (const auto& i : aaa);
 
 }
-
+*/
+/*
 CONCEPT_ASSERT(ranges::Range<rename_later_4<int, int>>());
 CONCEPT_ASSERT(ranges::InputRange<rename_later_4<int, int>>());
 CONCEPT_ASSERT(ranges::InputRange<const rename_later_4<int, int>>());
@@ -307,4 +315,4 @@ CONCEPT_ASSERT(ranges::InputIterator<rename_later_4<int, int>::iterator>());
 
 CONCEPT_ASSERT(ranges::InputIterator<rename_later_4<int, int>::const_iterator>());
 CONCEPT_ASSERT(ranges::Readable<rename_later_4<int, int>::const_iterator>());
-
+*/

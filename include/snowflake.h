@@ -77,6 +77,7 @@ struct has_id<T, std::void_t<decltype(std::declval<T>().id())>> :std::is_same<de
 template<typename T>
 static constexpr bool has_id_v = has_id<T>::value;
 
+/*
 template<typename T>//requires has_id_v<T>
 std::enable_if_t<has_id_v<T>,ska::bytell_hash_map<snowflake,T*,std::hash<snowflake>,std::equal_to<>,single_chunk_allocator<std::pair<const snowflake,T*>>>> to_map(std::vector<T>& stuffs) {
 	single_chunk_mem_pool pool(std::max(stuffs.size() * sizeof(std::pair<const snowflake, T*>) * 2,2048ull));//2048 and 2 are random numbers
@@ -86,7 +87,7 @@ std::enable_if_t<has_id_v<T>,ska::bytell_hash_map<snowflake,T*,std::hash<snowfla
 		retVal[item.id()] = &item;
 	return retVal;
 }
-
+*/
 struct id_equal_to{
 	explicit id_equal_to(snowflake i) : id(std::move(i)) {}
 	template<typename T>

@@ -1,6 +1,7 @@
 #pragma once
 #include <nlohmann/json.hpp>
 #include "snowflake.h"
+#include <range/v3/core.hpp>
 
 struct partial_emoji{
 	snowflake id() const noexcept;

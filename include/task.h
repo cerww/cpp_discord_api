@@ -3,51 +3,39 @@
 #include <optional>
 #include <experimental/coroutine>
 #include <vector>
-#include "ref_count_ptr.h"
-#include "randomThings.h"
+#include "ref_counted.h"
+//#include "randomThings.h"
+#include "better_conditional.h"
 #include <type_traits>
 
-class something_happened:public std::exception{
+namespace cerwy {
+
+class something_happened :public std::exception {
 	using std::exception::exception;
 };
 
-template<bool condition>
-struct better_conditional{
-	template<typename T,typename F>
-	using value = T;
-};
+struct no_state {};
 
-template<>
-struct better_conditional<false> {
-	template<typename T, typename F>
-	using value = F;
-};
-
-template<bool condition,typename T,typename F>
-using better_conditional_t = typename better_conditional<condition>::template value<T, F>;
-
-template<typename T,bool does_move>
-struct shared_state_base_non_void:ref_counted{
+template<typename T, bool does_move>
+struct shared_state_base_non_void :ref_counted {
 	using value_type = T;
 
 	bool await_ready() {
-		return std::visit([](const auto& a) {
-			return !std::is_same_v<std::decay_t<decltype(a)>, no_state>;
-		}, m_data);
+		return !std::holds_alternative<no_state>(m_data);
 	}
 
 	T value() {
 		return std::visit([this](auto& a)->T {
 			using type = std::decay_t<decltype(a)>;
-			if constexpr(std::is_same_v<type, T>) {
-				if constexpr(does_move){
+			if constexpr (std::is_same_v<type, T>) {
+				if constexpr (does_move) {
 					return std::move(a);
-				}else {
+				} else {
 					return a;
 				}
-			}else if constexpr(std::is_same_v<type, no_state>) {
+			} else if constexpr (std::is_same_v<type, no_state>) {
 				throw something_happened{};
-			}else {
+			} else {
 				throw a;
 			}
 		}, m_data);
@@ -63,7 +51,6 @@ protected:
 	}
 
 private:
-	struct no_state {};
 	std::variant<T, std::exception_ptr, no_state> m_data = no_state{};
 };
 
@@ -74,7 +61,7 @@ struct shared_state_base_void : ref_counted {
 		return m_is_done.load();
 	}
 
-	void value() {
+	void value()  {
 		if (m_watland)
 			throw *m_watland;
 	}
@@ -93,11 +80,11 @@ private:
 	std::optional<std::exception_ptr> m_watland;
 };
 
-template<typename T,bool does_move>
+template<typename T, bool does_move>
 using shared_state_base = better_conditional_t<std::is_void_v<T>, shared_state_base_void, shared_state_base_non_void<T, does_move>>;
 
 template<typename T>
-struct shared_shared_state_base:shared_state_base<T, false> {
+struct shared_shared_state_base :shared_state_base<T, false> {
 	void on_await_suspend(const std::experimental::coroutine_handle<> h) {
 		m_handles.push_back(h);
 	}
@@ -113,7 +100,7 @@ template<typename T>
 struct shared_shared_state :shared_shared_state_base<T> {
 	void set_value(T a) {
 		this->set_value__(std::move(a));
-		for(auto& i:this->m_handles) {
+		for (auto& i : this->m_handles) {
 			i.resume();
 		}
 	}
@@ -146,13 +133,13 @@ struct shared_shared_state<void> :shared_shared_state_base<void> {
 			exec.execute([=,i](){i.resume();});
 		}
 	}
-	
+
 	*/
 
 };
 
 template<typename T>
-struct non_shared_shared_state_base:shared_state_base<T,true>{
+struct non_shared_shared_state_base :shared_state_base<T, true> {
 	void on_await_suspend(std::experimental::coroutine_handle<> h) {
 		//[[assert:!m_awaiter]];
 		m_awaiter = h;
@@ -165,7 +152,7 @@ protected:
 };
 
 template<typename T>
-struct non_shared_shared_state:non_shared_shared_state_base<T>{
+struct non_shared_shared_state :non_shared_shared_state_base<T> {
 	void set_value(T a) {
 		this->set_value__(std::move(a));
 		if (this->m_awaiter)
@@ -175,14 +162,14 @@ struct non_shared_shared_state:non_shared_shared_state_base<T>{
 
 template<>
 struct non_shared_shared_state<void> :non_shared_shared_state_base<void> {
-	void set_value() {		
+	void set_value() {
 		this->set_value__();
 		if (this->m_awaiter)
 			this->m_awaiter.resume();
 	}
 	/*
 	template<typename executor_t>
-	void set_value(executor_t&& exec) {		
+	void set_value(executor_t&& exec) {
 		this->set_value__();
 		if (this->m_awaiter)
 			this->m_awaiter.resume();
@@ -190,25 +177,25 @@ struct non_shared_shared_state<void> :non_shared_shared_state_base<void> {
 };
 
 template<typename shared_state_t>
-struct managed_shared_state{
+struct managed_shared_state {
 	shared_state_t& shared_state() {
 		return *m_state;
 	}
 protected:
 	managed_shared_state() = default;
-	managed_shared_state(ref_count_ptr<shared_state_t> state):m_state(std::move(state)){}
+	managed_shared_state(ref_count_ptr<shared_state_t> state) :m_state(std::move(state)) {}
 
 	ref_count_ptr<shared_state_t> m_state;
 };
 
 template<typename shared_state_t>
-struct templated_task:managed_shared_state<shared_state_t>{
+struct templated_task :managed_shared_state<shared_state_t> {
 	using shared_state_type = shared_state_t;
 	using value_type = typename shared_state_t::value_type;
 
 	templated_task() = default;
-	explicit templated_task(ref_count_ptr<shared_state_t> a):managed_shared_state<shared_state_t>(std::move(a)){};
-	
+	explicit templated_task(ref_count_ptr<shared_state_t> a) :managed_shared_state<shared_state_t>(std::move(a)) {};
+
 	bool await_ready() {
 		return this->m_state->await_ready();
 	}
@@ -224,19 +211,19 @@ struct templated_task:managed_shared_state<shared_state_t>{
 	struct promise_type;
 };
 
-struct empty_promise_t{};
+struct empty_promise_t {};
 static constexpr inline empty_promise_t empty_promise;
 
 template<typename shared_state_t>
-struct templated_promise_base:managed_shared_state<shared_state_t>{
+struct templated_promise_base :managed_shared_state<shared_state_t> {
 	using value_type = typename shared_state_t::value_type;
 
 	explicit templated_promise_base() :managed_shared_state<shared_state_t>(make_ref_count_ptr<shared_state_t>()) {
 
 	}
 
-	explicit templated_promise_base(empty_promise_t) noexcept{
-		
+	explicit templated_promise_base(empty_promise_t) noexcept {
+
 	}
 
 	explicit templated_promise_base(ref_count_ptr<shared_state_t> s) :managed_shared_state<shared_state_t>(std::move(s)) {
@@ -244,7 +231,7 @@ struct templated_promise_base:managed_shared_state<shared_state_t>{
 	}
 
 	void set_shared_state(ref_count_ptr<shared_state_t> s) {
-		this->m_state = std::move(s);	
+		this->m_state = std::move(s);
 	}
 
 	auto get_task() {
@@ -257,7 +244,7 @@ struct templated_promise_base:managed_shared_state<shared_state_t>{
 };
 
 template<typename shared_state_t, typename = void>
-struct templated_promise:templated_promise_base<shared_state_t> {
+struct templated_promise :templated_promise_base<shared_state_t> {
 	using value_type = typename shared_state_t::value_type;
 	using templated_promise_base<shared_state_t>::templated_promise_base;
 
@@ -291,26 +278,31 @@ struct templated_promise<shared_state_t, std::enable_if_t<std::is_void_v<typenam
 };
 
 template<typename shared_state_t>
-struct promise_base_common{
+struct promise_base_common {
 	using task_t = templated_task<shared_state_t>;
 	using promise_t = templated_promise<shared_state_t>;
 
-	task_t get_return_object() {		
+	task_t get_return_object() {
 		return m_promise.get_task();
 	}
-protected:	
-	promise_t m_promise;	
+
+	void unhandled_exception() {
+		m_promise.set_exception(std::current_exception());
+	}
+
+protected:
+	promise_t m_promise;
 };
 
 template<typename T, typename shared_state_t>
-struct promise_base:promise_base_common<shared_state_t> {
+struct promise_base :promise_base_common<shared_state_t> {
 	void return_value(T a) {
 		this->m_promise.set_value(std::move(a));
 	}
 };
 
 template<typename shared_state_t>
-struct promise_base<void, shared_state_t>:promise_base_common<shared_state_t> {
+struct promise_base<void, shared_state_t> :promise_base_common<shared_state_t> {
 	void return_void() {
 		this->m_promise.set_value();
 	}
@@ -337,3 +329,14 @@ using shared_task = templated_task<shared_shared_state<T>>;
 
 template<typename T = void>
 using shared_promise = templated_promise<shared_shared_state<T>>;
+
+	template<typename T>
+	task<T> make_ready_task(T a) {
+		promise<T> p;
+		auto r = p.get_task();
+		p.set_value(std::move(a));
+		return r;
+	}
+
+};
+

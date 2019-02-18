@@ -55,7 +55,7 @@ struct Guild: partial_guild{
 		return m_voice_channels | ranges::view::all;
 	};
 
-	optional_ref<voice_channel> afk_channel()const noexcept;
+	optional_ref<const voice_channel> afk_channel()const noexcept;
 	auto voice_states() const noexcept {
 		return m_voice_states | ranges::view::all;
 	};

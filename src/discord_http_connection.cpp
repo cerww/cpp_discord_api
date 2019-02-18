@@ -22,7 +22,7 @@ discord_http_connection::discord_http_connection(client* t):m_client(t) {
 		while (!m_done.load()) {
 			if(m_rate_limited_requests.empty())
 				send_to_discord(m_request_queue.pop());
-			else if(std::optional<discord_request> r = m_request_queue.try_pop_until(std::get<1>(m_rate_limited_requests[0])); r) {
+			else if(std::optional<discord_request> r = m_request_queue.try_pop_until(std::get<1>(m_rate_limited_requests.front())); r) {
 				send_to_discord(std::move(r.value()));
 			}else{//std::chrono::system_clock::now() >= std::get<1>(m_rate_limited_requests[0])
 				auto requests_to_send = std::move(m_rate_limited_requests[0]);
@@ -63,9 +63,8 @@ struct get_n{
 //returns wether or not it's not local rate limited
 bool discord_http_connection::send_to_discord_(discord_request& r,size_t major_param_id_) {
 	std::lock_guard<std::mutex> locky(r.state->mut);
-	boost::beast::error_code ec; 
 	send_rq(r);
-	//this is "while" not "if" because of global rate limits
+	//this is "while" loop not "if" because of global rate limits
 	//it shuld keep trying to send the same request if it's global rate limited
 	//cuz if i doin't do this, the request will go into the queue, then it'll sleep, then it'll prolyl send the request(it might sned a different request),
 	//i can skip adding the request into the queue by doing this
@@ -99,9 +98,8 @@ bool discord_http_connection::send_to_discord_(discord_request& r,size_t major_p
 			return seconds;
 		}()));
 
-		m_rate_limited_requests.insert(std::upper_bound(m_rate_limited_requests.begin(), m_rate_limited_requests.end(), time, [](const std::chrono::system_clock::time_point& a, const auto& b) {
-			return a < std::get<1>(b);
-		}), { major_param_id_,time,{} });
+		m_rate_limited_requests.insert(ranges::upper_bound(m_rate_limited_requests, time, std::less{} ,get_n<1>{}),
+									   { major_param_id_,time,{} });
 	}
 	
 	std::cout << r.req << std::endl;
@@ -140,11 +138,15 @@ void discord_http_connection::reconnect() {
 void discord_http_connection::send_rq(discord_request& r) {
 	boost::beast::error_code ec;
 	boost::beast::http::write(m_socket, r.req, ec);
-	if (ec)
+	if (ec) {
+		//;-;
 		std::cout << "rawrrrrr " << ec << std::endl;
+	}
 	boost::beast::http::read(m_socket, m_buffer, r.state->res, ec);
-	if (ec)
+	if (ec) {
+		//;-;
 		std::cout << "rawrrrrr " << ec << std::endl;
+	}
 }
 
 

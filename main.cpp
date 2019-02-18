@@ -12,7 +12,6 @@
 #include "bytell_hash_map.hpp"
 #include <unordered_set>
 #include "rename_later_4.h"
-#include <boost/sort/sort.hpp>
 #include "dereferenced_view.h"
 #include "concepts_test.h"
 
@@ -48,7 +47,7 @@ std::experimental::generator<std::vector<T>> permutations_bad(std::vector<T> in)
 	}
 }
 template<typename it>
-std::experimental::generator<int> permutations_bad(it s, it e) {
+std::experimental::generator<int> permutations_better(it s, it e) {
 	if (std::distance(s,e) == 1) {
 		co_yield 0;
 		co_return;
@@ -331,119 +330,6 @@ it unique_l(it s, it e) {
 	return unique_l(s, e, std::equal_to<>());
 }
 
-
-template<typename T>
-struct shared_ptr_p;
-
-
-template<typename T>
-struct shared_ptr_ref{
-	explicit shared_ptr_ref(T* a) :thing(a) {};
-	std::atomic<int> cnt = 1;
-	std::mutex mut;
-	T* thing;
-	shared_ptr_p<T>* parent = nullptr;
-	void die();
-	void decrement() {
-		if (cnt-- == 0)
-			die();
-	}
-	void increment() {
-		++cnt;
-	}
-};
-
-template<typename T>
-struct shared_ptr_p{
-	template<typename... args>
-	shared_ptr_p(args&&... Args):thing(std::forward<args>(Args)...),ref(&thing) {
-		ref->parent = this;
-	};
-
-	T thing;
-	shared_ptr_ref<T> ref;
-	void die() const {
-		delete this;
-	}
-};
-
-template<typename T>
-struct shared_ptr{
-	shared_ptr(shared_ptr_p<T>* blarg):ref(blarg->ref),thing(blarg->thing) {
-		
-	}
-	~shared_ptr() {
-		if(ref)
-			ref->decrement();
-	}
-	shared_ptr(const shared_ptr& other):ref(other.ref),thing(other.thing){
-		ref->increment();
-	}
-
-	shared_ptr(shared_ptr&& other) noexcept:ref(std::exchange(other.ref,nullptr)), thing(std::exchange(other.thing,nullptr)) {}
-
-	shared_ptr(T* other) :thing(other){
-		ref = new shared_ptr_ref<T>(other);
-	}
-	shared_ptr& operator=(T* other) {
-		this->~shared_ptr();
-		thing = other;
-		ref = new shared_ptr_ref<T>(ref);
-		return &this;
-	}
-
-	shared_ptr& operator=(const shared_ptr& other){
-		this->~shared_ptr();
-		ref = other.ref;
-		ref->increment();
-		thing = other.thing;		
-		return *this;
-	}
-
-	shared_ptr& operator=(shared_ptr&& other) noexcept{
-		this->~shared_ptr();
-		ref = std::exchange(other.ref,nullptr);
-		thing = std::exchange(other.thing,nullptr);
-		return *this;
-	}
-
-	shared_ptr_ref<T>* ref = nullptr;
-	T* thing = nullptr;
-};
-
-template<typename T>
-void shared_ptr_ref<T>::die() {
-	if (parent) {
-		parent->die();
-	}else{
-		delete thing;
-		delete this;
-	}
-}
-
-template<typename T,typename... args>
-auto make_shared(args&&... Args) {
-	return shared_ptr<T>(new shared_ptr_p<T>(std::forward<args>(Args)...));
-}
-
-struct qwer{
-	void u() {
-		std::cout << "qwer" << std::endl;
-	}
-};
-
-bool operator!=(qwer, qwer) { return false; }
-
-struct abc:qwer{
-	void u() {
-		std::cout << "abc" << std::endl;
-	}
-};
-//*
-struct b{
-	int c;
-};
-
 template<typename T>
 struct logging_allocator{
 	using value_type = T;
@@ -546,64 +432,7 @@ struct test_iterator_facade{
 		return {};
 	}
 };
-using namespace std::literals;
-int main(){
 
-	try{
-		client c;
-		std::vector<partial_message> msgs;
-		c.on_guild_text_msg = [&](guild_text_message& msg,shard& s){			
-			if(msg.content() == "watland") {
-				//s.delete_message(msgs.back()).get();
-				//msgs.pop_back();
-			}else if(msg.content() == "make new channel") {
-				s.create_text_channel(msg.guild(),"blargylandy").wait();
-			}else if(msg.content() == "rolesy") {
-				std::string stuff = 
-					msg.author().roles() |
-					ranges::view::transform(&guild_role::name) |
-					ranges::view::join(" "sv) | 
-					ranges::to_<std::string>();
-				s.send_message(msg.channel(),stuff);
-			}
-			if(msg.content() == "invite"){
-				s.create_channel_invite(msg.channel()).wait();
-			}
-			//s.change_nick(wat.author(), wat.content());
-
-			for(const auto& i:msg.mentions()){
-				s.change_nick(msg.guild(), i, std::string(msg.content()));
-			}
-
-			if (msg.author().id() != s.self_user().id())
-				s.send_message(msg.channel(), std::to_string(msg.author().id().val));
-			//s.add_reaction(wat,wat.guild().emojis().back());
-			
-		};
-		c.on_guild_typing_start = [&](guild_member& member,text_channel& channel,shard& s){
-			s.send_message(channel, "rawr");
-			/*
-			msgs.push_back(s.send_message(channel,member.username()+ " has started typing").get());
-			s.send_message(channel, member.username() + " has started typing");
-			s.send_message(channel, member.username() + " has started typing");
-			s.send_message(channel, member.username() + " has started typing");
-			s.send_message(channel, member.username() + " has started typing");
-			s.send_message(channel, member.username() + " has started typing");
-			s.send_message(channel, member.username() + " has started typing");
-			s.send_message(channel, member.username() + " has started typing").wait();
-			member.guild().roles();
-			*/
-		};
-		c.on_guild_member_add = [&](guild_member& member,shard& s){
-			//s.send_message(member.guild().general_channel(),member.username()).get();
-		};
-		c.setToken(tokenType::BOT, getFileContents("token.txt"));
-		c.run();
-	}catch(...) {
-		std::cout << ";-;" << std::endl;
-	}
-	std::cin.get();
-}
 
 
 

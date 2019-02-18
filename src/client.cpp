@@ -3,68 +3,19 @@
 #include <boost/asio.hpp>
 #include <boost/asio/ssl.hpp>
 //#include "randomThings.h"
+#include "create_shard.h"
 
-client::client() {
-	m_ws_hub.onMessage([&](uWS::WebSocket<uWS::CLIENT>* clientu, char* msg_t, size_t size, uWS::OpCode op) {
-		if(op == uWS::OpCode::TEXT)
-			m_shards[clientu]->add_event(std::string(msg_t,msg_t + size));
-		else if(op == uWS::OpCode::CLOSE) {
-			
-		}
-	});
-
-	m_ws_hub.onDisconnection([&](uWS::WebSocket<uWS::CLIENT>* clientu,int code,char* msg,size_t len){
-		if(code == 4000) {
-			m_shards[clientu]->reconnect();
-		}if(code == 4003) {
-			std::cout << "not authenticated" << std::endl;
-		}
-		if(code == 4004) {
-			std::cout << "authentication failed" << std::endl;
-		}
-		if(code == 4005) {
-			std::cout << "already authenticated" << std::endl;
-		}
-		if(code == 4007) {
-			m_shards[clientu]->reconnect();
-		}
-		if(code == 4008) {
-			std::cout << "rate limited" << std::endl;
-		}
-		if(code == 4009) {
-			std::cout << "session timeout" << std::endl;
-			m_shards[clientu]->reconnect();
-		}
-		if(code == 4011) {
-			std::cout << "sharding required" << std::endl;
-		}
-	});
-
-	m_ws_hub.onConnection([&](uWS::WebSocket<uWS::CLIENT>* web_socket, uWS::HttpRequest){
-		const auto it = std::find_if(m_shards.begin(),m_shards.end(),[](auto& val){
-			return val.second->is_disconnected();
-		});//the socket each shard is associated with is determined after send_resume();
-		if(it!=m_shards.end()) {
-			auto temp = m_shards.extract(it);
-			temp.key() = web_socket;
-			shard& shardy = *m_shards.insert(std::move(temp)).node.mapped();//wat
-			shardy.send_resume();
-		}else{
-			m_shards.insert(std::make_pair(web_socket,std::make_unique<shard>((int)m_shards.size(), web_socket, this)));
-		}
-	});
-
-	m_ws_hub.onError([&](void* user){
-		std::cout << "couldn't connect try again" << std::endl;
-	});
+client::client(int threads):m_ioc(threads) {
+	
 }
 
 void client::run() {
 	m_getGateway();
-	for (int i = 0; i < m_num_shards; ++i)
-		m_ws_hub.connect(m_gateway);
+	for (int i = 0; i < m_num_shards; ++i) {
+		create_shard(i, this, m_ioc, m_gateway);
+	}	
 
-	m_ws_hub.run();
+	m_ioc.run();
 }
 
 void client::setToken(const tokenType type, std::string token) {
@@ -90,15 +41,15 @@ void client::set_up_request(boost::beast::http::request<boost::beast::http::stri
 
 void client::rate_limit_global(const std::chrono::system_clock::time_point tp) {
 	std::unique_lock<std::mutex> locky(m_global_rate_limit_mut,std::try_to_lock);
-	//only 1 shard needs to rate limit every shard
+	//only 1 shard needs to call this to rate limit every shard
 	if(!locky) {
 		return;
 	}
 	const auto now = std::chrono::system_clock::now();
 	if (m_last_global_rate_limit - now < std::chrono::seconds(5)){//so i don't rate_limit myself twice
 		m_last_global_rate_limit = now;
-		for(auto& i:m_shards) {
-			i.second->rate_limit(tp);
+		for(auto& i:m_shards_vec) {
+			i->rate_limit(tp);
 		}
 	}	
 }
@@ -119,7 +70,7 @@ void client::m_getGateway() {
 	req.set(boost::beast::http::field::authorization, m_token);
 	req.set("Host", "discordapp.com"s);
 	req.set("Upgrade-Insecure-Requests", "1");
-	req.set(boost::beast::http::field::user_agent, "watland");
+	req.set(boost::beast::http::field::user_agent, "potato_world");
 		
 	req.keep_alive(true);
 

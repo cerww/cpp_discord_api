@@ -1,8 +1,9 @@
 #pragma once
 #include "crtp_stuff.h"
+#include "arrow_proxy.h"
 #include <iterator>
 #include <type_traits>
-#include <range/v3/core.hpp>
+//#include <range/v3/core.hpp>
 
 template<typename T,typename = void>
 struct readable:std::false_type{};
@@ -134,6 +135,26 @@ public:
 	template<typename B = int, std::enable_if_t<std::is_same_v<B, int> && std::is_reference_v<reference>, int> = 0>
 	constexpr std::remove_reference_t<reference>* operator->() const&& {
 		return &m_base.read();
+	}
+
+	template<typename B = int, std::enable_if_t<std::is_same_v<B, int> && !std::is_reference_v<reference>, int> = 0>
+	constexpr arrow_proxy<reference> operator->() & {
+		return arrow_proxy<reference>{m_base.read()};
+	}
+
+	template<typename B = int, std::enable_if_t<std::is_same_v<B, int> && !std::is_reference_v<reference>, int> = 0>
+	constexpr arrow_proxy<reference> operator->() const& {
+		return arrow_proxy<reference>{m_base.read()};
+	}
+
+	template<typename B = int, std::enable_if_t<std::is_same_v<B, int> && !std::is_reference_v<reference>, int> = 0>
+	constexpr arrow_proxy<reference> operator->() && {
+		return arrow_proxy<reference>{m_base.read()};
+	}
+
+	template<typename B = int, std::enable_if_t<std::is_same_v<B, int> && !std::is_reference_v<reference>, int> = 0>
+	constexpr arrow_proxy<reference> operator->() const&& {
+		return arrow_proxy<reference>{m_base.read()};
 	}
 
 	constexpr iterator_facade& operator++() {

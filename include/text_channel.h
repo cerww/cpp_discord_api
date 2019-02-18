@@ -21,7 +21,7 @@ private:
 
 	dynamic_item_cache<guild_text_message> m_msg_cache = dynamic_item_cache<guild_text_message>(10ull,false);
 
-	guild_text_message& m_add_msg(guild_text_message msg);
+	guild_text_message& p_add_msg(guild_text_message msg);
 
 	friend void from_json(const nlohmann::json& json, text_channel& channel);
 	friend struct shard;

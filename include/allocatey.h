@@ -1,7 +1,12 @@
 #pragma once
 #include <utility>
 #include "ref_counted.h"
-#include "randomThings.h"
+//#include "randomThings.h"
+
+template<typename T>
+constexpr T round_to_multiple(const T in, const T m) {
+	return ((in / m) + !!(in % m)) * m;
+}
 
 struct mem_pool_ :ref_counted {
 	explicit mem_pool_(size_t size) {
@@ -29,6 +34,7 @@ struct mem_pool_ :ref_counted {
 	template<typename T>
 	T* allocate(const size_t n) {
 		end = (char*)round_to_multiple((size_t)end, alignof(T));
+		//std::align()
 		//if (end + sizeof(T)*n > cap)throw std::bad_alloc();
 		return (T*)std::exchange(end, end + sizeof(T) * n);
 	}
@@ -94,7 +100,7 @@ struct single_chunk_mem_pool{
 		return single_chunk_allocator<T>(m_stuff);
 	}
 	single_chunk_allocator<void> to_allocator() {
-		return single_chunk_allocator<void>(*this);//conversion
+		return single_chunk_allocator<void>(*this);
 	}
 private:
 	ref_count_ptr<mem_pool_> m_stuff;
