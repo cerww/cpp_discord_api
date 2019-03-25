@@ -9,7 +9,6 @@ private:
 	friend void from_json(const nlohmann::json& json, channel_catagory& c);
 	friend struct shard;
 	friend struct client;
-	
 };
 
 inline void from_json(const nlohmann::json& json,channel_catagory& c) {

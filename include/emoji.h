@@ -5,7 +5,7 @@
 
 struct partial_emoji{
 	snowflake id() const noexcept;
-	const std::string& name() const noexcept;
+	std::string_view name() const noexcept;
 private:
 	snowflake m_id;
 	std::string m_name;

@@ -3,6 +3,7 @@
 #include "web_socket_helpers.h"
 #include "client.h"
 #include "rename_later_5.h"
+#include <fmt/core.h>
 
 cerwy::task<void> create_shard(int shardN, client* t_parent, boost::asio::io_context& ioc, std::string_view gateway) {
 	try {
@@ -11,34 +12,42 @@ cerwy::task<void> create_shard(int shardN, client* t_parent, boost::asio::io_con
 		boost::asio::ip::tcp::resolver resolver(ioc);
 
 		boost::beast::websocket::stream<ssl_stream<boost::asio::ip::tcp::socket>> socket = co_await wss_from_uri(gateway, resolver, ssl_ctx);
-
-		boost::beast::multi_buffer buffer = {};
 		rename_later_5 rename_me(socket);
+		
+		boost::beast::multi_buffer buffer = {};
 
 		shard me(shardN, &rename_me, t_parent, ioc);
+		co_await me.connect_http_connection();
 		t_parent->add_shard(&me);
 
 		while (true) {
+			std::cerr << "recieving stuffs\n";
 			auto[ec, n] = co_await socket.async_read(buffer, use_task_return_tuple2);
 			if (ec) {
 				if(ec.value() == 4003) {
 					socket = co_await wss_from_uri(gateway, resolver, ssl_ctx);
+					rename_me.maybe_restart();
+					me.on_reconnect();
 				}else if(ec.value() == 4004) {
-					std::cerr << "authentication failed\n";
+					fmt::print("authentication failed");
 					break;
 				}else if(ec.value() == 4005) {
-					std::cerr << "already authenticated\n";
+					fmt::print("already authenticated");
 					break;
 				}else if(ec.value() == 4007) {
 					socket = co_await wss_from_uri(gateway, resolver, ssl_ctx);
+					rename_me.maybe_restart();
+					me.on_reconnect();
 				}else if(ec.value() == 4008) {
-					std::cerr << "rate limited\n";
+					fmt::print("rate limited");
 					break;
 				}else if (ec.value() == 4009) {
-					std::cerr << "session timeout" << std::endl;
+					fmt::print("session timedout, reconnecting");
 					socket = co_await wss_from_uri(gateway, resolver, ssl_ctx);
+					rename_me.maybe_restart();
+					me.on_reconnect();
 				}else if (ec.value() == 4011) {
-					std::cerr << "sharding required" << std::endl;
+					fmt::print("sharding required");
 					break;
 				}
 			}
@@ -56,5 +65,4 @@ cerwy::task<void> create_shard(int shardN, client* t_parent, boost::asio::io_con
 	} catch (...) {
 		std::cerr << "failed for some reason\n";
 	}
-	co_return;
 }

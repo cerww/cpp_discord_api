@@ -9,7 +9,6 @@ template<typename U>
 struct has_pop_front<U, std::void_t<decltype(std::declval<U>().pop_front())>> :std::true_type {};
 
 template<typename T, typename container = boost::container::deque<T>>
-//template<typename T,typename container = std::deque<T>>
 struct concurrent_queue{
 	void push(T t) {
 		{	
@@ -30,7 +29,11 @@ struct concurrent_queue{
 
 	T pop() {
 		std::unique_lock<std::mutex> locky(m_mut);
-		m_cv.wait(locky, [&]() {return m_data.size(); });
+		m_cv.wait(locky, [&]() {
+			return m_data.size() || 
+				   m_is_canceled.load(std::memory_order_relaxed); 
+		});
+		maybe_stop();
 		return do_pop();
 	}
 
@@ -100,7 +103,16 @@ struct concurrent_queue{
 	decltype(auto) operator[](int i) {
 		return m_data[i];
 	}
+	void cancel() {
+		m_is_canceled = true;
+		m_cv.notify_all();
+	}
 private:
+	void maybe_stop()const {
+		if(m_is_canceled) {
+			throw 1;//something random
+		}
+	}
 	T do_pop() {
 		auto retVal = std::move(m_data[0]);
 		if constexpr(has_pop_front<container>::value)
@@ -112,5 +124,6 @@ private:
 	container m_data;
 	std::mutex m_mut;
 	std::condition_variable m_cv;
+	std::atomic<bool> m_is_canceled = false;
 };
 

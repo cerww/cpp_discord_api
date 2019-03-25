@@ -100,6 +100,9 @@ struct client {//<(^.^)>
 		std::lock_guard a(m_shard_mut);
 		m_shards_vec.push_back(sh);
 	}
+
+	void stop();
+
 private:	
 	void m_getGateway();
 	boost::asio::io_context m_ioc{};
@@ -115,6 +118,7 @@ private:
 
 	std::mutex m_shard_mut;
 	std::vector<shard*> m_shards_vec;
+	std::vector<std::thread> m_threads;
 };
 
 

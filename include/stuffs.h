@@ -4,36 +4,48 @@
 #include "guild_member.h"
 #include "guild_channel.h"
 #include "range-like-stuffs.h"
+#include <range/v3/view/filter.hpp>
+#include "higher_order_functions.h"
 
-inline permission merge_permissions(permission p1, permission p2) {
+inline permission combined_permissions(permission p1, permission p2) {
 	return permission(p1.data() | p2.data());
 }
 
 template<typename range>
-std::enable_if_t<is_range_of_v<range,permission_overwrite>,permission> merge_permissions(permission p ,range&& overwrites) {
+std::enable_if_t<is_range_of_v<range,permission_overwrite>,permission> combined_permissions(permission return_val,range&& overwrites) {
 	for(auto&& overwrite:overwrites) {
-		p.addPermissions(overwrite.allow());
-		p.removePermissions(overwrite.deny());
-	}return p;
+		return_val.add_permissions(overwrite.allow());
+		return_val.remove_permissions(overwrite.deny());
+	}
+	return return_val;
 }
 
-inline permission merge_permissions(const guild_member& member) {
+inline permission combined_permissions(const guild_member& member) {
 	permission retVal;
 	for(auto&& role:member.roles()) 
-		retVal = merge_permissions(retVal, role.permissions());
+		retVal = combined_permissions(retVal, role.permissions());
 	return retVal;
 }
 
 template<typename rng>
-std::enable_if_t<is_range_of_v<rng,permission_overwrite>,permission> merge_permissions(const guild_member& member, rng&& range) {
-	return merge_permissions(merge_permissions(member), filter(range, [&](permission_overwrite p) {
+std::enable_if_t<is_range_of_v<rng,permission_overwrite>,permission> combined_permissions(const guild_member& member, rng&& range) {
+	return combined_permissions(combined_permissions(member),range |  ranges::view::filter([&](permission_overwrite p) {
 		if (p.type() == overwrite_type::member) {
 			return member.id() == p.id();
-		}return member.has_role(p.id());
+		}
+		return member.has_role(p.id());
 	}));
+	/*
+	auto fn = 
+		hof::logical_disjunction(
+			hof::logical_conjunction(hof::fold(&permission_overwrite::type,hof::is_equal_to(overwrite_type::member)),
+									 hof::fold(&permission_overwrite::id,hof::is_equal_to(member.id()))),
+			hof::fold(&permission_overwrite::id,hof::bind1st(&guild_member::has_role,member))
+		);
+	*/
 }
 
-inline permission merge_permissions(const guild_member& member, const guild_channel& channel) {
-	return merge_permissions(merge_permissions(member), channel.permission_overwrites());
+inline permission combined_permissions(const guild_member& member, const guild_channel& channel) {
+	return combined_permissions(combined_permissions(member), channel.permission_overwrites());
 }
 

@@ -43,6 +43,11 @@ struct concurrent_coro_queue{
 		
 	}
 
+	std::vector<T> pop_all() {
+		std::lock_guard lock(m_mut);
+		return std::move(m_data);
+	}
+
 private:
 	std::mutex m_mut;
 	std::vector<T> m_data;

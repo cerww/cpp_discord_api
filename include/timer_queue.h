@@ -15,10 +15,10 @@ struct compare_second {
 	}
 };
 
-template<typename T, typename time_point = std::chrono::steady_clock::time_point, typename A = std::allocator<T>>
+template<typename T, typename clock_t = std::chrono::steady_clock, typename A = std::allocator<T>>
 struct timer_queue {
+	using time_point = typename clock_t::time_point;
 	using allocator_type = typename std::allocator_traits<A>::template rebind_alloc<std::pair<T, time_point>>;
-	using clock_t = typename time_point::clock;
 
 	timer_queue() = default;
 	explicit timer_queue(A a) :m_queue(container(std::move(a))) {}
@@ -59,6 +59,12 @@ struct timer_queue {
 		return m_queue.size();
 	}
 
+	bool empty()const noexcept {
+		return size() == 0;
+	}
+
+	//imo there shuold be a reserve fn, but it deosn't exist in std::priority_queue
+
 private:
 	T do_pop() {
 		//[[assert: !m_queue.empty()]];
@@ -70,10 +76,11 @@ private:
 	std::priority_queue<std::pair<T, time_point>, std::vector<std::pair<T, time_point>, allocator_type>, compare_second<std::greater<>>> m_queue;
 };
 
-template<typename T, typename time_point = std::chrono::steady_clock::time_point, typename A = std::allocator<T>>
+template<typename T, typename clock_t = std::chrono::steady_clock, typename A = std::allocator<T>>
 struct concurrent_timer_queue {
+	using time_point = typename clock_t::time_point;
 	using allocator_type = typename std::allocator_traits<A>::template rebind_alloc<std::pair<T, time_point>>;
-	using clock_t = typename time_point::clock;
+
 	concurrent_timer_queue() = default;
 
 	explicit concurrent_timer_queue(A a) :m_queue(std::move(a)) {}
@@ -125,10 +132,10 @@ struct concurrent_timer_queue {
 
 	std::pair<std::optional<T>, std::optional<time_point>> try_pop_next_time_blocking() {
 		std::unique_lock lock(m_mut);
-		m_cv.wait(lock, [this](){
+		m_cv.wait(lock, [this]() {
 			return m_queue.size();
 		});
-		return m_queue.try_pop_next_time();		
+		return m_queue.try_pop_next_time();
 	}
 
 	std::pair<std::optional<T>, std::optional<time_point>> pop_next_time_busy() {
@@ -153,18 +160,13 @@ struct concurrent_timer_queue {
 	std::optional<time_point> time_till_next_unsafe()const noexcept {
 		return m_queue.time_till_next();
 	}
-
-	void reserve(size_t n) {
-		std::lock_guard locky(m_mut);
-		m_queue.reserve(n);
-	}
-
+	
 private:
 	T unsafe_pop() {
 		return m_queue.do_pop();
 	}
 
-	timer_queue<T, time_point, allocator_type> m_queue;
+	timer_queue<T, clock_t, allocator_type> m_queue;
 	std::mutex m_mut;
 	std::condition_variable m_cv;
 };

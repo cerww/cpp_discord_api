@@ -4,6 +4,7 @@
 
 struct defer_construction{};
 
+//TODO: switch to unique_allocate once c++20 is here
 template<typename T,typename Allocator = std::allocator<T>>
 struct indirect {
 	indirect():m_data(new(m_allocator.allocate(1)) T()){};
@@ -76,9 +77,9 @@ struct indirect {
 	}
 
 	indirect& operator=(indirect&& other) noexcept{
-		this->~indirect();
-		m_allocator = std::move(other.m_allocator);
-		m_data = std::exchange(other.m_data, nullptr);
+		indirect new_me(std::move(other));
+		std::swap(m_allocator,new_me.m_allocator);
+		std::swap(m_data, new_me.m_data);
 		return *this;
 	}
 	
@@ -90,12 +91,18 @@ struct indirect {
 
 	template<typename U, typename A, std::enable_if_t<std::is_convertible_v<U, T> && !std::is_same_v<A, Allocator>, int> = 0>
 	indirect& operator=(indirect<U,A>&& other) {		
-		*m_data = std::move(*other.m_data);
+		if(!m_data) 
+			m_data = new(m_allocator.allocate(1)) T(std::move(*other.m_data));
+		else
+			*m_data = std::move(*other.m_data);
 		return *this;
 	}
 
-	indirect& operator=(T other) noexcept{
-		*m_data = std::move(other);
+	indirect& operator=(T other){
+		if(!m_data) 
+			m_data = new(m_allocator.allocate(1)) T(std::move(other));
+		else
+			*m_data = std::move(other);
 		return *this;
 	}
 
@@ -134,7 +141,7 @@ struct indirect {
 	bool operator!=(U&& other)const {
 		return other == *m_data;
 	}
-	//why do i use std::less
+	
 	template<typename U>
 	bool operator<(U&& other)const {
 		return std::less<>()(*m_data,other);//why do i use std::less

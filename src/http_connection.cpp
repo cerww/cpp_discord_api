@@ -1,45 +1,45 @@
 #include "client.h"
-#include "discord_http_connection.h"
+#include "http_connection.h"
 #include <charconv>
 #include <range/v3/core.hpp>
+#include "task_completion_handler.h"
+
+template<int i>
+struct get_n {
+	template<typename T>
+	constexpr decltype(auto) operator()(T&& t) const {
+		return std::get<i>(std::forward<T>(t));
+	}
+};
 
 size_t get_major_param_id(std::string_view s) {
-	s.remove_prefix(7);//sizeof("/api/v6") - 1;
+	s.remove_prefix(7);//strlen("/api/v6") == 7;
 	const auto start = s.find_first_of("1234567890");
 	if (start == std::string_view::npos) 
 		return 0;
 	s.remove_prefix(start);
-	const auto end = std::find(s.begin(), s.end(), '/');
+	const auto end = ranges::find(s, '/');
 	const auto length = std::distance(s.begin(), end);
 	size_t ret = 0;
 	std::from_chars(s.data(), s.data() + length,ret);
 	return ret;
 }
 
-discord_http_connection::discord_http_connection(client* t):m_client(t) {
-	connect();
-	m_thread = std::thread([this](){
-		while (!m_done.load()) {
-			if(m_rate_limited_requests.empty())
-				send_to_discord(m_request_queue.pop());
-			else if(std::optional<discord_request> r = m_request_queue.try_pop_until(std::get<1>(m_rate_limited_requests.front())); r) {
-				send_to_discord(std::move(r.value()));
-			}else{//std::chrono::system_clock::now() >= std::get<1>(m_rate_limited_requests[0])
-				auto requests_to_send = std::move(m_rate_limited_requests[0]);
-				m_rate_limited_requests.erase(m_rate_limited_requests.begin());
-				for(auto& request:std::get<2>(requests_to_send))
-					send_to_discord(std::move(request));					
-			}
-		}		
-	});
+http_connection::http_connection(client* t,boost::asio::io_context& ioc):
+	m_ioc(ioc),
+	m_resolver(ioc),
+	m_socket(ioc, m_sslCtx),
+	m_client(t)
+{	
+	//i use try_pop_until, idk how to make it work with coroutines
+	
 	
 }
 
-void discord_http_connection::send_to_discord(discord_request r) {	
+void http_connection::send_to_discord(discord_request r) {	
 	const size_t major_param_id = get_major_param_id(std::string_view(r.req.target().data(), r.req.target().size()));
-	const auto it = std::find_if(m_rate_limited_requests.begin(), m_rate_limited_requests.end(), [&](const auto& thing){
-		return std::get<0>(thing) == major_param_id;
-	});
+	const auto it = ranges::find(m_rate_limited_requests, major_param_id, get_n<0>{});
+
 	if(it != m_rate_limited_requests.end()) {
 		std::get<2>(*it).push_back(std::move(r));
 		return;
@@ -49,19 +49,11 @@ void discord_http_connection::send_to_discord(discord_request r) {
 		m_global_rate_limited.store(false);
 	}
 	if(send_to_discord_(r,major_param_id))
-		r.state->cv.notify_all();
+		r.state->notify();
 }
 
-template<int i>
-struct get_n{
-	template<typename T>
-	constexpr decltype(auto) operator()(T&& t) const{
-		return std::get<i>(std::forward<T>(t));
-	}
-};
-
 //returns wether or not it's not local rate limited
-bool discord_http_connection::send_to_discord_(discord_request& r,size_t major_param_id_) {
+bool http_connection::send_to_discord_(discord_request& r,size_t major_param_id_) {
 	std::lock_guard<std::mutex> locky(r.state->mut);
 	send_rq(r);
 	//this is "while" loop not "if" because of global rate limits
@@ -82,17 +74,16 @@ bool discord_http_connection::send_to_discord_(discord_request& r,size_t major_p
 			r.state->res.clear();
 			r.state->res.body().clear();
 			//add the request to the right queue in sorted order, by time
-			auto it = m_rate_limited_requests.insert(ranges::upper_bound(m_rate_limited_requests, tp, std::less<>{}, get_n<1>{}), 
+			auto it = m_rate_limited_requests.insert(ranges::upper_bound(m_rate_limited_requests, tp, std::less{}, get_n<1>{}), 
 													 { major_param_id_,tp,{} });
 			std::get<2>(*it).push_back(std::move(r));
 			return false;
 		}
 	}//this shuoldb't be riunning often ;-;
-
 	
 	if (auto it = r.state->res.find("X-RateLimit-Remaining"); it!=r.state->res.end()) {
 		
-		const auto time = std::chrono::system_clock::time_point(std::chrono::seconds([&](){
+		const auto time = std::chrono::system_clock::time_point(std::chrono::seconds([&](){//iife
 			int64_t seconds = 0;
 			std::from_chars(it->value().begin(), it->value().end(), seconds);
 			return seconds;
@@ -118,34 +109,84 @@ boost::system::error_code connect_with_no_delay(boost::asio::ip::tcp::socket& so
 		if (!ec)
 			break;
 		sock.close();
-	}return ec;
+	}
+	return ec;
 }
 
-void discord_http_connection::connect() {
-	const auto results = m_resolver.resolve("discordapp.com", "https");
-	//boost::asio::connect(m_ssl_stream.next_layer(), results.begin(), results.end());
+template<typename results_t>
+cerwy::task<boost::system::error_code> async_connect_with_no_delay(boost::asio::ip::tcp::socket& sock, results_t&& results) {
+	boost::system::error_code ec;
+	for (auto&& thing : results) {
+		sock.open(thing.endpoint().protocol());		
+		sock.set_option(boost::asio::ip::tcp::no_delay(true));;
+		ec = co_await sock.async_connect(thing, use_task_return_ec);		
+		if (!ec)
+			break;
+		sock.close();
+	}
+	co_return ec;
+}
+
+cerwy::task<boost::beast::error_code> http_connection::async_connect() {
+	const auto[ec, results] = co_await m_resolver.async_resolve("discordapp.com", "https", use_task_return_tuple2);
+	if(ec) {
+		co_return ec;
+	}
+	const auto ec2  = co_await async_connect_with_no_delay(m_socket.next_layer(), results);
+	if(ec2) {
+		co_return ec2;
+	}
+	auto ec3 = co_await m_socket.async_handshake(boost::asio::ssl::stream_base::client, use_task_return_ec);
+	if(!ec3) {
+		m_thread = std::thread([this]() {
+			while (!m_done.load()) {
+				if (m_rate_limited_requests.empty())
+					send_to_discord(m_request_queue.pop());
+				else if (std::optional<discord_request> r = m_request_queue.try_pop_until(std::get<1>(m_rate_limited_requests.front())); r) {
+					send_to_discord(std::move(r.value()));
+				} else {//std::chrono::system_clock::now() >= std::get<1>(m_rate_limited_requests[0])
+					auto requests_to_send = std::move(m_rate_limited_requests[0]);
+					m_rate_limited_requests.erase(m_rate_limited_requests.begin());
+					for (auto& request : std::get<2>(requests_to_send))
+						send_to_discord(std::move(request));
+				}
+			}
+		});
+	}
+	co_return ec3;
+}
+
+void http_connection::connect() {
+	auto results = m_resolver.resolve("discordapp.com", "https");
 	connect_with_no_delay(m_socket.next_layer(), results);
 	m_socket.handshake(boost::asio::ssl::stream_base::client);
 }
 
-void discord_http_connection::reconnect() {	
+void http_connection::reconnect() {	
 	m_socket.next_layer().close();
 	const auto results = m_resolver.resolve("discordapp.com", "https");
 	connect_with_no_delay(m_socket.next_layer(), results);
 	m_socket.handshake(boost::asio::ssl::stream_base::client);
 }
 
-void discord_http_connection::send_rq(discord_request& r) {
+void http_connection::send_rq(discord_request& r) {
+	redo:
 	boost::beast::error_code ec;
 	boost::beast::http::write(m_socket, r.req, ec);
-	if (ec) {
-		//;-;
+	if (ec) {		
 		std::cout << "rawrrrrr " << ec << std::endl;
+		if(ec.value() == 100053) {
+			reconnect();
+		}
+		goto redo;
 	}
 	boost::beast::http::read(m_socket, m_buffer, r.state->res, ec);
-	if (ec) {
-		//;-;
+	if (ec) {		
 		std::cout << "rawrrrrr " << ec << std::endl;
+		if (ec.value() == 1) {
+			reconnect();
+		}
+		goto redo;
 	}
 }
 

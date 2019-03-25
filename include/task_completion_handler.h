@@ -89,7 +89,7 @@ namespace boost::asio{
 		struct completion_handler_type {
 			explicit completion_handler_type(use_task_return_ec_t) {}
 			void operator()(system::error_code ec) {
-				promise.set_value(std::move(ec));
+				promise.set_value(ec);
 			}
 
 			cerwy::promise<system::error_code> promise{};

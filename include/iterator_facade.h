@@ -3,6 +3,7 @@
 #include "arrow_proxy.h"
 #include <iterator>
 #include <type_traits>
+#include "better_conditional.h"
 //#include <range/v3/core.hpp>
 
 template<typename T,typename = void>
@@ -53,22 +54,6 @@ struct is_contiguous:std::false_type {};
 template<typename T>
 struct is_contiguous<T, std::enable_if_t<T::is_contiguous>>:std::true_type {};
 
-namespace thingy_detail{
-	template<bool b>
-	struct conditional{
-		template<typename T,typename F>
-		using type = T;
-	};
-
-	template<>
-	struct conditional <false>{
-		template<typename T, typename F>
-		using type = F;
-	};
-	template<bool b,typename T,typename F>
-	using conditional_t = typename conditional<b>::template type<T, F>;	
-}
-
 template<typename cursor>
 struct iterator_facade{
 	static constexpr bool is_done_boi = has_done<cursor>::value;
@@ -82,11 +67,11 @@ struct iterator_facade{
 	using value_type = std::decay_t<decltype(std::declval<cursor>().read())>;
 	using difference_type = ptrdiff_t;
 	using reference = decltype(std::declval<cursor>().read());
-	using iterator_category = thingy_detail::conditional_t<
+	using iterator_category = better_conditional_t<
 		equality_comparable<cursor>::value,
-		thingy_detail::conditional_t<
+		better_conditional_t <
 			decrementable<cursor>::value, 
-			thingy_detail::conditional_t<
+			better_conditional_t<
 				random_access_interface<cursor>::value,
 				std::random_access_iterator_tag,
 				std::bidirectional_iterator_tag>,

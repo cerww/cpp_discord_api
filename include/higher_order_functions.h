@@ -3,6 +3,9 @@
 #include <utility>
 #include <tuple>
 #include <vector>
+#include <iostream>
+#include "meta_fns.h"
+
 namespace hof {
 	template<typename T, typename comp>
 	struct comparator {
@@ -153,18 +156,36 @@ namespace hof {
 		constexpr compose() = default;
 
 		template<typename F, typename... R>
-		constexpr explicit compose(F&& f, R&& ... rest) :compose<Rest...>(std::forward<R>(rest)...), first_fn(std::forward<F>(f)) {}
+		constexpr explicit compose(F&& f, R&& ... rest) :
+			compose<Rest...>(std::forward<R>(rest)...), 
+			first_fn(std::forward<F>(f)) {}
 
 		template<typename ...Args>
-		constexpr decltype(auto) operator()(Args&& ... args) {
-			//return static_cast<compose<Rest...>&>(*this)(std::invoke(first_fn, std::forward<Args>(args)...));
+		constexpr auto operator()(Args&& ... args) 
+			->decltype(std::invoke(std::declval<First>(), static_cast<compose<Rest...>&>(*this)(std::forward<Args>(args)...))) 
+		{
 			return std::invoke(first_fn, static_cast<compose<Rest...>&>(*this)(std::forward<Args>(args)...));
 		}
 
 		template<typename ...Args>
-		constexpr decltype(auto) operator()(Args&& ... args) const{
-			//return static_cast<compose<Rest...>&>(*this)(std::invoke(first_fn, std::forward<Args>(args)...));
+		constexpr auto operator()(Args&& ... args) const
+			->decltype(std::invoke(std::declval<const First>(), static_cast<compose<Rest...>&>(*this)(std::forward<Args>(args)...)))
+		{
 			return std::invoke(first_fn, static_cast<compose<Rest...>&>(*this)(std::forward<Args>(args)...));
+		}
+
+		template<typename ...Args,std::enable_if_t<!std::is_invocable_v<First,std::invoke_result_t<const compose<Rest...>,Args... >>,int> = 0>
+		constexpr auto operator()(Args&& ... args) const
+			->decltype(std::apply(std::declval<const First>(), static_cast<const compose<Rest...>&>(*this)(std::forward<Args>(args)...))) 
+		{
+			return std::apply(first_fn, static_cast<const compose<Rest...>&>(*this)(std::forward<Args>(args)...));			
+		}
+
+		template<typename ...Args, std::enable_if_t<!std::is_invocable_v<First, std::invoke_result_t<compose<Rest...>, Args... >>, int> = 0>
+		constexpr auto operator()(Args&& ... args) 
+			->decltype(std::apply(std::declval<First>(), static_cast<compose<Rest...>&>(*this)(std::forward<Args>(args)...))) 
+		{
+			return std::apply(first_fn, static_cast<compose<Rest...>&>(*this)(std::forward<Args>(args)...));
 		}
 
 		First first_fn = {};
@@ -174,18 +195,30 @@ namespace hof {
 	struct compose<Last> {
 		constexpr compose() = default;
 
-		template<typename L,std::enable_if_t<!std::is_same_v<std::decay_t<L>,compose<L>>,int> = 0>
-		constexpr explicit compose(L&& last) :last_fn(std::forward<L>(last)) {}
+		template<typename L,std::enable_if_t<!std::is_same_v<std::decay<L>,compose<Last>>,int> = 0>
+		constexpr explicit compose(L&& last) :
+			last_fn(std::forward<L>(last)) {}
 
-		template<typename... Args>
-		constexpr decltype(auto) operator()(Args&& ... args) {
+		template<typename... Args, std::enable_if_t<std::is_invocable_v<Last, Args...>, int> = 0>
+		constexpr auto operator()(Args&& ... args) ->decltype(std::invoke(std::declval<Last>(), std::forward<Args>(args)...)) {
 			return std::invoke(last_fn, std::forward<Args>(args)...);
 		}
-		
-		template<typename... Args>
-			constexpr decltype(auto) operator()(Args&& ... args) const{
+
+		template<typename... Args, std::enable_if_t<std::is_invocable_v<const Last, Args...>, int> = 0>
+		constexpr auto operator()(Args&& ... args) const ->decltype(std::invoke(std::declval<const Last>(), std::forward<Args>(args)...)) {
 			return std::invoke(last_fn, std::forward<Args>(args)...);
 		}
+
+		template<typename ...Args, std::enable_if_t<!std::is_invocable_v<Last, Args...>, int> = 0>
+		constexpr auto operator()(Args&& ... args) const->decltype(std::apply(std::declval<Last>(), std::forward<Args>(args)...)) {
+			return std::apply(last_fn, std::forward<Args>(args)...);
+		}
+
+		template<typename ...Args, std::enable_if_t<!std::is_invocable_v<const Last, Args...>, int> = 0>
+		constexpr auto operator()(Args&& ... args) const->decltype(std::apply(std::declval<const Last>(), std::forward<Args>(args)...)) {
+			return std::apply(last_fn,  std::forward<Args>(args)...);
+		}
+
 		Last last_fn = {};
 	};
 
@@ -202,17 +235,38 @@ namespace hof {
 		constexpr fold() = default;
 
 		template<typename F, typename... R>
-		constexpr explicit fold(F&& f, R&& ... rest) :fold<Rest...>(std::forward<R>(rest)...), first_fn(std::forward<F>(f)) {}
+		constexpr explicit fold(F&& f, R&& ... rest) :
+			fold<Rest...>(std::forward<R>(rest)...), 
+			first_fn(std::forward<F>(f)) {}
 
 		template<typename ...Args>
-		constexpr decltype(auto) operator()(Args&& ... args) {
-			return static_cast<fold<Rest...>&>(*this)(std::invoke(first_fn, std::forward<Args>(args)...));
+		constexpr auto operator()(Args&& ... args) 
+			->decltype(static_cast<fold<Rest...>&>(*this)(std::invoke(std::declval<First>(), std::forward<Args>(args)...))) 
+		{
+			return static_cast<fold<Rest...>&>(*this)(std::invoke(first_fn, std::forward<Args>(args)...));			
 		}
 
 		template<typename ...Args>
-		constexpr decltype(auto) operator()(Args&& ... args)const {
-			return static_cast<fold<Rest...>&>(*this)(std::invoke(first_fn, std::forward<Args>(args)...));
+		constexpr auto operator()(Args&& ... args)const
+			->decltype(static_cast<fold<Rest...>&>(*this)(std::invoke(std::declval<const First>(), std::forward<Args>(args)...)))
+		{
+			return static_cast<const fold<Rest...>&>(*this)(std::invoke(first_fn, std::forward<Args>(args)...));
 		}
+		
+		template<typename ...Args,std::enable_if_t<!std::is_invocable_v<First,Args...>,int> = 0>
+		constexpr auto operator()(Args&& ... args) 
+			->decltype(static_cast<fold<Rest...>&>(*this)(std::apply(std::declval<First>(), std::forward<Args>(args)...))) 
+		{
+			return static_cast<fold<Rest...>&>(*this)(std::apply(first_fn, std::forward<Args>(args)...));
+		}
+
+		template<typename ...Args, std::enable_if_t<!std::is_invocable_v<const First, Args...>, int> = 0>
+		constexpr auto operator()(Args&& ... args) const
+			->decltype(static_cast<const fold<Rest...>&>(*this)(std::apply(std::declval<const First>(), std::forward<Args>(args)...))) 
+		{
+			return static_cast<const fold<Rest...>&>(*this)(std::apply(first_fn, std::forward<Args>(args)...));
+		}
+		
 		First first_fn = {};
 	};
 
@@ -221,18 +275,28 @@ namespace hof {
 		constexpr fold() = default;
 
 		template<typename L, std::enable_if_t<!std::is_same_v<std::decay_t<L>, fold<Last>>, int> = 0>
-		constexpr explicit fold(L&& last) :last_fn(std::forward<L>(last)) {}
+		constexpr explicit fold(L&& last) :
+			last_fn(std::forward<L>(last)) {}
 
-		template<typename... Args>
-		constexpr decltype(auto) operator()(Args&& ... args) {
+		template<typename... Args, std::enable_if_t<std::is_invocable_v<Last, Args...>, int> = 0>
+		constexpr auto operator()(Args&& ... args) ->decltype(std::invoke(std::declval<Last>(), std::forward<Args>(args)...)){
 			return std::invoke(last_fn, std::forward<Args>(args)...);
 		}
 
-		template<typename... Args>
-		constexpr decltype(auto) operator()(Args&& ... args)const {
+		template<typename... Args,std::enable_if_t<std::is_invocable_v<const Last,Args...>,int> = 0>
+		constexpr auto operator()(Args&& ... args) const ->decltype(std::invoke(std::declval<const Last>(), std::forward<Args>(args)...)) {
 			return std::invoke(last_fn, std::forward<Args>(args)...);
 		}
+		
+		template<typename ...Args, std::enable_if_t<!std::is_invocable_v<Last, Args...>, int> = 0>
+		constexpr auto operator()(Args&& ... args) const->decltype(std::apply(std::declval<Last>(), std::forward<Args>(args)...)) {
+			return std::apply(last_fn, std::forward<Args>(args)...);
+		}
 
+		template<typename ...Args, std::enable_if_t<!std::is_invocable_v<const Last, Args...>, int> = 0>
+		constexpr auto operator()(Args&& ... args) const->decltype(std::apply(std::declval<const Last>(), std::forward<Args>(args)...)) {
+			return std::apply(last_fn, std::forward<Args>(args)...);
+		}
 
 		Last last_fn = {};
 	};
@@ -249,7 +313,8 @@ namespace hof {
 		constexpr logical_conjunction() = default;
 
 		template<typename... Fns>
-		constexpr explicit logical_conjunction(Fns&&... funcs) :functions(std::forward<Fns>(funcs)...) {}
+		constexpr explicit logical_conjunction(Fns&&... funcs) :
+			functions(std::forward<Fns>(funcs)...) {}
 
 		template<typename ...Args>
 		constexpr decltype(auto) operator()(Args&&... args) {
@@ -317,33 +382,62 @@ namespace hof {
 	logical_disjunction(Fns&&...)->logical_disjunction<Fns...>;
 
 	template<typename fn>
-	struct logical_negate {
-		constexpr logical_negate() = default;
+	struct logical_negate_t {
+		constexpr logical_negate_t() = default;
 
-		template<typename F,std::enable_if_t<!std::is_same_v<std::decay_t<F>,logical_negate<fn>>,int> = 0>
-		constexpr explicit logical_negate(F&& a) :func(std::forward<F>(a)) {}
+		template<typename F>//,std::enable_if_t<!std::is_same_v<std::decay_t<F>,logical_negate<fn>>,int> = 0
+		constexpr explicit logical_negate_t(F&& a) :base(std::forward<F>(a)) {}
 
 		template<typename ...T>
 		constexpr decltype(auto) operator()(T&&...a) {
-			return !std::invoke(func, std::forward<T>(a)...);
+			return !std::invoke(base, std::forward<T>(a)...);
 		}
 
 		template<typename ...T>
 		constexpr decltype(auto) operator()(T&&...a)const {
-			return !std::invoke(func, std::forward<T>(a)...);
+			return !std::invoke(base, std::forward<T>(a)...);
 		}
 
-		fn func = {};
+		fn base = {};
 	};
 
 	template<typename F>
-	logical_negate(F&&)->logical_negate<F>;
+	logical_negate_t(F&&)->logical_negate_t<F>;
+	
+	template<typename F,std::enable_if_t<!metap::is_specialization_of_v<F,logical_negate_t>,int> = 0>
+	constexpr decltype(auto) logical_negate(F&& a) {
+		return logical_negate_t(std::forward<F>(a));
+	}
+
+	//only move is specialized cuz ownership of underlying function can change 
+	//for references, if refernces are specialized, the following won't compile
+	/*	
+	auto a = []()mutable{return true;}
+	const auto b = logical_negate(a);//b is callable, b doesn't own a
+	const auto c = logical_negate(b); <--- copies a
+	c(); <--- won't compile 
+	*/
+	template<typename F>
+	constexpr decltype(auto) logical_negate(logical_negate_t<F>&& a) {
+		return std::move(a.base);
+	}
+
+	template<typename F>
+	constexpr decltype(auto) logical_negate(const logical_negate_t<F>& a) {
+		return logical_negate_t<const logical_negate_t<F>&>(a);
+	}
+
+	template<typename F>
+	constexpr decltype(auto) logical_negate(logical_negate_t<F>& a) {
+		return logical_negate_t<logical_negate_t<F>&>(a);
+	}
 
 	template<typename map_type>
 	struct map_with {
 
 		template<typename map_type_t>
-		constexpr explicit map_with(map_type_t&& m) :map(std::forward<map_type_t>(m)) {}
+		constexpr explicit map_with(map_type_t&& m) :
+			map(std::forward<map_type_t>(m)) {}
 
 		template<typename T>
 		constexpr decltype(auto) operator()(T&& i) {
@@ -355,20 +449,20 @@ namespace hof {
 			return map[std::forward<T>(i)];
 		}
 
-
 		map_type map;
 	};
 
 	template<typename T>
 	map_with(T&&)->map_with<T>;
 
-	struct dereference {
+	struct dereference_t {
 		template<typename T>
 		constexpr auto operator()(T&& t)const noexcept(noexcept(*t)) ->decltype(*t) {
 			return *t;
 		}
 	};
 
+	constexpr static dereference_t dereference = {};
 	static constexpr auto always = [](auto&& a) {
 		return[b = std::forward<decltype(a)>(a)](auto&&...)->decltype(auto){
 			return b;
@@ -385,10 +479,21 @@ namespace hof {
 		return a * a;
 	};
 
+	static constexpr auto cube = [](auto&& a) {
+		return a * a * a;
+	};
+
 	template<typename fn, typename Arg1>
 	struct bind1st {
 		template<typename F, typename A>
-		constexpr bind1st(F&& f, A&& a) :func(std::forward<F>(f)), arg(std::forward<A>(a)) {}
+		constexpr bind1st(F&& f, A&& a) :
+			func(std::forward<F>(f)),
+			arg(std::forward<A>(a)) {}
+
+		template<typename... Args>
+		constexpr decltype(auto) operator()(Args&&... args)const {
+			return std::invoke(func, arg, std::forward<Args>(args)...);
+		}
 
 		template<typename... Args>
 		constexpr decltype(auto) operator()(Args&&... args) {
@@ -448,6 +553,68 @@ namespace hof {
 	template<typename F, typename A>
 	bind_last(F&&, A&&)->bind_last<F, A>;
 
+	/*
+	constexpr auto bind = [](auto&& fn,auto&&... rest) {
+		return[fn_ = std::forward<decltype(fn)>(fn)](auto&&... args) {
+			
+		};
+	};
+	*/
+
+	template<int n>
+	struct bind_tag{};
+
+	template<typename fn,typename... bind_args>
+	struct bind_first_n{
+		constexpr bind_first_n() = default;
+
+		template<typename... bind_args_>
+		constexpr bind_first_n(fn&& f,bind_args_&&... args):
+			me(std::forward<fn>(f)),
+			calling_args(std::forward<bind_args_>(args)...) {}
+
+		template<typename ...Args>
+		constexpr decltype(auto) operator()(Args&&... args) {
+			return std::apply(me, std::tuple_cat(calling_args, std::forward_as_tuple(std::forward<Args>(args)...)));
+		}
+
+		template<typename ...Args>
+		constexpr decltype(auto) operator()(Args&&... args)const {
+			return std::apply(me, std::tuple_cat(calling_args, std::forward_as_tuple(std::forward<Args>(args)...)));
+		}
+		fn me;
+		std::tuple<bind_args...> calling_args;
+	};
+
+	template<typename fn,typename ...bind_args>
+	bind_first_n(fn&&, bind_args&&...)->bind_first_n<fn, bind_args...>;
+
+	template<typename fn,typename transform_fn>
+	struct transform_args{
+		constexpr transform_args() = default;
+
+		template<typename Fn,typename Transformer>
+		constexpr transform_args(Fn&& f,Transformer&& t):
+			base(std::forward<Fn>(f)),
+			transform(std::forward<Transformer>(t)){}
+
+		template<typename... Args>
+		constexpr decltype(auto) operator()(Args&&... args) {
+			return std::invoke(base, std::invoke(transform, std::forward<Args>(args))...);
+		}
+
+		template<typename... Args>
+		constexpr decltype(auto) operator()(Args&&... args)const {
+			return std::invoke(base, std::invoke(transform, std::forward<Args>(args))...);
+		}
+
+		fn base;
+		transform_fn transform;
+	};
+
+	template<typename F,typename T>
+	transform_args(F&&, T&&)->transform_args<F, T>;
+
 	inline void asdasdasd() {
 		auto i = fold([]() {return 1; }, [](int u) {return 5; });
 		auto t = i();
@@ -455,10 +622,72 @@ namespace hof {
 		qweds(2);
 		auto fnsasd = logical_conjunction(i, []() {return false; });
 		auto asdcx = logical_disjunction(fnsasd,always(true));
+		asdcx();
 		std::vector<int> aaa;
 		auto qwe = map_with(std::move(aaa));
 		auto& asdasy = qwe(2);		
 	}
+
+	inline void ghjuasdg() {
+		auto fn = []() mutable{return false; };
+		const auto negated = logical_negate(fn);
+		const auto negated2x = logical_negate(negated);
+		std::cout << !fn()<<"\n";
+		std::cout << negated() << '\n';
+		std::cout << !negated2x() << std::endl;
+		auto negatedrawr = logical_negate([]() mutable{return false; });
+		const auto negatedrawr2 = logical_negate(negatedrawr);
+
+		auto qwe = negatedrawr();
+		qwe = negatedrawr2();
+		//static_assert(!fn());
+		//static_assert(negated());
+		//static_assert(!negated2x());
+	}
+	
+
+
+}
+#include <tuple>
+#include <random>
+namespace hof_tests{
+using namespace hof;
+inline void hof_test1() {
+	const auto fn = []() {return true; };
+	const auto b = logical_conjunction(fn, always(true));
+	assert(b());
+}
+
+inline void hof_test2() {
+	std::mt19937 engine;
+	std::uniform_int_distribution<> dist;
+	const auto t = bind1st(dist,engine);
+	auto u = bind1st(dist, engine);
+	auto y = t();
+	auto e = u();
+}
+
+inline void hof_test_tuple_fold() {
+	auto a = []() {return std::make_tuple(1, 2, 3); };
+	auto b = [](int,int,int) {
+		return 2;
+	};
+	auto y = [](int) {return 3; };
+	//auto d = [](std::tuple<int, int, int>) {return 2; };
+	auto c = fold(a, b, y);
+	c();
+
+	auto e = []() {return std::make_tuple(1); };
+	auto p = [](auto) {};
+	auto w = fold(e, p);
+	w();
+
+	auto cw = compose(p, e);
+	cw();
+
+
+
+}
 
 
 }

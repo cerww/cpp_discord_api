@@ -85,7 +85,7 @@ private:
 	shard* m_shard = nullptr;
 
 	bool m_is_ready = true;
-
+	nlohmann::json m_presences;
 	friend void from_json(const nlohmann::json& json, Guild& guild);
 	friend struct shard;
 };

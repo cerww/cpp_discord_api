@@ -15,12 +15,17 @@ struct snowflake{
 	constexpr snowflake() = default;
 	~snowflake() = default;
 	constexpr snowflake& operator=(snowflake&& other)noexcept {
-		val = other.val;
-		other.val = 0;
+		//std::swap isn't constexpr
+		auto t = other.val;
+		other.val = val;
+		val = t;		
 		return *this;
 	}
 	constexpr snowflake& operator=(const snowflake& other) = default;
-	constexpr snowflake(snowflake&& other)noexcept :val(other.val) { other.val = 0; }
+	constexpr snowflake(snowflake&& other)noexcept :val(other.val) {
+		//std::exchange isn't constexpr
+		other.val = 0;
+	}
 	constexpr snowflake(const snowflake& other) = default;
 };
 
@@ -46,7 +51,6 @@ constexpr bool operator>=(const snowflake& a, const snowflake& b) {
 
 inline void to_json(nlohmann::json& json,const snowflake& wawt) {
 	char buffer[20] = {};
-	//json = std::to_string(wawt.val);
 	const auto r = std::to_chars(buffer, buffer + 20, wawt.val);
 	json = std::string(buffer, r.ptr);
 }
@@ -77,17 +81,6 @@ struct has_id<T, std::void_t<decltype(std::declval<T>().id())>> :std::is_same<de
 template<typename T>
 static constexpr bool has_id_v = has_id<T>::value;
 
-/*
-template<typename T>//requires has_id_v<T>
-std::enable_if_t<has_id_v<T>,ska::bytell_hash_map<snowflake,T*,std::hash<snowflake>,std::equal_to<>,single_chunk_allocator<std::pair<const snowflake,T*>>>> to_map(std::vector<T>& stuffs) {
-	single_chunk_mem_pool pool(std::max(stuffs.size() * sizeof(std::pair<const snowflake, T*>) * 2,2048ull));//2048 and 2 are random numbers
-	ska::bytell_hash_map<snowflake, T*, std::hash<snowflake>, std::equal_to<>, single_chunk_allocator<std::pair<const snowflake, T*>>> retVal(std::move(pool));//so long ;-;
-	retVal.reserve(stuffs.size());
-	for(auto& item:stuffs) 
-		retVal[item.id()] = &item;
-	return retVal;
-}
-*/
 struct id_equal_to{
 	explicit id_equal_to(snowflake i) : id(std::move(i)) {}
 	template<typename T>
@@ -104,9 +97,9 @@ struct discord_obj_map{
 	discord_obj_map(const rename_later_4<snowflake,T>& data):m_data(&data){}
 	
 	template<typename it>
-	struct cursor{
+	struct cursor {
 		cursor() = default;
-		cursor(it i) :m_it(i){}
+		cursor(it i) :m_it(i) {}
 
 		const T& read() const noexcept {
 			return *m_it;
@@ -154,6 +147,10 @@ struct discord_obj_map{
 		return m_data->find(s);
 	}
 
+	bool contains(snowflake s)const noexcept {
+		return m_data->find(s) != m_data->end();
+	}
+
 	size_t size()const noexcept {
 		return m_data->size();
 	}
@@ -177,7 +174,6 @@ struct discord_obj_list{
 
 	template<typename value_type_,ptrdiff_t stride>
 	struct cursor {
-
 		cursor() = default;
 		explicit cursor(discord_obj_list* t_parent, const underlying_iterator t_it) :
 			m_parent(t_parent),
@@ -253,8 +249,8 @@ private:
 
 static inline constexpr auto transform_to_pair = [](auto&& a, auto&& fn1,auto&& fn2){
 	//evaluation order is undefined ;-;, so i can't inline this
-	auto ret = std::invoke(std::forward(fn1),a);
-	auto other = std::invoke(std::forward(fn2),ret);
+	auto ret = std::invoke(std::forward<decltype(fn1)>(fn1), a);
+	auto other = std::invoke(std::forward<decltype(fn2)>(fn2), ret);
 	return std::make_pair(std::move(ret), std::move(other));
 };
 

@@ -3,6 +3,7 @@
 #include "snowflake.h"
 
 struct permissions {
+	//not an enum so i can still use |, &
 	static constexpr size_t CREATE_INSTANT_INVITE = 1;
 	static constexpr size_t KICK_MEMBERS = 2;
 	static constexpr size_t BAN_MEMBERS = 4;
@@ -34,22 +35,54 @@ struct permissions {
 };
 
 struct permission {
-	permission(size_t t):m_permission(t){}
 	permission() = default;
-	void addPermissions(size_t p) {
+	explicit permission(size_t t):m_permission(t){}
+	permission& add_permissions(size_t p) {
 		m_permission |= p;
+		return *this;
 	};
-	void combine_permissions(permission other) {
-		m_permission |= other.m_permission;
-	}
-	void removePermissions(size_t p) {
+
+	permission& add_permissions(permission p) {
+		m_permission |= p.data();
+		return *this;
+	};
+	
+	permission& remove_permissions(size_t p) {
 		m_permission &= ~p;
+		return *this;
 	};
-	bool hasPermission(size_t p) const noexcept{
+
+	permission& remove_permissions(permission p) {
+		m_permission &= ~p.data();
+		return *this;
+	};
+
+	permission& combine_permissions(permission other) {
+		m_permission |= other.m_permission;
+		return *this;
+	}
+
+	permission intersection(permission other) const noexcept{
+		return *this & other;
+	}
+
+	bool has_permission(size_t p) const noexcept{
 		return (m_permission & p) == p;
 	};
-	size_t& data() noexcept { return m_permission; }
-	const size_t& data()const noexcept { return m_permission; }
+
+	bool has_permission(permission p) const noexcept {
+		return (m_permission & p.data()) == p.data();
+	};
+
+	permission operator|(permission other) const noexcept{
+		return other.combine_permissions(*this);
+	}
+
+	permission operator&(permission other) const noexcept {
+		return permission(m_permission & other.m_permission);
+	}
+
+	size_t data()const noexcept { return m_permission; }
 private:
 	size_t m_permission = 0;
 };
@@ -60,6 +93,6 @@ inline void to_json(nlohmann::json& json, const permission& p) {
 
 inline void from_json(const nlohmann::json& json, permission& p) {
 	if (json.is_null())return;
-	p.data() = json.get<size_t>();
+	p = permission(json.get<size_t>());
 }
 

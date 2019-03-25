@@ -3,8 +3,7 @@
 #include <optional>
 #include <experimental/coroutine>
 #include <vector>
-#include "ref_counted.h"
-//#include "randomThings.h"
+#include "ref_count_ptr.h"
 #include "better_conditional.h"
 #include <type_traits>
 
@@ -77,7 +76,7 @@ protected:
 
 private:
 	std::atomic<bool> m_is_done = false;
-	std::optional<std::exception_ptr> m_watland;
+	std::optional<std::exception_ptr> m_watland = std::nullopt;
 };
 
 template<typename T, bool does_move>
@@ -338,5 +337,5 @@ using shared_promise = templated_promise<shared_shared_state<T>>;
 		return r;
 	}
 
-};
+}
 

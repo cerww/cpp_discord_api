@@ -5,4 +5,6 @@ struct timestamp{
 	int i = 0;
 };
 
-inline void from_json(const nlohmann::json&,timestamp& t){}
+inline void from_json(const nlohmann::json&, timestamp& t) {
+	
+}

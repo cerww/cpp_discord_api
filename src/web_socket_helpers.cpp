@@ -35,11 +35,10 @@ cerwy::task<boost::beast::websocket::stream<ssl_stream<boost::asio::ip::tcp::soc
 	boost::asio::ip::tcp::resolver& resolver,
 	boost::asio::ssl::context& ssl_ctx)
 {
-	//auto[port, uri, path] = rawr::parse_uri(full_uri);
-	//auto query = boost::asio::ip::tcp::resolver::query(std::string(uri), std::string(port));
-	std::string_view port = "https";
-	std::string_view uri = "gateway.discord.gg";
-	std::string_view path = "/v=6&encoding=json";
+	auto[port, uri, path] = rawr::parse_uri(full_uri);
+	if(port == "wss") {
+		port = "https";
+	}
 	auto[ec, results] = co_await resolver.async_resolve(uri, port, use_task_return_tuple2);
 
 	if (ec) {

@@ -1,6 +1,6 @@
 #pragma once
 #include <utility>
-#include "ref_counted.h"
+#include "ref_count_ptr.h"
 //#include "randomThings.h"
 
 template<typename T>
@@ -14,23 +14,29 @@ struct mem_pool_ :ref_counted {
 		end = start;
 		cap = start + size;
 	}
+
 	~mem_pool_() {
 		if (start)
 			free(start);
 	}
+
 	mem_pool_(mem_pool_&& other) noexcept {
 		start = std::exchange(other.start, nullptr);
 		end = std::exchange(other.end, nullptr);
 		cap = std::exchange(other.cap, nullptr);
 	}
+
 	mem_pool_& operator=(mem_pool_&& other)noexcept {
-		start = std::exchange(other.start, nullptr);
-		end = std::exchange(other.end, nullptr);
-		cap = std::exchange(other.cap, nullptr);
+		mem_pool_ new_pool(std::move(other));
+		std::swap(new_pool.start, start);
+		std::swap(new_pool.end, end);
+		std::swap(new_pool.cap, cap);
 		return *this;
 	}
+
 	mem_pool_(const mem_pool_& other) = delete;
 	mem_pool_& operator=(const mem_pool_&) = delete;
+
 	template<typename T>
 	T* allocate(const size_t n) {
 		end = (char*)round_to_multiple((size_t)end, alignof(T));
@@ -51,16 +57,20 @@ struct single_chunk_allocator {
 
 	template<typename o> struct rebind { using other = single_chunk_allocator<o>; };
 
-	explicit single_chunk_allocator(size_t s = 2048):m_mem_pool(make_ref_count_ptr<mem_pool_>(s)){}
+	explicit single_chunk_allocator(size_t s = 2048):
+		m_mem_pool(make_ref_count_ptr<mem_pool_>(s)){}
 
-	explicit single_chunk_allocator(ref_count_ptr<mem_pool_> t):m_mem_pool(std::move(t)) {}
+	explicit single_chunk_allocator(ref_count_ptr<mem_pool_> t):
+		m_mem_pool(std::move(t)) {}
 
 	template<typename U>
-	single_chunk_allocator(const single_chunk_allocator<U>& other) :m_mem_pool(other.m_mem_pool){
+	single_chunk_allocator(const single_chunk_allocator<U>& other) :
+		m_mem_pool(other.m_mem_pool){
 	}
 
 	template<typename U>
-	single_chunk_allocator(single_chunk_allocator<U>&& other) : m_mem_pool(other.m_mem_pool) {//move is the same as copy
+	single_chunk_allocator(single_chunk_allocator<U>&& other) :
+		m_mem_pool(other.m_mem_pool) {//move is the same as copy
 	}
 
 	template<typename U>

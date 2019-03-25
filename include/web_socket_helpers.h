@@ -35,6 +35,7 @@ cerwy::task<boost::beast::websocket::stream<boost::asio::ip::tcp::socket>> ws_fr
 cerwy::task<boost::beast::websocket::stream<ssl_stream<boost::asio::ip::tcp::socket>>> wss_from_uri(
 	std::string_view full_uri,
 	boost::asio::ip::tcp::resolver& resolver,
-	boost::asio::ssl::context& ssl_ctx);
+	boost::asio::ssl::context& ssl_ctx
+);
 
 

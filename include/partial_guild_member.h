@@ -31,7 +31,8 @@ private:
 inline void from_json(const nlohmann::json& in, partial_guild_member& out) {
 	from_json(in["user"], static_cast<user&>(out));
 	const auto it = in.find("nick");
-	if (it != in.end()) out.m_nick = in["nick"].is_null() ? "" : in["nick"].get<std::string>();
+	if (it != in.end()) 
+		out.m_nick = in["nick"].is_null() ? "" : in["nick"].get<std::string>();
 	out.m_roles = in["roles"].get<std::vector<snowflake>>();
 	//out.m_joined_at = in["joined_at"].get<timestamp>();
 	out.m_deaf = in["deaf"].get<bool>();

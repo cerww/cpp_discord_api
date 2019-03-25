@@ -6,17 +6,19 @@
 #include "timer_queue.h"
 
 struct timed_task_executor{
-	timed_task_executor() {
+	timed_task_executor(){
 		m_thread = std::thread([this](){
-			while(!m_done.load(std::memory_order_relaxed)) {
-				auto t = m_queue.try_pop_next_time_blocking();
-				if(t.first) {
-					std::invoke(*t.first);
+			try {
+				while (!m_done.load()) {
+					auto t = m_queue.try_pop_next_time_blocking();
+					if (t.first) {
+						std::invoke(*t.first);
+					}
+					if (t.second) {
+						std::this_thread::sleep_until(*t.second);
+					}
 				}
-				if(t.second) {
-					std::this_thread::sleep_until(*t.second);
-				}
-			}
+			}catch(...){}
 		});
 	}
 
@@ -27,7 +29,7 @@ struct timed_task_executor{
 
 	~timed_task_executor() {
 		m_done.store(true);
-		execute([]() {}, std::chrono::steady_clock::now());//to trigger the cv
+		execute([]() {}, std::chrono::steady_clock::now() - std::chrono::seconds(1));//to trigger the cv
 		m_thread.join();
 	}
 
@@ -50,7 +52,7 @@ struct timed_task_executor{
 	}
 
 private:
-	std::thread m_thread;
+	std::thread m_thread{};
 	std::atomic<bool> m_done = false;
 	concurrent_timer_queue<std::function<void()>> m_queue{};
 };

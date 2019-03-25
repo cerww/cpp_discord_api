@@ -32,11 +32,6 @@ void from_json(const nlohmann::json& json, Guild& guild) {
 	guild.m_unavailable = json["unavailable"].get<bool>();
 	guild.m_member_count = json["member_count"].get<int>();
 	guild.m_members.reserve(guild.m_member_count);
-	for(const auto& member_json:json["members"]) {
-		auto member = member_json.get<guild_member>();
-		const auto id = member.id();
-		guild.m_members.insert(std::make_pair(id,std::move(member)));
-	}
 	guild.m_voice_states = json["voice_states"].get<std::vector<voice_state>>();
 }
 

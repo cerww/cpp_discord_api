@@ -9,14 +9,14 @@
 #include "channel_catagory.h"
 #include "partial_message.h"
 #include "requests.h"
-#include "discord_http_connection.h"
+#include "http_connection.h"
 #include <type_traits>
 #include "range-like-stuffs.h"
 #include "discord_enums.h"
 #include "task.h"
 #include "ssl_stream.hpp"
 #include "rename_later_5.h"
-
+#include "attachment.h"
 
 
 using namespace std::string_literals;
@@ -24,14 +24,14 @@ using namespace std::chrono_literals;
 struct client;
 
 struct shard {
-	static constexpr int large_threshold = 250;
+	static constexpr int large_threshold = 51;
 
 	using wsClient = rename_later_5;
 	explicit shard(int shardN, wsClient* t_client, client* t_parent,boost::asio::io_context& ioc) :
 		m_shard_number(shardN),
 		m_parent(t_parent), 
 		m_client(t_client),
-		m_http_connection(t_parent),
+		m_http_connection(t_parent, ioc),//TODO: this blocks 
 		m_ioc(ioc)
 	{
 		
@@ -40,9 +40,7 @@ struct shard {
 	shard& operator=(const shard&) = delete;
 	shard& operator=(shard&&) = delete;
 	shard(const shard&) = delete;
-	shard(shard&&) = delete;
-	
-	
+	shard(shard&&) = delete;	
 	
 	const rename_later_4<snowflake, text_channel> & text_channels() const noexcept { return m_text_channel_map; }
 
@@ -68,6 +66,7 @@ struct shard {
 	rq::kick_member kick_member(const partial_guild&, const  guild_member&);
 	rq::ban_member ban_member(const partial_guild& g, const guild_member& member, std::string reason = "", int days_to_delete_msg = 0);
 	rq::unban_member unban_member(const Guild&, snowflake id);
+	//max 100 messages
 	rq::get_messages get_messages(const partial_channel&,int = 100);
 	rq::get_messages get_messages_before(const partial_channel&, snowflake, int = 100);
 	rq::get_messages get_messages_before(const partial_channel&, const partial_message&, int = 100);
@@ -121,21 +120,16 @@ struct shard {
 
 	const user& self_user()const noexcept {
 		return m_self_user;
-	}
-	
+	}	
 private:
-	void add_event(std::string t) {
-		//m_event_queue.push(std::move(t));
-	};
-	void doStuff(nlohmann::json,int);
-	void rate_limit(std::chrono::system_clock::time_point tp) {
-		m_http_connection.sleep_till(tp);
-	}
+	cerwy::task<boost::beast::error_code> connect_http_connection();
 
-	void close_connection(int code) {
-		m_is_disconnected = true;
-		m_client->close(boost::beast::websocket::close_reason(code));
-	}
+	void doStuff(nlohmann::json,int);
+	void on_reconnect();
+
+	void rate_limit(std::chrono::system_clock::time_point tp);
+
+	void close_connection(int code);
 
 	void reconnect();	
 	void send_heartbeat();
@@ -150,14 +144,10 @@ private:
 	
 	void set_up_request(boost::beast::http::request<boost::beast::http::string_body>&)const;
 
-	void request_guild_members(Guild& g)const {
-		m_opcode8(g.id());
-		g.m_members.clear();
-		g.m_members.reserve(g.m_member_count);
-	}
+	void request_guild_members(Guild& g) const;
 
 	//dispatch
-	void m_opcode0(nlohmann::json, eventName, size_t);
+	void m_opcode0(nlohmann::json, event_name, size_t);
 	//heartbeat
 	void m_opcode1() const;
 	//identify
@@ -171,7 +161,7 @@ private:
 	//request guild members
 	void m_opcode8(snowflake) const;
 	//invalid session
-	void m_opcode9(const nlohmann::json&) const;
+	cerwy::task<void> m_opcode9(const nlohmann::json&) const;
 	//hello
 	void m_opcode10(nlohmann::json&);
 	//heartbeat ack
@@ -180,48 +170,48 @@ private:
 	void m_sendIdentity()const;
 
 	//event stuff
-	template<eventName e>
-	void m_procces_event(const nlohmann::json&);
-	template<>	void m_procces_event<eventName::HELLO>(const nlohmann::json&);
-	template<>	void m_procces_event<eventName::READY>(const nlohmann::json&);
-	template<>	void m_procces_event<eventName::RESUMED>(const nlohmann::json&);
-	template<>	void m_procces_event<eventName::INVALID_SESSION>(const nlohmann::json&);
-	template<>	void m_procces_event<eventName::CHANNEL_CREATE>(const nlohmann::json&);
-	template<>	void m_procces_event<eventName::CHANNEL_DELETE>(const nlohmann::json&);
-	template<>	void m_procces_event<eventName::CHANNEL_UPDATE>(const nlohmann::json&);
-	template<>	void m_procces_event<eventName::CHANNEL_PINS_UPDATE>(const nlohmann::json&);
-	template<>	void m_procces_event<eventName::GUILD_CREATE>(const nlohmann::json&);
-	template<>	void m_procces_event<eventName::GUILD_UPDATE>(const nlohmann::json&);
-	template<>	void m_procces_event<eventName::GUILD_DELETE>(const nlohmann::json&);
-	template<>	void m_procces_event<eventName::GUILD_BAN_ADD>(const nlohmann::json&);
-	template<>	void m_procces_event<eventName::GUILD_BAN_REMOVE>(const nlohmann::json&);
-	template<>	void m_procces_event<eventName::GUILD_EMOJI_UPDATE>(const nlohmann::json&);
-	template<>	void m_procces_event<eventName::GUILD_INTEGRATIONS_UPDATE>(const nlohmann::json&);
-	template<>	void m_procces_event<eventName::GUILD_MEMBER_ADD>(const nlohmann::json&);
-	template<>	void m_procces_event<eventName::GUILD_MEMBER_REMOVE>(const nlohmann::json&);
-	template<>	void m_procces_event<eventName::GUILD_MEMBER_UPDATE>(const nlohmann::json&);
-	template<>	void m_procces_event<eventName::GUILD_MEMBER_CHUNK>(const nlohmann::json&);
-	template<>	void m_procces_event<eventName::GUILD_ROLE_CREATE>(const nlohmann::json&);
-	template<>	void m_procces_event<eventName::GUILD_ROLE_UPDATE>(const nlohmann::json&);
-	template<>	void m_procces_event<eventName::GUILD_ROLE_DELETE>(const nlohmann::json&);
-	template<>	void m_procces_event<eventName::MESSAGE_CREATE>(const nlohmann::json&);
-	template<>	void m_procces_event<eventName::MESSAGE_UPDATE>(const nlohmann::json&);
-	template<>	void m_procces_event<eventName::MESSAGE_DELETE>(const nlohmann::json&);
-	template<>	void m_procces_event<eventName::MESSAGE_DELETE_BULK>(const nlohmann::json&);
-	template<>	void m_procces_event<eventName::MESSAGE_REACTION_ADD>(const nlohmann::json&);
-	template<>	void m_procces_event<eventName::MESSAGE_REACTION_REMOVE>(const nlohmann::json&);
-	template<>	void m_procces_event<eventName::MESSAGE_REACTION_REMOVE_ALL>(const nlohmann::json&);
-	template<>	void m_procces_event<eventName::PRESENCE_UPDATE>(const nlohmann::json&);
-	template<>	void m_procces_event<eventName::TYPING_START>(const nlohmann::json&);
-	template<>	void m_procces_event<eventName::USER_UPDATE>(const nlohmann::json&);
-	template<>	void m_procces_event<eventName::VOICE_STATE_UPDATE>(const nlohmann::json&);
-	template<>	void m_procces_event<eventName::VOICE_SERVER_UPDATE>(const nlohmann::json&);
-	template<>	void m_procces_event<eventName::WEBHOOKS_UPDATE>(const nlohmann::json&);
+	template<event_name e>
+	void m_procces_event(nlohmann::json&);
+	template<>	void m_procces_event<event_name::HELLO>(nlohmann::json&);
+	template<>	void m_procces_event<event_name::READY>(nlohmann::json&);
+	template<>	void m_procces_event<event_name::RESUMED>(nlohmann::json&);
+	template<>	void m_procces_event<event_name::INVALID_SESSION>(nlohmann::json&);
+	template<>	void m_procces_event<event_name::CHANNEL_CREATE>(nlohmann::json&);
+	template<>	void m_procces_event<event_name::CHANNEL_DELETE>(nlohmann::json&);
+	template<>	void m_procces_event<event_name::CHANNEL_UPDATE>(nlohmann::json&);
+	template<>	void m_procces_event<event_name::CHANNEL_PINS_UPDATE>(nlohmann::json&);
+	template<>	void m_procces_event<event_name::GUILD_CREATE>(nlohmann::json&);
+	template<>	void m_procces_event<event_name::GUILD_UPDATE>(nlohmann::json&);
+	template<>	void m_procces_event<event_name::GUILD_DELETE>(nlohmann::json&);
+	template<>	void m_procces_event<event_name::GUILD_BAN_ADD>(nlohmann::json&);
+	template<>	void m_procces_event<event_name::GUILD_BAN_REMOVE>(nlohmann::json&);
+	template<>	void m_procces_event<event_name::GUILD_EMOJI_UPDATE>(nlohmann::json&);
+	template<>	void m_procces_event<event_name::GUILD_INTEGRATIONS_UPDATE>(nlohmann::json&);
+	template<>	void m_procces_event<event_name::GUILD_MEMBER_ADD>(nlohmann::json&);
+	template<>	void m_procces_event<event_name::GUILD_MEMBER_REMOVE>(nlohmann::json&);
+	template<>	void m_procces_event<event_name::GUILD_MEMBER_UPDATE>(nlohmann::json&);
+	template<>	void m_procces_event<event_name::GUILD_MEMBER_CHUNK>(nlohmann::json&);
+	template<>	void m_procces_event<event_name::GUILD_ROLE_CREATE>(nlohmann::json&);
+	template<>	void m_procces_event<event_name::GUILD_ROLE_UPDATE>(nlohmann::json&);
+	template<>	void m_procces_event<event_name::GUILD_ROLE_DELETE>(nlohmann::json&);
+	template<>	void m_procces_event<event_name::MESSAGE_CREATE>(nlohmann::json&);
+	template<>	void m_procces_event<event_name::MESSAGE_UPDATE>(nlohmann::json&);
+	template<>	void m_procces_event<event_name::MESSAGE_DELETE>(nlohmann::json&);
+	template<>	void m_procces_event<event_name::MESSAGE_DELETE_BULK>(nlohmann::json&);
+	template<>	void m_procces_event<event_name::MESSAGE_REACTION_ADD>(nlohmann::json&);
+	template<>	void m_procces_event<event_name::MESSAGE_REACTION_REMOVE>(nlohmann::json&);
+	template<>	void m_procces_event<event_name::MESSAGE_REACTION_REMOVE_ALL>(nlohmann::json&);
+	template<>	void m_procces_event<event_name::PRESENCE_UPDATE>(nlohmann::json&);
+	template<>	void m_procces_event<event_name::TYPING_START>(nlohmann::json&);
+	template<>	void m_procces_event<event_name::USER_UPDATE>(nlohmann::json&);
+	template<>	void m_procces_event<event_name::VOICE_STATE_UPDATE>(nlohmann::json&);
+	template<>	void m_procces_event<event_name::VOICE_SERVER_UPDATE>(nlohmann::json&);
+	template<>	void m_procces_event<event_name::WEBHOOKS_UPDATE>(nlohmann::json&);
 
 	template<int n>
 	static reaction& update_reactions(std::vector<reaction>&, partial_emoji&, snowflake, snowflake my_id);
-	static reaction& add_reaction(std::vector<reaction>&, partial_emoji&, snowflake, snowflake my_id);
-	static reaction& remove_reaction(std::vector<reaction>&, partial_emoji&, snowflake, snowflake my_id);
+	static reaction& add_reaction(std::vector<reaction>&, partial_emoji&, snowflake, snowflake);
+	static reaction& remove_reaction(std::vector<reaction>&, partial_emoji&, snowflake, snowflake);
 
 
 	template<typename msg_t,typename channel_t,typename map_t>
@@ -254,7 +244,7 @@ private:
 	client* m_parent = nullptr;
 
 	wsClient* m_client = nullptr;
-	discord_http_connection m_http_connection;
+	http_connection m_http_connection;
 
 	std::thread m_main_thread;
 	//concurrent_queue<std::string, std::vector<std::string>> m_event_queue;
@@ -262,21 +252,24 @@ private:
 
 	friend struct client;
 
-	static void init_members(Guild&);
+	//TODO:rename
+	//m_backed_up_items[guild_id] returns all the events that came while the guild wasn't ready
+	ska::bytell_hash_map<snowflake, std::vector<std::pair<nlohmann::json,event_name>>> m_backed_up_events;
 
+	//not in here cuz shard.cpp is getting too big to compile
 	friend cerwy::task<void> create_shard(int shardN, client* t_parent, boost::asio::io_context& ioc, std::string_view gateway);
 };
 
 namespace rawrland{//rename later ;-;
 
-template<typename thingy, typename ... Args>
-std::pair<thingy, discord_request> get_default_stuffs(Args&&... args) {
-	std::pair<thingy, discord_request> retVal;
-	retVal.first.state = make_ref_count_ptr<rq::shared_state>();
-	retVal.second.state = retVal.first.state;
-	retVal.second.req = thingy::request(std::forward<Args>(args)...);
-	if constexpr(rq::has_content_type_v<thingy>) {
-		retVal.second.req.set(boost::beast::http::field::content_type, thingy::content_type);
+template<typename fut_type, typename ... Args>
+std::pair<fut_type, discord_request> get_default_stuffs(Args&&... args) {
+	std::pair<fut_type, discord_request> retVal;
+	retVal.second.state = make_ref_count_ptr<rq::shared_state>();
+	retVal.first = fut_type(retVal.second.state);
+	retVal.second.req = fut_type::request(std::forward<Args>(args)...);
+	if constexpr(rq::has_content_type_v<fut_type>) {
+		retVal.second.req.set(boost::beast::http::field::content_type, fut_type::content_type);
 	}
 	return retVal;
 }
@@ -310,7 +303,7 @@ rq::modify_channel_positions shard::modify_channel_positions(const Guild& g, rng
 			auto[id, position] = a;
 			using id_type = decltype(id);
 			static_assert(std::is_integral_v<position>);
-			static__assert(std::is_same_v<id_type, snowflake>);
+			static_assert(std::is_same_v<id_type, snowflake>);
 			nlohmann::json ret;
 			ret["id"] = id;
 			ret["position"] = position;
@@ -375,8 +368,8 @@ std::enable_if_t<is_range_of<range, std::string>::value, rq::create_group_dm> sh
 
 
 
-template <eventName e>
-void shard::m_procces_event(const nlohmann::json&) {}
+template <event_name e>
+void shard::m_procces_event(nlohmann::json&) {}
 
 template <typename msg_t, typename channel_t,typename map_t>
 msg_t shard::create_msg(channel_t& ch, const nlohmann::json& stuffs,map_t&& members) {
@@ -433,11 +426,14 @@ inline reaction& shard::remove_reaction(std::vector<reaction>& a, partial_emoji&
 
 //this function is super hacky ;-;
 template<int n>
-reaction& shard::update_reactions(std::vector<reaction>& reactions, partial_emoji& emoji, snowflake user_id, snowflake my_id) {
+reaction& shard::update_reactions(
+	std::vector<reaction>& reactions, 
+	partial_emoji& emoji, 
+	const snowflake user_id, 
+	const snowflake my_id) 
+{
 	static_assert(n == -1 || n == 1);
-	const auto it = ranges::find_if(reactions, [&](const reaction& r) {
-		return r.emoji().id() == emoji.id();
-	});
+	const auto it = ranges::find(reactions, emoji.id(), hof::fold(&reaction::emoji, &emoji::id));
 	if (it == reactions.end()) {
 		reaction temp;
 		temp.m_count = n;

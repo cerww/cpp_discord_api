@@ -57,7 +57,7 @@ void from_json(const nlohmann::json& json, partial_guild& guild) {
 	if (t != snowflake())
 		guild.m_application_id = t;
 
-	guild.m_widget_enabled= json.value("widget_enabled", false);
+	guild.m_widget_enabled = json.value("widget_enabled", false);
 	if(guild.m_widget_enabled) {
 		auto t2 = json.value("widget_channel_id", snowflake());
 		if (t2 != snowflake()) {

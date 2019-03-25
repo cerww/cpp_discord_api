@@ -19,7 +19,6 @@ overwrite_type string_to_overwrite_type(str_t&& str) {
 std::string overwrite_type_to_string(const overwrite_type e);
 
 struct permission_overwrite {
-
 	snowflake id() const noexcept { return m_id; }
 	overwrite_type type() const noexcept { return m_type; }
 	size_t allow() const noexcept{ return m_allow; }

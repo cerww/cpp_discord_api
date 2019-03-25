@@ -5,6 +5,7 @@
 #include <thread>
 #include "requests.h"
 #include "concurrent_queue.h"
+#include "task.h"
 //#include <variant>
 
 struct discord_request {
@@ -14,21 +15,23 @@ struct discord_request {
 
 struct client;
 
-struct discord_http_connection{
+struct http_connection{
 	void sleep_till(std::chrono::system_clock::time_point time_point) {
 		m_rate_limted_until = time_point;
 		m_global_rate_limited.store(true);
 	};
-	discord_http_connection() = delete;
-	discord_http_connection(discord_http_connection&&) = delete;
-	discord_http_connection(const discord_http_connection&) = delete;
-	discord_http_connection& operator=(const discord_http_connection&) = delete;
-	discord_http_connection& operator=(discord_http_connection&&) = delete;
 
-	explicit discord_http_connection(client*);
+	http_connection() = delete;
+	http_connection(http_connection&&) = delete;
+	http_connection(const http_connection&) = delete;
+	http_connection& operator=(const http_connection&) = delete;
+	http_connection& operator=(http_connection&&) = delete;
 
-	~discord_http_connection() {
+	explicit http_connection(client*,boost::asio::io_context&);
+
+	~http_connection() {
 		m_done.store(true);
+		m_request_queue.cancel();
 		if (m_thread.joinable())
 			m_thread.join();
 	}
@@ -40,6 +43,9 @@ struct discord_http_connection{
 	void stop() {
 		m_done.store(true);
 	}
+
+	cerwy::task<boost::beast::error_code> async_connect();
+
 private:
 	std::chrono::system_clock::time_point m_rate_limted_until = {};
 	std::atomic<bool> m_global_rate_limited = false;
@@ -47,16 +53,17 @@ private:
 	std::atomic<bool> m_done = false;
 	std::thread m_thread{};
 
-	boost::asio::io_context m_ioc{};
-	boost::asio::ip::tcp::resolver m_resolver{ m_ioc };
+	boost::asio::io_context& m_ioc;
+	boost::asio::ip::tcp::resolver m_resolver;
 
 	boost::asio::ssl::context m_sslCtx{ boost::asio::ssl::context::tlsv12_client };
 	boost::asio::ssl::stream<boost::asio::ip::tcp::socket> m_socket{ m_ioc, m_sslCtx };	
 	boost::beast::flat_buffer m_buffer{};
 	concurrent_queue<discord_request> m_request_queue = {};
 	client* m_client = nullptr;
+
 	void send_to_discord(discord_request);
-	bool send_to_discord_(discord_request&, size_t);
+	bool send_to_discord_(discord_request&, size_t);	
 	void connect();
 	void reconnect();
 
@@ -118,14 +125,14 @@ namespace d{
 		}
 		auto end() { return sentinal{}; }
 	protected:
-		concurrent_queue<std::pair<std::experimental::coroutine_handle<>, event_type*>,std::vector<std::pair<std::experimental::coroutine_handle<>, event_type*>>> stuff;		
+		concurrent_queue<std::pair<std::coroutine_handle<>, event_type*>,std::vector<std::pair<std::coroutine_handle<>, event_type*>>> stuff;		
 	};
 
 	template<typename event_type>
 	struct subscriber_thingy_async :subscriber_thingy_impl<event_type> {
 		[[nodiscard]]
 		std::future<void> add_event(event_type e) {
-			return std::async(std::launch::async, [_e = std::move(e), this]()mutable {auto t = stuff.pop(); *t.second = std::move(_e); t.first.resume(); });
+			return std::async([_e = std::move(e), this]()mutable {auto t = stuff.pop(); *t.second = std::move(_e); t.first.resume(); });
 		}
 	};
 

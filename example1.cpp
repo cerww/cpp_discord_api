@@ -1,26 +1,29 @@
 #include "client.h"
-#include "randomThings.h"
-
+#include <fstream>
 using namespace std::literals;
 
-cerwy::task<void> bonkland() {
-	cerwy::promise<int> promise;
-	auto t = std::thread([&]() {
-		std::this_thread::sleep_for(std::chrono::seconds(1));
-		promise.set_value(5);
-	});
-	int a = co_await promise.get_task();
-	std::cout << a;
-	t.detach();
+std::string getFileContents(const std::string& filePath, decltype(std::ios::in) mode = std::ios::in) {
+	std::string fileContents;
+	std::ifstream file(filePath, mode);
+	file.seekg(0, std::ios::end);
+	int filesize = (int)file.tellg();
+	file.seekg(0, std::ios::beg);
+	filesize -= (int)file.tellg();
+	fileContents.resize(filesize);
+	file.read(fileContents.data(), filesize);
+	file.close();
+	return fileContents;
 }
 
 //spam bot
 int main() {
-	//bonkland();
-	//std::cin.get();
-	//return 0;
 	try {
 		client c;
+		auto thing_to_kill = std::thread([&]() {
+			//std::this_thread::sleep_for(std::chrono::seconds(15));
+			//std::cerr << "dying\n";
+			//c.stop();
+		});
 		std::vector<partial_message> msgs;
 		c.on_guild_text_msg = [&](guild_text_message& msg, shard& s) {
 			if (msg.content() == "watland") {
@@ -34,6 +37,7 @@ int main() {
 					ranges::view::transform(&guild_role::name) |
 					ranges::view::join(" "sv) |
 					ranges::to_<std::string>();
+
 				s.send_message(msg.channel(), stuff);
 			}else if (msg.content() == "invite") {
 				s.create_channel_invite(msg.channel()).wait();
@@ -43,7 +47,7 @@ int main() {
 			//s.change_nick(wat.author(), wat.content());
 
 			for (const auto& i : msg.mentions()) {
-				s.change_nick(msg.guild(), i, std::string(msg.content()));
+				s.change_nick(i, std::string(msg.content()));
 			}
 
 			if (msg.author().id() != s.self_user().id())
@@ -68,10 +72,14 @@ int main() {
 		c.on_guild_member_add = [&](guild_member& member, shard& s) {
 			//s.send_message(member.guild().general_channel(),member.username()).get();
 		};
-		c.setToken(tokenType::BOT, getFileContents("token.txt"));
+		c.setToken(tokenType::BOT, getFileContents("token.txt"));		
 		c.run();
+		thing_to_kill.join();
 	} catch (...) {
 		std::cout << ";-;" << std::endl;
 	}
 	std::cin.get();
 }
+
+
+

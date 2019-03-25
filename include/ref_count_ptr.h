@@ -5,9 +5,11 @@ struct ref_counted {
 	void increment_ref_count() const noexcept {
 		m_ref_count.fetch_add(1, std::memory_order_relaxed);
 	}
+
 	bool decrement_ref_count()const noexcept {
 		return m_ref_count.fetch_sub(1, std::memory_order_relaxed) == 1;
 	}
+
 	size_t ref_count() const noexcept {
 		return m_ref_count;
 	}
@@ -20,7 +22,7 @@ struct ref_counted_thread_unsafe {
 	void increment_ref_count() const noexcept {
 		++m_ref_count;
 	}
-	bool decrement_ref_count()const noexcept {
+	bool decrement_ref_count() const noexcept {
 		return --m_ref_count == 0;
 	}
 	size_t ref_count() const noexcept {
@@ -55,28 +57,24 @@ struct ref_count_ptr {
 		m_self->increment_ref_count();
 	}
 
-	~ref_count_ptr() {
+	~ref_count_ptr() noexcept {
 		if (m_self && m_self->decrement_ref_count())
 			delete m_self;
 	}
 
-	ref_count_ptr& operator=(T* other) {
-		this->~ref_count_ptr();
-		m_self = other;
-		m_self->increment_ref_count();
+	ref_count_ptr& operator=(T* other) noexcept{
+		ref_count_ptr n(other);
+		std::swap(n.m_self, m_self);
 		return *this;
 	}
-	ref_count_ptr& operator=(const ref_count_ptr& other) {
-		this->~ref_count_ptr();
-		m_self = other.m_self;
-		m_self->increment_ref_count();
+	ref_count_ptr& operator=(const ref_count_ptr& other) noexcept {
+		ref_count_ptr n(other);
+		std::swap(n.m_self, m_self);
 		return *this;
 	}
 	ref_count_ptr& operator=(ref_count_ptr&& other) noexcept {
-		if (&other == this)//self move is bad ;-;
-			return *this;
-		this->~ref_count_ptr();
-		m_self = std::exchange(other.m_self, nullptr);
+		ref_count_ptr temp(std::move(other));
+		std::swap(m_self, temp.m_self);
 		return *this;
 	}
 

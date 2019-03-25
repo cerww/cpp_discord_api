@@ -22,7 +22,7 @@ void from_json(const nlohmann::json& json, guild_role& other) {
 	if (json.is_null()) return;//why would role be null ;-;
 	other.m_id = json["id"].get<snowflake>();
 	other.m_position = json["position"].get<int>();
-	other.m_permissions.data() = json["permissions"].get<size_t>();
+	other.m_permissions = json["permissions"].get<permission>();
 	other.m_hoist = json["hoist"].get<bool>();
 	other.m_managed = json["managed"].get<bool>();
 	other.m_name = json["name"].get<std::string>();
