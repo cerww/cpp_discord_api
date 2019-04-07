@@ -16,7 +16,7 @@ struct partial_guild{
 struct partial_channel{
 	snowflake id;
 	std::string name;
-	int type;
+	int type = 0;
 };
 
 inline void from_json(const nlohmann::json& json,partial_guild& g) {

@@ -95,3 +95,5 @@ template<typename T, typename... args>
 ref_count_ptr<T> make_ref_count_ptr(args&&... Args) {
 	return ref_count_ptr<T>(new T(std::forward<args>(Args)...));
 }
+
+

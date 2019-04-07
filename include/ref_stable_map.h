@@ -5,7 +5,7 @@
 #include "arrow_proxy.h"
 
 template<typename K,typename V,typename H = std::hash<K>,typename E = std::equal_to<>,typename A = std::allocator<std::pair<const K,indirect<V>>>>
-struct rename_later_4 {
+struct ref_stable_map {
 	using map_t = ska::bytell_hash_map<K, indirect<V>, H, E, A>;
 	using value_type = std::pair<const K , V>;
 	using reference = ranges::common_pair<const K&, V&>;//can't use std::pair for some reason
@@ -46,18 +46,7 @@ struct rename_later_4 {
 			++m_it;
 			return t;
 		}
-		/*
-		templated_iterator& operator--() {
-			--m_it;
-			return *this;
-		}
 
-		templated_iterator operator--(int) {
-			auto t = *this;	
-			--m_it;
-			return t;
-		}
-		*/
 		template<typename U,typename other_it>
 		bool operator==(const templated_iterator<U,other_it>& other) const noexcept{
 			return m_it == other.m_it;
@@ -71,7 +60,7 @@ struct rename_later_4 {
 	private:
 		iterator_t m_it;
 
-		friend struct rename_later_4;
+		friend struct ref_stable_map;
 		template<typename, typename> friend struct templated_iterator;
 	};
 
@@ -90,7 +79,7 @@ struct rename_later_4 {
 			return *m_data.second;
 		}
 	private:
-		friend struct rename_later_4;
+		friend struct ref_stable_map;
 		std::pair<K, indirect<V>> m_data;
 	};
 
@@ -219,10 +208,11 @@ struct rename_later_4 {
 		m_data.reserve(n);
 	}
 
-	bool operator==(const rename_later_4& other) {
+	bool operator==(const ref_stable_map& other) {
 		return m_data == other.m_data;
 	}
-	bool operator!=(const rename_later_4& other) {
+
+	bool operator!=(const ref_stable_map& other) {
 		return m_data != other.m_data;
 	}
 	   	

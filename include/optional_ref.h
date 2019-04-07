@@ -25,7 +25,7 @@ struct optional_ref{
 
 	constexpr optional_ref& operator=(T&& other) = delete;
 
-	constexpr optional_ref& operator=(T& other) {
+	constexpr optional_ref& operator=(T& other) noexcept{
 		m_self = &other;
 		return *this;
 	}
@@ -115,69 +115,88 @@ private:
 	T* m_self = nullptr;
 };
 
-/*
+
 template<typename T,typename U>
-constexpr std::enable_if_t<has_equal_to<T,U>::value,bool> operator==(const optional_ref<T>& rhs,U&& lhs) noexcept(noexcept(*rhs == lhs)){
+constexpr auto operator==(const optional_ref<T>& rhs,U&& lhs) noexcept
+	->decltype(*rhs == lhs) 
+{
 	return rhs.has_value() ? *rhs == lhs : false;
 }
 
 template<typename T, typename U>
-constexpr std::enable_if_t<has_not_equal_to<T,U>::value,bool> operator!=(const optional_ref<T>& rhs, U&& lhs) noexcept(noexcept(*rhs != lhs)) {
+constexpr auto operator!=(const optional_ref<T>& rhs, U&& lhs) noexcept 
+	->decltype(*rhs != lhs) 
+{
 	return rhs.has_value() ? *rhs != lhs : true;
 }
 
 template<typename T, typename U>
-constexpr std::enable_if_t<has_less_than<T, U>::value, bool> operator<(const optional_ref<T>& rhs, U&& lhs) noexcept(noexcept(*rhs < lhs)) {
+constexpr auto operator<(const optional_ref<T>& rhs, U&& lhs) noexcept 
+	->decltype(*rhs < lhs) 
+{
 	return rhs.has_value() ? *rhs < lhs : true;
 }
 
 template<typename T, typename U>
-constexpr std::enable_if_t<has_less_than_equal<T, U>::value, bool> operator<=(const optional_ref<T>& rhs, U&& lhs) noexcept(noexcept(*rhs <= lhs)) {
+constexpr auto operator<=(const optional_ref<T>& rhs, U&& lhs) noexcept 
+	->decltype(*rhs <= lhs) 
+{
 	return rhs.has_value() ? *rhs <= lhs : true;
 }
 
 template<typename T, typename U>
-constexpr std::enable_if_t<has_greater_than<T, U>::value, bool> operator>(const optional_ref<T>& rhs, U&& lhs) noexcept(noexcept(*rhs > lhs)) {
+constexpr auto operator>(const optional_ref<T>& rhs, U&& lhs) noexcept 
+	->decltype(*rhs > lhs) 
+{
 	return rhs.has_value() ? *rhs > lhs : false;
 }
 
 template<typename T, typename U>
-constexpr std::enable_if_t<has_greater_than_equal<T, U>::value, bool> operator>=(const optional_ref<T>& rhs, U&& lhs)noexcept(noexcept(*rhs >= lhs)) {
+constexpr auto operator>=(const optional_ref<T>& rhs, U&& lhs)noexcept 
+	->decltype(*rhs >= lhs)
+{
 	return rhs.has_value() ? *rhs >= lhs : false;
 }
 
 
 template<typename T, typename U>
-constexpr std::enable_if_t<has_equal_to<T, U>::value, bool> operator==(T&& rhs, const optional_ref<U>& lhs) noexcept(noexcept(rhs == *lhs)) {
+constexpr auto operator==(T&& rhs, const optional_ref<U>& lhs) noexcept 
+->decltype(rhs == *lhs){
 	return lhs.has_value() ? rhs == *lhs : false;
 }
 
 template<typename T, typename U>
-constexpr std::enable_if_t<has_not_equal_to<T, U>::value, bool> operator!=(T&& rhs, const optional_ref<U>& lhs)noexcept(noexcept(rhs != *lhs)) {
+constexpr auto operator!=(T&& rhs, const optional_ref<U>& lhs)noexcept
+->decltype(rhs != *lhs)
+{
 	return lhs.has_value() ? rhs != *lhs : true;
 }
 
 template<typename T, typename U>
-constexpr std::enable_if_t<has_less_than<T, U>::value, bool> operator<(T&& rhs, const optional_ref<U>& lhs)noexcept(noexcept(rhs < *lhs)) {
+constexpr auto operator<(T&& rhs, const optional_ref<U>& lhs)noexcept 
+	->decltype(rhs < *lhs) 
+{
 	return lhs.has_value() ? rhs < *lhs : false;
 }
 
 template<typename T, typename U>
-constexpr std::enable_if_t<has_less_than_equal<T, U>::value, bool> operator<=(T&& rhs, const optional_ref<U>& lhs)noexcept(noexcept(rhs <= *lhs)) {
+constexpr auto operator<=(T&& rhs, const optional_ref<U>& lhs)noexcept
+->decltype(rhs <= *lhs) {
 	return lhs.has_value() ? rhs <= *lhs : false;
 }
 
 template<typename T, typename U>
-constexpr std::enable_if_t<has_greater_than<T, U>::value, bool> operator>(T&& rhs, const optional_ref<U>& lhs)noexcept(noexcept(rhs > *lhs)) {
+constexpr auto operator>(T&& rhs, const optional_ref<U>& lhs)noexcept 
+->decltype(rhs > *lhs) {
 	return lhs.has_value() ? rhs > *lhs : true;
 }
 
 template<typename T, typename U>
-constexpr std::enable_if_t<has_greater_than_equal<T, U>::value, bool> operator>=(T&& rhs, const optional_ref<U>& lhs) noexcept(noexcept(rhs >= *lhs)) {
+constexpr auto operator>=(T&& rhs, const optional_ref<U>& lhs) noexcept
+	->decltype(rhs>=*lhs)
+{
 	return lhs.has_value() ? rhs >= *lhs : true;
 }
-
-*/
 
 inline void asdasdasd() {
 	int a = 0;

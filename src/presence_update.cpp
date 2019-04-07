@@ -1,7 +1,7 @@
 #include "presence_update.h"
 
 
-const std::string& activity::name() const noexcept { return m_name; }
+std::string_view activity::name() const noexcept { return m_name; }
 activity_type activity::type() const noexcept { return m_type; }
 const std::optional<std::string>& activity::url() const noexcept { return m_url; }
 

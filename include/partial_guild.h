@@ -43,7 +43,7 @@ private:
 	int m_verification_level = 0;
 	int m_default_message_notifications = 0;//what is this for ;-;
 	bool m_explicit_content_filter = false;
-	rename_later_4<snowflake, guild_role> m_roles{};
+	ref_stable_map<snowflake, guild_role> m_roles{};
 	std::vector<emoji> m_emojis{};
 	std::vector<std::string> m_features{};
 	int m_mfa_level = 0;

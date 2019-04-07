@@ -4,6 +4,7 @@
 #include <memory_resource>
 #include "allocatey.h"
 #include <unordered_map>
+
 //this file should always compile
 #pragma warning(push,0)
 CONCEPT_ASSERT(ranges::ForwardRange<discord_obj_list<guild_member, std::vector<snowflake>&>>());

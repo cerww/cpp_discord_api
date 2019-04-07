@@ -58,10 +58,6 @@ struct map_view{
 			return m_it == other.m_it;
 		}
 
-		bool operator!=(const cursor& other) const noexcept{
-			return m_it == other.m_it;
-		}
-
 	private:
 		map_iterator_type m_it;
 	};

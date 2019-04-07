@@ -20,8 +20,7 @@ struct dm_channel: partial_channel{
 	};
 private:
 	snowflake m_last_message_id;
-	//std::vector<user> m_recipients;
-	rename_later_4<snowflake, user> m_recipients;
+	ref_stable_map<snowflake, user> m_recipients;
 	timestamp m_last_pin_timestamp;
 
 	dynamic_item_cache<dm_message> m_msg_cache = dynamic_item_cache<dm_message>(15,false);

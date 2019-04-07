@@ -4,7 +4,7 @@
 #include "concurrent_queue.h"
 
 struct get_current_coroutine_handle{
-	bool await_ready() {
+	static bool await_ready() {
 		return false;
 	}
 
@@ -12,7 +12,7 @@ struct get_current_coroutine_handle{
 		me = h;
 	}
 
-	std::experimental::coroutine_handle<> await_resume() {
+	std::experimental::coroutine_handle<> await_resume() const {
 		return me;
 	}
 

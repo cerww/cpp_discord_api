@@ -64,19 +64,22 @@ struct iterator_facade{
 	template<typename... Args,std::enable_if_t<std::is_constructible_v<cursor,Args...>,int> = 0>
 	constexpr iterator_facade(Args&&... args):m_base(std::forward<Args>(args)...){}
 
-	using value_type = std::decay_t<decltype(std::declval<cursor>().read())>;
-	using difference_type = ptrdiff_t;
 	using reference = decltype(std::declval<cursor>().read());
-	using iterator_category = better_conditional_t<
-		equality_comparable<cursor>::value,
-		better_conditional_t <
-			decrementable<cursor>::value, 
-			better_conditional_t<
-				random_access_interface<cursor>::value,
-				std::random_access_iterator_tag,
-				std::bidirectional_iterator_tag>,
-			std::forward_iterator_tag>,
-		std::input_iterator_tag>;
+	using value_type = std::remove_cvref_t<reference>;
+	using difference_type = ptrdiff_t;
+	using iterator_category = 
+		better_conditional_t<
+			equality_comparable<cursor>::value,
+			better_conditional_t <
+				decrementable<cursor>::value, 
+				better_conditional_t<
+					random_access_interface<cursor>::value,
+					std::random_access_iterator_tag,
+					std::bidirectional_iterator_tag>,
+				std::forward_iterator_tag>,
+			std::input_iterator_tag>;
+
+	using pointer = better_conditional_t<std::is_reference_v<reference>, std::add_pointer_t<value_type>, arrow_proxy<reference>>;
 private:
 	static constexpr bool is_bidi() noexcept{
 		return std::is_base_of_v<std::bidirectional_iterator_tag, iterator_category>;
@@ -257,6 +260,11 @@ public:
 
 	constexpr const cursor& base() const noexcept {
 		return m_base;
+	}
+
+	template<typename other_cursor_t,std::enable_if_t<std::is_convertible_v<cursor,other_cursor_t> && !std::is_same_v<cursor,other_cursor_t>,int> = 0>
+	operator iterator_facade<other_cursor_t>() const{
+		return iterator_facade(other_cursor_t(m_base));
 	}
 private:
 	cursor m_base{};

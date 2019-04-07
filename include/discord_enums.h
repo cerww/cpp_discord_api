@@ -29,7 +29,7 @@ enum class event_name {
 	GUILD_MEMBER_ADD,
 	GUILD_MEMBER_REMOVE,
 	GUILD_MEMBER_UPDATE,
-	GUILD_MEMBER_CHUNK,
+	GUILD_MEMBERS_CHUNK,
 	GUILD_ROLE_CREATE,
 	GUILD_ROLE_UPDATE,
 	GUILD_ROLE_DELETE,
@@ -67,7 +67,7 @@ inline event_name to_event_name(std::string_view name) {
 	if (name == "GUILD_MEMBER_ADD")return event_name::GUILD_MEMBER_ADD;
 	if (name == "GUILD_MEMBER_REMOVE")return event_name::GUILD_MEMBER_REMOVE;
 	if (name == "GUILD_MEMBER_UPDATE")return event_name::GUILD_MEMBER_UPDATE;
-	if (name == "GUILD_MEMBERS_CHUNK")return event_name::GUILD_MEMBER_CHUNK;
+	if (name == "GUILD_MEMBERS_CHUNK")return event_name::GUILD_MEMBERS_CHUNK;
 	if (name == "GUILD_ROLE_CREATE")return event_name::GUILD_ROLE_CREATE;
 	if (name == "GUILD_ROLE_UPDATE")return event_name::GUILD_ROLE_UPDATE;
 	if (name == "GUILD_ROLE_DELETE")return event_name::GUILD_ROLE_DELETE;

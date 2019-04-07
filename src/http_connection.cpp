@@ -12,6 +12,15 @@ struct get_n {
 	}
 };
 
+struct empty_vector_t{
+	template<typename T,typename A>
+	operator std::vector<T,A>() const{
+		return {};
+	}
+};
+
+static constexpr empty_vector_t empty_vector;
+
 size_t get_major_param_id(std::string_view s) {
 	s.remove_prefix(7);//strlen("/api/v6") == 7;
 	const auto start = s.find_first_of("1234567890");
@@ -75,7 +84,7 @@ bool http_connection::send_to_discord_(discord_request& r,size_t major_param_id_
 			r.state->res.body().clear();
 			//add the request to the right queue in sorted order, by time
 			auto it = m_rate_limited_requests.insert(ranges::upper_bound(m_rate_limited_requests, tp, std::less{}, get_n<1>{}), 
-													 { major_param_id_,tp,{} });
+													{ major_param_id_,tp,empty_vector });
 			std::get<2>(*it).push_back(std::move(r));
 			return false;
 		}
@@ -90,7 +99,7 @@ bool http_connection::send_to_discord_(discord_request& r,size_t major_param_id_
 		}()));
 
 		m_rate_limited_requests.insert(ranges::upper_bound(m_rate_limited_requests, time, std::less{} ,get_n<1>{}),
-									   { major_param_id_,time,{} });
+									   { major_param_id_,time, empty_vector });
 	}
 	
 	std::cout << r.req << std::endl;

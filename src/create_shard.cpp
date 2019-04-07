@@ -5,7 +5,21 @@
 #include "rename_later_5.h"
 #include <fmt/core.h>
 
-cerwy::task<void> create_shard(int shardN, client* t_parent, boost::asio::io_context& ioc, std::string_view gateway) {
+namespace discord_ec{
+	constexpr int unknown_error = 4000;
+	constexpr int unknown_opcode = 4001;
+	constexpr int decode_error = 4002;
+	constexpr int not_authenticated = 4003;
+	constexpr int authentication_failed = 4004;
+	constexpr int already_authenticated = 4005;
+	constexpr int invalid_seq = 4007;
+	constexpr int rate_limited = 4008;
+	constexpr int timeout = 4009;
+	constexpr int invalid_shard = 4010;
+	constexpr int sharding_required = 4011;
+}
+
+cerwy::task<void> create_shard(const int shard_number, client* t_parent, boost::asio::io_context& ioc, std::string_view gateway) {
 	try {
 
 		boost::asio::ssl::context ssl_ctx{ boost::asio::ssl::context_base::tlsv12 };
@@ -16,37 +30,42 @@ cerwy::task<void> create_shard(int shardN, client* t_parent, boost::asio::io_con
 		
 		boost::beast::multi_buffer buffer = {};
 
-		shard me(shardN, &rename_me, t_parent, ioc);
+		shard me(shard_number, &rename_me, t_parent, ioc);
 		co_await me.connect_http_connection();
 		t_parent->add_shard(&me);
 
 		while (true) {
 			std::cerr << "recieving stuffs\n";
 			auto[ec, n] = co_await socket.async_read(buffer, use_task_return_tuple2);
+			
 			if (ec) {
-				if(ec.value() == 4003) {
+				if(ec.value() == discord_ec::unknown_error) {
 					socket = co_await wss_from_uri(gateway, resolver, ssl_ctx);
 					rename_me.maybe_restart();
 					me.on_reconnect();
-				}else if(ec.value() == 4004) {
+				}else if(ec.value() == discord_ec::not_authenticated) {
+					socket = co_await wss_from_uri(gateway, resolver, ssl_ctx);
+					rename_me.maybe_restart();
+					me.on_reconnect();
+				}else if(ec.value() == discord_ec::authentication_failed) {					
 					fmt::print("authentication failed");
 					break;
-				}else if(ec.value() == 4005) {
+				}else if(ec.value() == discord_ec::already_authenticated) {
 					fmt::print("already authenticated");
 					break;
-				}else if(ec.value() == 4007) {
+				}else if(ec.value() == discord_ec::invalid_seq) {
 					socket = co_await wss_from_uri(gateway, resolver, ssl_ctx);
 					rename_me.maybe_restart();
 					me.on_reconnect();
-				}else if(ec.value() == 4008) {
+				}else if(ec.value() == discord_ec::rate_limited) {
 					fmt::print("rate limited");
 					break;
-				}else if (ec.value() == 4009) {
+				}else if (ec.value() == discord_ec::timeout) {
 					fmt::print("session timedout, reconnecting");
 					socket = co_await wss_from_uri(gateway, resolver, ssl_ctx);
 					rename_me.maybe_restart();
 					me.on_reconnect();
-				}else if (ec.value() == 4011) {
+				}else if (ec.value() == discord_ec::sharding_required) {
 					fmt::print("sharding required");
 					break;
 				}

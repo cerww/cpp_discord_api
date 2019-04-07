@@ -15,12 +15,12 @@ namespace hof {
 
 		template<typename U>
 		constexpr bool operator()(U&& other) {
-			return std::invoke(c, value, std::forward<U>(other));
+			return std::invoke(c, std::forward<U>(other), value);
 		}
 		
 		template<typename U>
 		constexpr bool operator()(U&& other)const {
-			return std::invoke(c, value, std::forward<U>(other));
+			return std::invoke(c, std::forward<U>(other), value);
 		}
 
 		T value = {};
@@ -389,12 +389,12 @@ namespace hof {
 		constexpr explicit logical_negate_t(F&& a) :base(std::forward<F>(a)) {}
 
 		template<typename ...T>
-		constexpr decltype(auto) operator()(T&&...a) {
+		constexpr auto operator()(T&&...a) ->decltype(!std::invoke(std::declval<fn>(), std::forward<T>(a)...)){
 			return !std::invoke(base, std::forward<T>(a)...);
 		}
 
 		template<typename ...T>
-		constexpr decltype(auto) operator()(T&&...a)const {
+		constexpr auto operator()(T&& ...a)const ->decltype(!std::invoke(std::declval<const fn>(), std::forward<T>(a)...)) {
 			return !std::invoke(base, std::forward<T>(a)...);
 		}
 

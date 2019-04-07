@@ -10,7 +10,7 @@ enum struct activity_type{
 };
 
 struct activity{
-	const std::string& name() const noexcept;
+	std::string_view name() const noexcept;
 	activity_type type() const noexcept;
 	const std::optional<std::string>& url() const noexcept;
 private:

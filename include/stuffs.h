@@ -7,8 +7,8 @@
 #include <range/v3/view/filter.hpp>
 #include "higher_order_functions.h"
 
-inline permission combined_permissions(permission p1, permission p2) {
-	return permission(p1.data() | p2.data());
+constexpr permission combined_permissions(permission p1, permission p2) {
+	return p1 | p2;
 }
 
 template<typename range>

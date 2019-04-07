@@ -7,7 +7,7 @@
 
 client::client(int threads):
 	m_ioc(threads),
-	m_threads(threads-1){
+	m_threads(std::max(threads-1,0)){
 	
 }
 
@@ -29,12 +29,12 @@ void client::stop() {
 	m_ioc.stop();
 }
 
-void client::setToken(const tokenType type, std::string token) {
+void client::setToken(const token_type type, std::string token) {
 	m_token = token;
 	switch (type) {
-	case tokenType::BOT: m_authToken = "Bot " + std::move(token);
+	case token_type::BOT: m_authToken = "Bot " + std::move(token);
 		break;
-	case tokenType::BEARER: m_authToken = "Bearer " + std::move(token);
+	case token_type::BEARER: m_authToken = "Bearer " + std::move(token);
 		break;
 	default: break;
 	}
@@ -106,6 +106,7 @@ void client::m_getGateway() {
 	fmt::print("\n");	
 }
 
+/*
 nlohmann::json client::presence()const {
 	nlohmann::json retVal;
 	retVal["since"];
@@ -116,3 +117,4 @@ nlohmann::json client::presence()const {
 
 	return retVal;
 }
+*/

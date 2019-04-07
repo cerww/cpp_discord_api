@@ -5,7 +5,7 @@
 #include "allocatey.h"
 #include "bytell_hash_map.hpp"
 #include "indirect.h"
-#include "rename_later_4.h"
+#include "ref_stable_map.h"
 #include <charconv>
 #include "iterator_facade.h"
 
@@ -21,9 +21,10 @@ struct snowflake{
 		val = t;		
 		return *this;
 	}
+
 	constexpr snowflake& operator=(const snowflake& other) = default;
 	constexpr snowflake(snowflake&& other)noexcept :val(other.val) {
-		//std::exchange isn't constexpr
+		//std::exchange isn't constexpr ;-;
 		other.val = 0;
 	}
 	constexpr snowflake(const snowflake& other) = default;
@@ -56,17 +57,16 @@ inline void to_json(nlohmann::json& json,const snowflake& wawt) {
 }
 
 inline void from_json(const nlohmann::json& in,snowflake& out) {
-	if (in.is_null()) return;
-	try{
-		const auto& str = in.get_ref<const std::string&>();
-		std::from_chars(str.data(), str.data() + str.size(), out.val);		
-	}catch(...) {}
+	if (in.is_null()) 
+		return;
+	const auto& str = in.get_ref<const std::string&>();
+	std::from_chars(str.data(), str.data() + str.size(), out.val);		
 }
 
 namespace std{
 	template<>
 	struct hash<snowflake>{	
-		size_t operator()(snowflake s)const{
+		size_t operator()(snowflake s)const noexcept {
 			return std::hash<size_t>()(s.val);
 		}
 	};
@@ -94,7 +94,7 @@ struct id_equal_to{
 template<typename T>
 struct discord_obj_map{
 	discord_obj_map() = default;
-	discord_obj_map(const rename_later_4<snowflake,T>& data):m_data(&data){}
+	discord_obj_map(const ref_stable_map<snowflake,T>& data):m_data(&data){}
 	
 	template<typename it>
 	struct cursor {
@@ -116,7 +116,7 @@ struct discord_obj_map{
 		it m_it;
 	};
 
-	using iterator = iterator_facade<cursor<typename rename_later_4<snowflake, T>::const_iterator>>;
+	using iterator = iterator_facade<cursor<typename ref_stable_map<snowflake, T>::const_iterator>>;
 	using const_iterator = iterator;
 
 	const T& operator[](snowflake s)const{
@@ -158,7 +158,7 @@ struct discord_obj_map{
 		return size() == 0;
 	}
 private:
-	const rename_later_4<snowflake, T>* m_data;
+	const ref_stable_map<snowflake, T>* m_data;
 };
 
 
@@ -255,7 +255,7 @@ static inline constexpr auto transform_to_pair = [](auto&& a, auto&& fn1,auto&& 
 };
 
 template<typename T>
-std::pair<snowflake,T> get_return_id(const nlohmann::json& json) {
+std::pair<snowflake,T> get_then_return_id(const nlohmann::json& json) {
 	auto ret = json.get<T>();
 	const snowflake id = ret.id();
 	return { id,std::move(ret) };

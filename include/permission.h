@@ -2,41 +2,11 @@
 #include <nlohmann/json.hpp>
 #include "snowflake.h"
 
-struct permissions {
-	//not an enum so i can still use |, &
-	static constexpr size_t CREATE_INSTANT_INVITE = 1;
-	static constexpr size_t KICK_MEMBERS = 2;
-	static constexpr size_t BAN_MEMBERS = 4;
-	static constexpr size_t ADMINISTRATOR = 8;
-	static constexpr size_t MANAGE_CHANNELS = 16;
-	static constexpr size_t MANAGE_GUILD = 32;
-	static constexpr size_t ADD_REACTION = 64;
-	static constexpr size_t VIEW_AUDIT_LOG = 128;
-	static constexpr size_t VIEW_CHANNEL = 1024;
-	static constexpr size_t SEND_MESSAGES = 2048;
-	static constexpr size_t SEND_TTS_MESSAGES = 4096;
-	static constexpr size_t MANAGE_MESSAGES = 8192;
-	static constexpr size_t EMBED_LINKS = 16384;
-	static constexpr size_t ATTACH_FILES = 32768;
-	static constexpr size_t READ_MESSAGE_HISTORY = 65536;
-	static constexpr size_t MENTION_EVERYONE = 131072;
-	static constexpr size_t USE_EXTERNAL_EMOJIS = 262144;
-	static constexpr size_t CONNECT = 1048576;
-	static constexpr size_t SPEAK = 2097152;
-	static constexpr size_t MUTE_MEMBERS = 4194304;
-	static constexpr size_t DEAFEN_MEMBERS = 8388608;
-	static constexpr size_t MOVE_MEMBERS = 16777216;
-	static constexpr size_t USE_VAD = 33554432;
-	static constexpr size_t CHANGE_NICKNAME = 67108864;
-	static constexpr size_t MANAGE_NICKNAMES = 134217728;
-	static constexpr size_t MANAGE_ROLES = 268435456;
-	static constexpr size_t MANAGE_WEBHOOKS = 536870912;
-	static constexpr size_t MANAGE_EMOJIS = 1073741824;
-};
-
+//needs to be own class so i can use | and & and add functions to it
 struct permission {
 	permission() = default;
 	explicit permission(size_t t):m_permission(t){}
+
 	permission& add_permissions(size_t p) {
 		m_permission |= p;
 		return *this;
@@ -96,3 +66,33 @@ inline void from_json(const nlohmann::json& json, permission& p) {
 	p = permission(json.get<size_t>());
 }
 
+struct permissions {
+	static constexpr permission CREATE_INSTANT_INVITE = permission(1);
+	static constexpr permission KICK_MEMBERS = permission(2);
+	static constexpr permission BAN_MEMBERS = permission(4);
+	static constexpr permission ADMINISTRATOR = permission(8);
+	static constexpr permission MANAGE_CHANNELS = permission(16);
+	static constexpr permission MANAGE_GUILD = permission(32);
+	static constexpr permission ADD_REACTION = permission(64);
+	static constexpr permission VIEW_AUDIT_LOG = permission(128);
+	static constexpr permission VIEW_CHANNEL = permission(1024);
+	static constexpr permission SEND_MESSAGES = permission(2048);
+	static constexpr permission SEND_TTS_MESSAGES = permission(4096);
+	static constexpr permission MANAGE_MESSAGES = permission(8192);
+	static constexpr permission EMBED_LINKS = permission(16384);
+	static constexpr permission ATTACH_FILES = permission(32768);
+	static constexpr permission READ_MESSAGE_HISTORY = permission(65536);
+	static constexpr permission MENTION_EVERYONE = permission(131072);
+	static constexpr permission USE_EXTERNAL_EMOJIS = permission(262144);
+	static constexpr permission CONNECT = permission(1048576);
+	static constexpr permission SPEAK = permission(2097152);
+	static constexpr permission MUTE_MEMBERS = permission(4194304);
+	static constexpr permission DEAFEN_MEMBERS = permission(8388608);
+	static constexpr permission MOVE_MEMBERS = permission(16777216);
+	static constexpr permission USE_VAD = permission(33554432);
+	static constexpr permission CHANGE_NICKNAME = permission(67108864);
+	static constexpr permission MANAGE_NICKNAMES = permission(134217728);
+	static constexpr permission MANAGE_ROLES = permission(268435456);
+	static constexpr permission MANAGE_WEBHOOKS = permission(536870912);
+	static constexpr permission MANAGE_EMOJIS = permission(1073741824);
+};

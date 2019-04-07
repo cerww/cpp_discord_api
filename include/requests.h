@@ -44,15 +44,18 @@ namespace rq {
 		std::mutex mut{};
 		std::atomic<bool> done = false;
 		boost::beast::http::response<boost::beast::http::string_body> res = {};
-		std::vector<std::experimental::coroutine_handle<>> waiters;
-		std::mutex waiter_mut;
+		std::vector<std::experimental::coroutine_handle<>> waiters{};
+		std::mutex waiter_mut{};
 		void notify() {
 			cv.notify_all();
+			/*
 			std::lock_guard lock(waiter_mut);
 			auto all_waiters = std::move(waiters);
 			for(auto& coro:waiters) {
 				coro.resume();
 			}
+			*/
+			//figure out how to do coros later ;-;
 		}
 	};
 	
@@ -211,6 +214,7 @@ namespace rq {
 	{
 		using request_base::request_base;
 		using return_type = partial_message;
+
 		static std::string target(const partial_channel& channel) {	
 			return "/channels/{}/messages"_format(channel.id().val);
 		}
@@ -324,6 +328,7 @@ namespace rq {
 	{
 		using request_base::request_base;
 		using return_type = void;
+
 		static std::string target(const partial_guild& g) {
 			return "/guilds/{}/members/@me/nick"_format(g.id().val);
 		}
@@ -353,6 +358,7 @@ namespace rq {
 			return "/channels/{}/messages/{}"_format(msg.channel_id().val,msg.id().val);
 		}
 	};
+
 	struct get_messages:
 		request_base<get_messages>,
 		json_content_type,
@@ -442,6 +448,7 @@ namespace rq {
 	{
 		using request_base::request_base;
 		using return_type = emoji;
+
 		static std::string target(const partial_guild& guild, const emoji& e) {
 			return "/guilds/{}/emojis/{}"_format(guild.id().val,e.id().val);
 		}
@@ -454,6 +461,7 @@ namespace rq {
 	{
 		using request_base::request_base;
 		using return_type = void;
+
 		static std::string target(const partial_channel& channel) {
 			return "/channels/{}/messages/bulk-delete"_format(channel.id().val);
 		}
@@ -465,6 +473,7 @@ namespace rq {
 	{
 		using request_base::request_base;
 		using return_type = void;
+
 		static std::string target(const partial_guild& g) {
 			return "/@me/guilds/{}"_format(g.id().val);
 		}
@@ -489,6 +498,7 @@ namespace rq {
 	{
 		using request_base::request_base;
 		using return_type = std::vector<partial_guild>;
+
 		static std::string target() {
 			return "/users/@me/guilds";
 		}
@@ -500,6 +510,7 @@ namespace rq {
 	{
 		using request_base::request_base;
 		using return_type = void;
+
 		static std::string target(const partial_message& msg,const partial_emoji& emo) {
 			return "/channel/{}/messages/{}/reactions/{}:{}/@me"_format(msg.channel_id().val, msg.id().val, emo.id().val, emo.name());
 		}
@@ -511,6 +522,7 @@ namespace rq {
 	{
 		using request_base::request_base;
 		using return_type = void;
+
 		static std::string target(const partial_channel& ch) {
 			return "/channel/{}/typing"_format(ch.id().val);
 		}
@@ -522,6 +534,7 @@ namespace rq {
 	{
 		using request_base::request_base;
 		using return_type = void;
+
 		static std::string target(const guild_channel& ch, const permission_overwrite& o) {
 			return "/channels/{}/permissions/{}"_format(ch.id().val,o.id().val);
 		}
@@ -534,6 +547,7 @@ namespace rq {
 	{
 		using request_base::request_base;
 		using return_type = partial_guild;
+
 		static std::string target(const partial_guild& g) {
 			return "/guild/{}"_format(g.id().val);
 		}
@@ -546,6 +560,7 @@ namespace rq {
 	{
 		using request_base::request_base;
 		using return_type = void;
+
 		static std::string target(const partial_guild& g) {
 			return "/guilds/{}/channels"_format(g.id().val);
 		}
@@ -558,9 +573,11 @@ namespace rq {
 	{
 		using request_base::request_base;
 		using return_type = snowflake;
+
 		static std::string target(const partial_guild& g,snowflake id) {
 			return "/guilds/{}/members/{}"_format(g.id().val,id.val);
 		}
+
 		snowflake overload_value() const {
 			return nlohmann::json::parse(state->res.body())["id"].get<snowflake>();
 		}
@@ -572,6 +589,7 @@ namespace rq {
 	{
 		using request_base::request_base;
 		using return_type = void;
+
 		static std::string target(const partial_channel& ch) {
 			return "/channels/{}"_format(ch.id().val);
 		}
@@ -594,6 +612,7 @@ namespace rq {
 	{
 		using request_base::request_base;
 		using return_type = void;
+
 		static std::string target(const partial_channel& ch, const partial_message& msg) {
 			return "/channels/{}/pins/{}"_format(ch.id().val, msg.id().val);
 		}
@@ -606,6 +625,7 @@ namespace rq {
 	{
 		using request_base::request_base;
 		using return_type = std::vector<guild_member>;
+
 		static std::string target(const partial_guild& g) {
 			return "/guilds/{}/members"_format(g.id().val);
 		}
@@ -619,6 +639,7 @@ namespace rq {
 	{
 		using request_base::request_base;
 		using return_type = void;
+
 		static std::string target(const guild_channel& c,const permission_overwrite& p) {
 			return "/channels/{}/permissions/{}"_format(c.id().val, p.id().val);
 		};
@@ -631,6 +652,7 @@ namespace rq {
 	{
 		using request_base::request_base;
 		using return_type = snowflake;
+
 		static std::string target() {
 			return "/users/@me/channels";
 		}
@@ -647,6 +669,7 @@ namespace rq {
 	{
 		using request_base::request_base;
 		using return_type = snowflake;
+
 		static std::string target() {
 			return "/users/@me/channels";
 		}
@@ -663,6 +686,7 @@ namespace rq {
 	{
 		using request_base::request_base;
 		using return_type = invite;
+
 		static std::string target(const guild_channel& ch) {
 			return "/channels/{}/invites"_format(ch.id().val);
 		}
@@ -715,6 +739,7 @@ namespace rq {
 	{
 		using request_base::request_base;
 		using return_type = std::vector<snowflake>;
+
 		static std::string target(const partial_guild& g) {
 			return "/guilds/{}/channels"_format(g.id().val);
 		}

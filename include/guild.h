@@ -65,7 +65,7 @@ private:
 	bool m_unavailable = false;
 	int m_member_count = 0;
 
-	rename_later_4<snowflake, guild_member> m_members{};
+	ref_stable_map<snowflake, guild_member> m_members{};
 
 	//non-const version used for conveniance in shard.cpp
 	//returns mutable members so it has to be private

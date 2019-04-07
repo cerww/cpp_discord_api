@@ -16,7 +16,7 @@ std::string getFileContents(const std::string& filePath, decltype(std::ios::in) 
 }
 
 //spam bot
-int main() {
+int main() {	
 	try {
 		client c;
 		auto thing_to_kill = std::thread([&]() {
@@ -24,7 +24,7 @@ int main() {
 			//std::cerr << "dying\n";
 			//c.stop();
 		});
-		std::vector<partial_message> msgs;
+		std::vector<partial_message> msgs;		
 		c.on_guild_text_msg = [&](guild_text_message& msg, shard& s) {
 			if (msg.content() == "watland") {
 				//s.delete_message(msgs.back()).get();
@@ -72,7 +72,7 @@ int main() {
 		c.on_guild_member_add = [&](guild_member& member, shard& s) {
 			//s.send_message(member.guild().general_channel(),member.username()).get();
 		};
-		c.setToken(tokenType::BOT, getFileContents("token.txt"));		
+		c.setToken(token_type::BOT, getFileContents("token.txt"));		
 		c.run();
 		thing_to_kill.join();
 	} catch (...) {

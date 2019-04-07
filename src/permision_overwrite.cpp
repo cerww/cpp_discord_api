@@ -5,7 +5,7 @@
 std::string overwrite_type_to_string(const overwrite_type e) {
 	if (e == overwrite_type::role) return "role";
 	if (e == overwrite_type::member) return "member";
-	throw std::runtime_error("invalid enum");
+	throw std::runtime_error("bad enum");
 }
 
 void to_json(nlohmann::json& json, const permission_overwrite& data) {
