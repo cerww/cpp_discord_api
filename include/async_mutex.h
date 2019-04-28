@@ -1,5 +1,5 @@
 #pragma once
-#include "task.h";
+#include "task.h"
 #include <mutex>
 #include "concurrent_queue.h"
 
@@ -10,6 +10,7 @@ struct get_current_coroutine_handle{
 
 	void await_suspend(std::experimental::coroutine_handle<> h) {
 		me = h;
+		me.resume();
 	}
 
 	std::experimental::coroutine_handle<> await_resume() const {
@@ -60,11 +61,13 @@ struct async_mutex{
 
 	
 	void unlock() {
-		if(m_unlocker) {
-			m_unlocker.resume();
-		}else if(!m_waiters.empty()){
-			unlock_impl();
-		}
+		if(!m_waiters.empty()) {
+			if (m_unlocker) {
+				m_unlocker.resume();
+			}else {
+				unlock_impl();
+			}
+		}			
 	}
 
 	cerwy::task<lock_t> lock() {
@@ -83,17 +86,22 @@ private:
 	cerwy::task<void> unlock_impl() {
 		m_unlocker = co_await get_current_coroutine_handle();
 
-		while(!m_waiters.empty()) {
+		{//do once without the suspend
 			auto t = std::move(m_waiters.front());
 			m_waiters.erase(m_waiters.begin());
 			t.set_value(lock_t(this));
+		}
+		while(!m_waiters.empty()) {
 			co_await std::experimental::suspend_always();
+			auto t = std::move(m_waiters.front());
+			m_waiters.erase(m_waiters.begin());
+			t.set_value(lock_t(this));
 		}
 
 		m_unlocker = nullptr;
 		m_is_locked = false;
 	}
-	std::experimental::coroutine_handle<> m_unlocker;
+	std::experimental::coroutine_handle<> m_unlocker = nullptr;
 	std::vector<cerwy::promise<lock_t>> m_waiters;
 	bool m_is_locked = false;
 };
@@ -157,6 +165,7 @@ private:
 	bool m_is_locked = false;
 };
 
+//TODO make this work
 struct async_concurrent_mutex{
 	struct lock_t {
 		lock_t() = default;
@@ -208,3 +217,34 @@ private:
 	std::atomic<bool> m_is_locked = false;
 	concurrent_queue<cerwy::promise<lock_t>> m_queue;
 };
+
+/*
+
+cerwy::task<void> t1(async_mutex2& mut,cerwy::task<int> tasky) {
+	auto t = co_await mut.lock();
+	std::cout << "a" << std::endl;;
+	auto y = co_await tasky;
+	std::cout << "b" << std::endl;;
+}
+
+cerwy::task<void> t2(async_mutex2& mut) {
+	auto t = co_await mut.lock();
+	std::cout << "c" << std::endl;;
+}
+
+int main(){
+	async_mutex2 mut;
+	cerwy::promise<int> promise;
+
+	t1(mut,promise.get_task());
+	t2(mut);
+	promise.set_value(1);
+
+	cerwy::promise<int> promise2;
+	t1(mut, promise2.get_task());
+	t2(mut);
+	promise2.set_value(1);
+
+	std::cin.get();
+}
+*/

@@ -37,24 +37,31 @@ template<typename T>
 struct ref_count_ptr {
 	ref_count_ptr() = default;
 
+	ref_count_ptr(nullptr_t)noexcept{}
+
 	ref_count_ptr(T* t)noexcept :m_self(t) {
-		m_self->increment_ref_count();
+		if (m_self) {
+			m_self->increment_ref_count();
+		}
 	}
 
 	ref_count_ptr(const ref_count_ptr& other) noexcept :m_self(other.m_self) {
-		m_self->increment_ref_count();
+		if(m_self)
+			m_self->increment_ref_count();
 	}
 
 	ref_count_ptr(ref_count_ptr&& other) noexcept :m_self(std::exchange(other.m_self, nullptr)) {}
 
 	template<typename O, std::enable_if_t<std::is_base_of_v<O, T>, int> = 0>
 	explicit ref_count_ptr(const ref_count_ptr<O>& o) : m_self(o.m_self) {
-		m_self->increment_ref_count();
+		if(m_self)
+			m_self->increment_ref_count();
 	}
 
 	template<typename O, std::enable_if_t<std::is_base_of_v<T, O>, int> = 0>
 	ref_count_ptr(const ref_count_ptr<O>& o) : m_self(o.m_self) {
-		m_self->increment_ref_count();
+		if(m_self)
+			m_self->increment_ref_count();
 	}
 
 	~ref_count_ptr() noexcept {
@@ -67,11 +74,13 @@ struct ref_count_ptr {
 		std::swap(n.m_self, m_self);
 		return *this;
 	}
+
 	ref_count_ptr& operator=(const ref_count_ptr& other) noexcept {
 		ref_count_ptr n(other);
 		std::swap(n.m_self, m_self);
 		return *this;
 	}
+
 	ref_count_ptr& operator=(ref_count_ptr&& other) noexcept {
 		ref_count_ptr temp(std::move(other));
 		std::swap(m_self, temp.m_self);
@@ -85,6 +94,7 @@ struct ref_count_ptr {
 	T* get()const noexcept {
 		return m_self;
 	}
+
 	T* operator->() const noexcept { return m_self; }
 	T& operator*() const noexcept { return *m_self; }
 private:
