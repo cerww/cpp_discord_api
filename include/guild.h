@@ -36,11 +36,11 @@ struct Guild: partial_guild{
 	}
 
 	auto voice_channels()const noexcept {
-		return m_text_channels | ranges::view::transform(hof::map_with(all_voice_channels()));
+		return m_voice_channels | ranges::view::transform(hof::map_with(all_voice_channels()));
 	}
 
 	auto channel_catagories()const noexcept{
-		return m_text_channels | ranges::view::transform(hof::map_with(all_channel_catagories()));
+		return m_channel_catagories | ranges::view::transform(hof::map_with(all_channel_catagories()));
 	}
 
 	auto text_channel_ids()const noexcept {
@@ -60,6 +60,11 @@ struct Guild: partial_guild{
 		return m_voice_states | ranges::view::all;
 	};
 private:
+	discord_obj_map<text_channel> all_text_channels()const noexcept;
+	discord_obj_map<voice_channel> all_voice_channels()const noexcept;
+	discord_obj_map<channel_catagory> all_channel_catagories()const noexcept;
+
+
 	timestamp m_joined_at = {};
 	bool m_large = false;
 	bool m_unavailable = false;
@@ -78,9 +83,6 @@ private:
 	std::vector<snowflake> m_channel_catagories{};
 	std::vector<voice_state> m_voice_states{};
 
-	discord_obj_map<text_channel> all_text_channels()const noexcept;
-	discord_obj_map<voice_channel> all_voice_channels()const noexcept;
-	discord_obj_map<channel_catagory> all_channel_catagories()const noexcept;
 
 	shard* m_shard = nullptr;
 

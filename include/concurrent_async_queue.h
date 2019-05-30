@@ -4,7 +4,7 @@
 //#include <boost/container/deque.hpp>
 
 template<typename T>
-struct concurrent_coro_queue{
+struct concurrent_async_queue{
 
 	cerwy::task<T> pop() {
 		std::lock_guard lock(m_mut);
@@ -38,9 +38,8 @@ struct concurrent_coro_queue{
 			std::swap(waiters, m_waiters);
 		}
 		for(auto& p:waiters) {			
-			//p.set_exception(???);
-		}
-		
+			p.set_exception(std::make_exception_ptr(1));
+		}		
 	}
 
 	std::vector<T> pop_all() {

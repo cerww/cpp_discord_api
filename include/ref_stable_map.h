@@ -7,6 +7,7 @@
 template<typename K,typename V,typename H = std::hash<K>,typename E = std::equal_to<>,typename A = std::allocator<std::pair<const K,indirect<V>>>>
 struct ref_stable_map {
 	using map_t = ska::bytell_hash_map<K, indirect<V>, H, E, A>;
+	//using map_t = std::unordered_map<K, indirect<V>, H, E, A>;
 	using value_type = std::pair<const K , V>;
 	using reference = ranges::common_pair<const K&, V&>;//can't use std::pair for some reason
 	using const_reference = ranges::common_pair<const K&,const V&>;
@@ -223,6 +224,8 @@ struct ref_stable_map {
 			retVal.m_data.first = std::move(const_cast<K&>((it->first)));
 			retVal.m_data.second= std::move((it->second));
 			m_data.erase(it);
+		}else {
+			throw std::out_of_range("");
 		}
 		return retVal;
 	}
@@ -270,7 +273,6 @@ struct ref_stable_map {
 
 
 private:
-	//friend struct ranges::range_access;
 	map_t m_data;
 };
 

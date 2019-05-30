@@ -3,9 +3,9 @@
 
 
 //gotta move functions outside of shard.cpp, it's too big to compile on vs;-;
-cerwy::task<void> create_shard(
+cerwy::task<void> init_shard(
 	int shardN,
-	client* t_parent,
+	shard& t_parent,
 	boost::asio::io_context& ioc, 
 	std::string_view gateway
 );

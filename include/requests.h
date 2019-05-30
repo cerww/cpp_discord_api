@@ -6,6 +6,7 @@
 #include "voice_state.h"
 #include <fmt/format.h>
 #include "invite.h"
+#include <boost/asio.hpp>
 
 using namespace std::string_literals;
 using namespace fmt::literals;
@@ -46,16 +47,22 @@ namespace rq {
 		boost::beast::http::response<boost::beast::http::string_body> res = {};
 		std::vector<std::experimental::coroutine_handle<>> waiters{};
 		std::mutex waiter_mut{};
+		boost::asio::io_context::strand* strand = nullptr;
+
 		void notify() {
 			cv.notify_all();
-			/*
+			
 			std::lock_guard lock(waiter_mut);
 			auto all_waiters = std::move(waiters);
-			for(auto& coro:waiters) {
-				coro.resume();
-			}
-			*/
-			//figure out how to do coros later ;-;
+
+			const auto execute_on_strand = [&](auto&& f) {
+				boost::asio::post(*strand, f);
+			};
+
+			//for(auto& coro:waiters) {				
+//				boost::asio::post(*strand, coro);
+			//}
+			ranges::for_each(waiters, execute_on_strand);			
 		}
 	};
 	
@@ -124,7 +131,7 @@ namespace rq {
 		bool ready()const noexcept {
 			return state->done.load(std::memory_order_relaxed);
 		}
-		/*
+		
 		bool await_ready() const noexcept {
 			return ready();
 		}
@@ -145,13 +152,12 @@ namespace rq {
 			if constexpr(!std::is_void_v<typename reqeust::return_type>)
 				return value();			
 		}
-		*/
-		
+				
 		decltype(auto) value() const{
 			if constexpr(has_overload_value<reqeust>::value)
 				return this->self().overload_value();
 			else if constexpr(!std::is_void_v<typename reqeust::return_type>) 
-				return nlohmann::json::parse(state->res.body()).get<typename reqeust::return_type>();			
+				return nlohmann::json::parse(state->res.body()).template get<typename reqeust::return_type>();			
 		}
 
 		decltype(auto) get() {

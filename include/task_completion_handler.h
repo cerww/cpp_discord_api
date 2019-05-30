@@ -34,11 +34,28 @@ struct args_to_tuple_t{
 };
 
 struct use_task_return_tuple2_t{};
+
 static constexpr inline const use_task_return_tuple2_t use_task_return_tuple2;
 
 static constexpr inline const args_to_tuple_t args_to_tuple;
 
 static inline constexpr const packaged_task_t<args_to_tuple_t> use_task_return_tuple;
+
+template<typename ...sig>
+struct use_task_return_tuple3_t{
+	use_task_return_tuple3_t() = default;
+
+	cerwy::task<std::tuple<sig...>> get_task() {
+		return m_promise.get_task();
+	}
+
+	void operator()(sig... vals) {
+		m_promise.set_value(std::make_tuple(std::move(vals)...));
+	}
+
+private:
+	cerwy::promise<std::tuple<sig...>> m_promise;
+};
 
 namespace boost::asio{	
 	template<typename R>
@@ -135,6 +152,7 @@ namespace boost::asio{
 	class async_result<use_task_return_tuple2_t, void(sig_args...)> {
 	public:
 		using task_return_type = std::tuple<std::decay_t<sig_args>...>;
+
 		using return_type = cerwy::task<task_return_type>;
 		struct completion_handler_type {
 			explicit completion_handler_type(use_task_return_tuple2_t pa) {}
@@ -145,14 +163,39 @@ namespace boost::asio{
 			}
 
 			cerwy::promise<task_return_type> promise{};
+			/*
+			explicit operator async_result()const {
+				return async_result(promise.get_task());
+			}
+			*/
 		};
 
 		explicit async_result(completion_handler_type& h) :m_return_obj(h.promise.get_task()) {}
 
+		explicit async_result(completion_handler_type&& h) :m_return_obj(h.promise.get_task()) {}
+
 		return_type get() { return std::move(m_return_obj); }
 	private:
+		//async_result(const async_result&) = delete;
 		cerwy::task<task_return_type> m_return_obj;
 	};
+
+	template<typename...sig,typename ...realsig>
+	class async_result<use_task_return_tuple3_t<sig...>,void(realsig...)>{
+	public:
+		using return_type = cerwy::task<std::tuple<sig...>>;		
+		using completion_handler_type = use_task_return_tuple3_t<sig...>;
+
+		async_result(completion_handler_type& c):m_ret_obj(c.get_task()){}
+
+		return_type get() {
+			return std::move(m_ret_obj);
+		}
+
+	private:
+		return_type m_ret_obj;
+	};
+
 }
 
 

@@ -17,7 +17,7 @@ struct guild_member:partial_guild_member{
 	auto roles()const {
 		return role_ids() | ranges::view::transform(hof::map_with(parent_roles()));
 	}
-	Status status() const noexcept;;
+	Status status() const noexcept;
 private:
 	void set_presence(const partial_presence_update& presence_update);
 

@@ -3,7 +3,7 @@
 #include <boost/asio.hpp>
 #include <boost/asio/ssl.hpp>
 //#include "randomThings.h"
-#include "create_shard.h"
+#include "init_shard.h"
 
 client::client(int threads):
 	m_ioc(threads),
@@ -14,15 +14,21 @@ client::client(int threads):
 void client::run() {
 	m_getGateway();
 	for (int i = 0; i < m_num_shards; ++i) {
-		create_shard(i, this, m_ioc, m_gateway);
+		//create_shard(i, this, m_ioc, m_gateway);
+		m_shards.emplace_back(std::make_unique<shard>(i,this,m_ioc,m_gateway));
 	}
 	//m_th
+
+	boost::asio::executor_work_guard work_guard(m_ioc.get_executor());
 	ranges::generate(m_threads, [&]() {
 		return std::thread([&]() {
 			m_ioc.run();
 		});
 	});
-	m_ioc.run();	
+
+
+	m_ioc.run();
+	int u = 0;
 }
 
 void client::stop() {
@@ -59,14 +65,14 @@ void client::rate_limit_global(const std::chrono::system_clock::time_point tp) {
 	const auto now = std::chrono::system_clock::now();
 	if (m_last_global_rate_limit - now < std::chrono::seconds(3)){//so i don't rate_limit myself twice
 		m_last_global_rate_limit = now;
-		for(auto& i:m_shards_vec) {
+		for(auto& i:m_shards) {
 			i->rate_limit(tp);
 		}
 	}	
 }
 
 void client::m_getGateway() {
-	boost::asio::io_context ioc;//m_ioc.run is called after this finishes
+	boost::asio::io_context ioc;//m_ioc.run is called after this finishes, so need a different ioc
 	boost::asio::ip::tcp::resolver resolver{ ioc };
 
 	boost::asio::ssl::context ssl_context{ boost::asio::ssl::context::tlsv12_client };

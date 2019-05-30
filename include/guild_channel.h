@@ -21,10 +21,12 @@ struct guild_channel: partial_channel{
 	const channel_catagory& parent() const noexcept;
 	bool has_parent() const noexcept;
 
-	std::experimental::generator<permission_overwrite> total_permissions()const {//fix this somehow
-		if (m_parent)
-			return concat(permission_overwrites(), parent_overwrites());
-		return concat(permission_overwrites());
+	//std::experimental::generator<permission_overwrite> total_permissions()const {//fix this somehow
+	ranges::any_view<permission_overwrite> all_permissions()const{
+		if (m_parent) {
+			return ranges::view::concat(permission_overwrites(), parent_overwrites());
+		}
+		return permission_overwrites();
 	}
 private:
 	snowflake m_guild_id;

@@ -231,51 +231,51 @@ namespace hof {
 	//f3(f2(f1(args...)))
 	//args...->f1->f2->f3
 	template<typename First, typename ...Rest>
-	struct fold :fold<Rest...> {
-		constexpr fold() = default;
+	struct flow :flow<Rest...> {
+		constexpr flow() = default;
 
 		template<typename F, typename... R>
-		constexpr explicit fold(F&& f, R&& ... rest) :
-			fold<Rest...>(std::forward<R>(rest)...), 
+		constexpr explicit flow(F&& f, R&& ... rest) :
+			flow<Rest...>(std::forward<R>(rest)...), 
 			first_fn(std::forward<F>(f)) {}
 
 		template<typename ...Args>
 		constexpr auto operator()(Args&& ... args) 
-			->decltype(static_cast<fold<Rest...>&>(*this)(std::invoke(std::declval<First>(), std::forward<Args>(args)...))) 
+			->decltype(static_cast<flow<Rest...>&>(*this)(std::invoke(std::declval<First>(), std::forward<Args>(args)...))) 
 		{
-			return static_cast<fold<Rest...>&>(*this)(std::invoke(first_fn, std::forward<Args>(args)...));			
+			return static_cast<flow<Rest...>&>(*this)(std::invoke(first_fn, std::forward<Args>(args)...));			
 		}
 
 		template<typename ...Args>
 		constexpr auto operator()(Args&& ... args)const
-			->decltype(static_cast<fold<Rest...>&>(*this)(std::invoke(std::declval<const First>(), std::forward<Args>(args)...)))
+			->decltype(static_cast<flow<Rest...>&>(*this)(std::invoke(std::declval<const First>(), std::forward<Args>(args)...)))
 		{
-			return static_cast<const fold<Rest...>&>(*this)(std::invoke(first_fn, std::forward<Args>(args)...));
+			return static_cast<const flow<Rest...>&>(*this)(std::invoke(first_fn, std::forward<Args>(args)...));
 		}
 		
 		template<typename ...Args,std::enable_if_t<!std::is_invocable_v<First,Args...>,int> = 0>
 		constexpr auto operator()(Args&& ... args) 
-			->decltype(static_cast<fold<Rest...>&>(*this)(std::apply(std::declval<First>(), std::forward<Args>(args)...))) 
+			->decltype(static_cast<flow<Rest...>&>(*this)(std::apply(std::declval<First>(), std::forward<Args>(args)...))) 
 		{
-			return static_cast<fold<Rest...>&>(*this)(std::apply(first_fn, std::forward<Args>(args)...));
+			return static_cast<flow<Rest...>&>(*this)(std::apply(first_fn, std::forward<Args>(args)...));
 		}
 
 		template<typename ...Args, std::enable_if_t<!std::is_invocable_v<const First, Args...>, int> = 0>
 		constexpr auto operator()(Args&& ... args) const
-			->decltype(static_cast<const fold<Rest...>&>(*this)(std::apply(std::declval<const First>(), std::forward<Args>(args)...))) 
+			->decltype(static_cast<const flow<Rest...>&>(*this)(std::apply(std::declval<const First>(), std::forward<Args>(args)...))) 
 		{
-			return static_cast<const fold<Rest...>&>(*this)(std::apply(first_fn, std::forward<Args>(args)...));
+			return static_cast<const flow<Rest...>&>(*this)(std::apply(first_fn, std::forward<Args>(args)...));
 		}
 		
 		First first_fn = {};
 	};
 
 	template<typename Last>
-	struct fold<Last> {
-		constexpr fold() = default;
+	struct flow<Last> {
+		constexpr flow() = default;
 
-		template<typename L, std::enable_if_t<!std::is_same_v<std::decay_t<L>, fold<Last>>, int> = 0>
-		constexpr explicit fold(L&& last) :
+		template<typename L, std::enable_if_t<!std::is_same_v<std::decay_t<L>, flow<Last>>, int> = 0>
+		constexpr explicit flow(L&& last) :
 			last_fn(std::forward<L>(last)) {}
 
 		template<typename... Args, std::enable_if_t<std::is_invocable_v<Last, Args...>, int> = 0>
@@ -302,10 +302,10 @@ namespace hof {
 	};
 
 	template<typename F, typename... R>
-	fold(F&&, R&&...)->fold<F, R...>;
+	flow(F&&, R&&...)->flow<F, R...>;
 
 	template<typename L>
-	fold(L&&)->fold<L>;
+	flow(L&&)->flow<L>;
 
 	template<typename ...fns>
 	struct logical_conjunction {
@@ -321,8 +321,9 @@ namespace hof {
 			if constexpr (sizeof...(fns) == 1) {
 				return std::invoke(std::get<0>(functions), std::forward<Args>(args)...);
 			} else {
-				return std::apply([&](auto&&... funcs) {
-					return (std::invoke(funcs, args...) && ...);
+				auto tuple = std::forward_as_tuple(std::forward<Args>(args)...);
+				return std::apply([&](auto&& ... funcs) {
+					return (std::apply(funcs, tuple) && ...);
 				}, functions);
 			}
 		}
@@ -332,8 +333,9 @@ namespace hof {
 			if constexpr (sizeof...(fns) == 1) {
 				return std::invoke(std::get<0>(functions), std::forward<Args>(args)...);
 			} else {
-				return std::apply([&](auto&&... funcs) {
-					return (std::invoke(funcs, args...) && ...);
+				auto tuple = std::forward_as_tuple(std::forward<Args>(args)...);
+				return std::apply([&](auto&& ... funcs) {
+					return (std::apply(funcs, tuple) && ...);
 				}, functions);
 			}
 		}
@@ -358,8 +360,9 @@ namespace hof {
 			if constexpr (sizeof...(fns) == 1) {
 				return std::invoke(std::get<0>(functions), std::forward<Args>(args)...);
 			} else {
+				auto tuple = std::forward_as_tuple(std::forward<Args>(args)...);
 				return std::apply([&](auto&&... funcs) {
-					return (std::invoke(funcs, args...) || ...);
+					return (std::apply(funcs, tuple) || ...);
 				}, functions);
 			}
 		}
@@ -369,8 +372,9 @@ namespace hof {
 			if constexpr (sizeof...(fns) == 1) {
 				return std::invoke(std::get<0>(functions), std::forward<Args>(args)...);
 			} else {
-				return std::apply([&](auto&&... funcs) {
-					return (std::invoke(funcs, args...) || ...);
+				auto tuple = std::forward_as_tuple(std::forward<Args>(args)...);
+				return std::apply([&](auto&& ... funcs) {
+					return (std::apply(funcs, tuple) || ...);				
 				}, functions);
 			}
 		}
@@ -385,7 +389,7 @@ namespace hof {
 	struct logical_negate_t {
 		constexpr logical_negate_t() = default;
 
-		template<typename F>//,std::enable_if_t<!std::is_same_v<std::decay_t<F>,logical_negate<fn>>,int> = 0
+		template<typename F>
 		constexpr explicit logical_negate_t(F&& a) :base(std::forward<F>(a)) {}
 
 		template<typename ...T>
@@ -615,8 +619,13 @@ namespace hof {
 	template<typename F,typename T>
 	transform_args(F&&, T&&)->transform_args<F, T>;
 
+	template<auto fn>
+	const auto to_functor = [](auto&&... args) {
+		std::invoke(fn, std::forward<decltype(args)>(args)...);
+	};
+
 	inline void asdasdasd() {
-		auto i = fold([]() {return 1; }, [](int u) {return 5; });
+		auto i = flow([]() {return 1; }, [](int u) {return 5; });
 		auto t = i();
 		auto qweds = compose([] (int){}, [](int a) {return 2; });
 		qweds(2);
@@ -674,12 +683,12 @@ inline void hof_test_tuple_fold() {
 	};
 	auto y = [](int) {return 3; };
 	//auto d = [](std::tuple<int, int, int>) {return 2; };
-	auto c = fold(a, b, y);
+	auto c = flow(a, b, y);
 	c();
 
 	auto e = []() {return std::make_tuple(1); };
 	auto p = [](auto) {};
-	auto w = fold(e, p);
+	auto w = flow(e, p);
 	w();
 
 	auto cw = compose(p, e);
@@ -688,6 +697,4 @@ inline void hof_test_tuple_fold() {
 
 
 }
-
-
 }

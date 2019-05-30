@@ -2,6 +2,10 @@
 #include "client.h"
 #include "voice_channel.h"
 #include "dm_channel.h"
+#include "init_shard.h"
+#include "voice_connect_impl.h"
+#include "executor_binder.h"
+//#include <boost/beast/>
 
 //copy paste start
 #if defined(_WIN32) || defined(_WIN64)
@@ -19,14 +23,6 @@ static constexpr const char* s_os = "\\u00AF\\\\_(\\u30C4)_\\/\\u00AF";  //shrug
 #endif
 //copy paste end
 
-template<typename T>
-struct pin_thingy_for_completion_handler{
-	constexpr pin_thingy_for_completion_handler(T b):a(std::move(b)){}
-	template<typename... A>
-	constexpr void operator()(A&&...){}
-	T a;
-};
-
 template<typename rng, typename U>
 [[maybe_unused]]
 constexpr bool erase_first_quick(rng&& range, U&& val) {
@@ -38,20 +34,23 @@ constexpr bool erase_first_quick(rng&& range, U&& val) {
 	return true;
 }
 
-template<typename rng, typename U>
-[[maybe_unused]]
-constexpr int erase_if_quick(rng&& range, U&& fn) {
-	const auto it = std::remove_if(range.begin(), range.end(), fn);
-	const int retVal = std::distance(it, range.end());
-	range.erase(it, range.end());
-	return retVal;
-}
-
 template<typename T>
 T* ptr_or_null(ref_stable_map<snowflake,T>& in,snowflake key) {
 	if (key.val)
 		return &in[key];
 	return nullptr;
+}
+
+shard::shard(int shard_number, client* t_parent, boost::asio::io_context& ioc, std::string_view gateway) :
+	m_shard_number(shard_number),
+	m_parent(t_parent),
+	m_http_connection(t_parent, ioc),
+	m_ioc(ioc),
+	m_resolver(ioc),
+	m_strand(ioc),
+	m_socket(ioc,m_ssl_ctx)
+{
+	init_shard(shard_number, *this, ioc, gateway);	
 }
 
 nlohmann::json shard::presence()const {
@@ -65,6 +64,22 @@ nlohmann::json shard::presence()const {
 	return retVal;
 }
 
+cerwy::task<voice_connection> shard::connect_voice(const voice_channel& channel) {
+	const auto channel_id = channel.id();
+	const auto guild_id = channel.guild_id();
+	auto [endpoint, session_id_task] = m_opcode4(channel);
+	auto ep_json = co_await endpoint;
+	auto session_id = co_await session_id_task;
+	std::cout << ep_json.dump(1);
+	std::string gateway = "wss://"s +  ep_json["endpoint"].get<std::string>() + "/?v=3"s;
+	std::cout << gateway << std::endl;
+
+	m_things_waiting_for_voice_endpoint2.erase(channel.guild_id());
+	m_things_waiting_for_voice_endpoint.erase(channel.guild_id());
+	int i = 0;
+	co_return co_await voice_connect_impl(*this, channel, std::move(gateway), ep_json["token"].get<std::string>(), std::move(session_id));
+}
+
 cerwy::task<boost::beast::error_code> shard::connect_http_connection() {
 	auto ec = co_await m_http_connection.async_connect();
 	int tries = 1;
@@ -75,8 +90,8 @@ cerwy::task<boost::beast::error_code> shard::connect_http_connection() {
 	co_return ec;
 }
 
-void shard::doStuff(nlohmann::json stuffs,int op) {
-	fmt::print("{}\n", stuffs.dump(1));
+void shard::doStuff(nlohmann::json stuffs,int op) {	
+	//fmt::print("{}\n", stuffs.dump(1));
 	switch (op) {
 	case 0:
 		m_opcode0(std::move(stuffs["d"]), to_event_name(stuffs["t"]), stuffs["s"]);
@@ -133,41 +148,41 @@ void shard::m_opcode0(nlohmann::json data, event_name event, size_t s) {
 	m_seqNum = std::max(s, m_seqNum);
 	try {
 		switch (event) {
-		case event_name::HELLO:						procces_event<event_name::HELLO>(data); break;
-		case event_name::READY:						procces_event<event_name::READY>(data); break;;
-		case event_name::RESUMED:					procces_event<event_name::RESUMED>(data); break;;
-		case event_name::INVALID_SESSION:			procces_event<event_name::INVALID_SESSION>(data); break;;
-		case event_name::CHANNEL_CREATE:			procces_event<event_name::CHANNEL_CREATE>(data); break;;
-		case event_name::CHANNEL_UPDATE:			procces_event<event_name::CHANNEL_UPDATE>(data); break;;
-		case event_name::CHANNEL_DELETE:			procces_event<event_name::CHANNEL_DELETE>(data); break;;
-		case event_name::CHANNEL_PINS_UPDATE:		procces_event<event_name::CHANNEL_PINS_UPDATE>(data); break;;
-		case event_name::GUILD_CREATE:				procces_event<event_name::GUILD_CREATE>(data); break;;
-		case event_name::GUILD_UPDATE:				procces_event<event_name::GUILD_UPDATE>(data); break;;
-		case event_name::GUILD_DELETE:				procces_event<event_name::GUILD_DELETE>(data); break;;
-		case event_name::GUILD_BAN_ADD:				procces_event<event_name::GUILD_BAN_ADD>(data); break;;
-		case event_name::GUILD_BAN_REMOVE:			procces_event<event_name::GUILD_BAN_REMOVE>(data); break;;
-		case event_name::GUILD_EMOJI_UPDATE:		procces_event<event_name::GUILD_EMOJI_UPDATE>(data); break;;
-		case event_name::GUILD_INTEGRATIONS_UPDATE: procces_event<event_name::GUILD_INTEGRATIONS_UPDATE>(data); break;;
-		case event_name::GUILD_MEMBER_ADD:			procces_event<event_name::GUILD_MEMBER_ADD>(data); break;;
-		case event_name::GUILD_MEMBER_REMOVE:		procces_event<event_name::GUILD_MEMBER_REMOVE>(data); break;;
-		case event_name::GUILD_MEMBER_UPDATE:		procces_event<event_name::GUILD_MEMBER_UPDATE>(data); break;;
-		case event_name::GUILD_MEMBERS_CHUNK:		procces_event<event_name::GUILD_MEMBERS_CHUNK>(data); break;;
-		case event_name::GUILD_ROLE_CREATE:			procces_event<event_name::GUILD_ROLE_CREATE>(data); break;;
-		case event_name::GUILD_ROLE_UPDATE:			procces_event<event_name::GUILD_ROLE_UPDATE>(data); break;;
-		case event_name::GUILD_ROLE_DELETE:			procces_event<event_name::GUILD_ROLE_DELETE>(data); break;;
-		case event_name::MESSAGE_CREATE:			procces_event<event_name::MESSAGE_CREATE>(data); break;;
-		case event_name::MESSAGE_UPDATE:			procces_event<event_name::MESSAGE_UPDATE>(data); break;;
-		case event_name::MESSAGE_DELETE:			procces_event<event_name::MESSAGE_DELETE>(data); break;;
-		case event_name::MESSAGE_DELETE_BULK:		procces_event<event_name::MESSAGE_DELETE_BULK>(data); break;;
-		case event_name::MESSAGE_REACTION_ADD:		procces_event<event_name::MESSAGE_REACTION_ADD>(data); break;;
-		case event_name::MESSAGE_REACTION_REMOVE:	procces_event<event_name::MESSAGE_REACTION_REMOVE>(data); break;;
-		case event_name::MESSAGE_REACTION_REMOVE_ALL: procces_event<event_name::MESSAGE_REACTION_REMOVE_ALL>(data); break;;
-		case event_name::PRESENCE_UPDATE:			procces_event<event_name::PRESENCE_UPDATE>(data); break;;
-		case event_name::TYPING_START:				procces_event<event_name::TYPING_START>(data); break;;
-		case event_name::USER_UPDATE:				procces_event<event_name::USER_UPDATE>(data); break;;
-		case event_name::VOICE_STATE_UPDATE:		procces_event<event_name::VOICE_STATE_UPDATE>(data); break;;
-		case event_name::VOICE_SERVER_UPDATE:		procces_event<event_name::VOICE_SERVER_UPDATE>(data); break;;
-		case event_name::WEBHOOKS_UPDATE:			procces_event<event_name::WEBHOOKS_UPDATE>(data); break;;
+		case event_name::HELLO:							procces_event<event_name::HELLO>(data); break;
+		case event_name::READY:							procces_event<event_name::READY>(data); break;;
+		case event_name::RESUMED:						procces_event<event_name::RESUMED>(data); break;;
+		case event_name::INVALID_SESSION:				procces_event<event_name::INVALID_SESSION>(data); break;;
+		case event_name::CHANNEL_CREATE:				procces_event<event_name::CHANNEL_CREATE>(data); break;;
+		case event_name::CHANNEL_UPDATE:				procces_event<event_name::CHANNEL_UPDATE>(data); break;;
+		case event_name::CHANNEL_DELETE:				procces_event<event_name::CHANNEL_DELETE>(data); break;;
+		case event_name::CHANNEL_PINS_UPDATE:			procces_event<event_name::CHANNEL_PINS_UPDATE>(data); break;;
+		case event_name::GUILD_CREATE:					procces_event<event_name::GUILD_CREATE>(data); break;;
+		case event_name::GUILD_UPDATE:					procces_event<event_name::GUILD_UPDATE>(data); break;;
+		case event_name::GUILD_DELETE:					procces_event<event_name::GUILD_DELETE>(data); break;;
+		case event_name::GUILD_BAN_ADD:					procces_event<event_name::GUILD_BAN_ADD>(data); break;;
+		case event_name::GUILD_BAN_REMOVE:				procces_event<event_name::GUILD_BAN_REMOVE>(data); break;;
+		case event_name::GUILD_EMOJI_UPDATE:			procces_event<event_name::GUILD_EMOJI_UPDATE>(data); break;;
+		case event_name::GUILD_INTEGRATIONS_UPDATE:		procces_event<event_name::GUILD_INTEGRATIONS_UPDATE>(data); break;;
+		case event_name::GUILD_MEMBER_ADD:				procces_event<event_name::GUILD_MEMBER_ADD>(data); break;;
+		case event_name::GUILD_MEMBER_REMOVE:			procces_event<event_name::GUILD_MEMBER_REMOVE>(data); break;;
+		case event_name::GUILD_MEMBER_UPDATE:			procces_event<event_name::GUILD_MEMBER_UPDATE>(data); break;;
+		case event_name::GUILD_MEMBERS_CHUNK:			procces_event<event_name::GUILD_MEMBERS_CHUNK>(data); break;;
+		case event_name::GUILD_ROLE_CREATE:				procces_event<event_name::GUILD_ROLE_CREATE>(data); break;;
+		case event_name::GUILD_ROLE_UPDATE:				procces_event<event_name::GUILD_ROLE_UPDATE>(data); break;;
+		case event_name::GUILD_ROLE_DELETE:				procces_event<event_name::GUILD_ROLE_DELETE>(data); break;;
+		case event_name::MESSAGE_CREATE:				procces_event<event_name::MESSAGE_CREATE>(data); break;;
+		case event_name::MESSAGE_UPDATE:				procces_event<event_name::MESSAGE_UPDATE>(data); break;;
+		case event_name::MESSAGE_DELETE:				procces_event<event_name::MESSAGE_DELETE>(data); break;;
+		case event_name::MESSAGE_DELETE_BULK:			procces_event<event_name::MESSAGE_DELETE_BULK>(data); break;;
+		case event_name::MESSAGE_REACTION_ADD:			procces_event<event_name::MESSAGE_REACTION_ADD>(data); break;;
+		case event_name::MESSAGE_REACTION_REMOVE:		procces_event<event_name::MESSAGE_REACTION_REMOVE>(data); break;;
+		case event_name::MESSAGE_REACTION_REMOVE_ALL:	procces_event<event_name::MESSAGE_REACTION_REMOVE_ALL>(data); break;;
+		case event_name::PRESENCE_UPDATE:				procces_event<event_name::PRESENCE_UPDATE>(data); break;;
+		case event_name::TYPING_START:					procces_event<event_name::TYPING_START>(data); break;;
+		case event_name::USER_UPDATE:					procces_event<event_name::USER_UPDATE>(data); break;;
+		case event_name::VOICE_STATE_UPDATE:			procces_event<event_name::VOICE_STATE_UPDATE>(data); break;;
+		case event_name::VOICE_SERVER_UPDATE:			procces_event<event_name::VOICE_SERVER_UPDATE>(data); break;;
+		case event_name::WEBHOOKS_UPDATE:				procces_event<event_name::WEBHOOKS_UPDATE>(data); break;;
 
 		}
 	}catch(...) {
@@ -196,6 +211,33 @@ void shard::m_opcode3() const {
 	m_client->send_thing(val.dump());
 }
 
+std::pair<cerwy::task<nlohmann::json>, cerwy::task<std::string>> shard::m_opcode4(const voice_channel& channel) {
+	cerwy::promise<nlohmann::json> name_promise;
+	cerwy::promise<std::string> session_id_promise;
+
+	auto name = name_promise.get_task();
+	auto session_id_task = session_id_promise.get_task();
+
+	m_things_waiting_for_voice_endpoint.insert(std::make_pair(channel.guild_id(), std::move(name_promise)));
+	m_things_waiting_for_voice_endpoint2.insert(std::make_pair(channel.guild_id(), std::move(session_id_promise)));
+
+	m_client->send_thing(
+		R"(
+{{
+    "op": 4,
+    "d": {{
+        "guild_id": "{}",
+        "channel_id": "{}",
+        "self_mute": false,
+        "self_deaf": false
+    }}
+}}
+)"_format(channel.guild_id().val, channel.id().val));
+
+
+	return { std::move(name),std::move(session_id_task) };
+}
+
 void shard::m_opcode6() const {
 	send_resume();
 }
@@ -213,8 +255,13 @@ void shard::m_opcode8(snowflake id) const {
 	m_client->send_thing(s.dump());
 }
 
-cerwy::task<void> shard::m_opcode9(const nlohmann::json& d) const {
+cerwy::task<void> shard::m_opcode9(const nlohmann::json& d) {
+	//boost::asio::steady_timer timer(m_ioc, std::chrono::steady_clock::now() + 5s);
+	//auto ec = co_await timer.async_wait(cerwy::bind_executor(strand(),use_task_return_ec));
+
+	//remove this for ^ later when concepts are in cuz it'll too big to compile ;-;
 	std::this_thread::sleep_for(5s);
+
 	if (d.get<bool>())
 		m_opcode6();
 	else
@@ -247,7 +294,7 @@ void shard::m_opcode11(nlohmann::json& data) {
 
 void shard::reconnect() {
 	if (!is_disconnected())
-		close_connection(4000);
+		close_connection(1000);
 	//m_parent->reconnect(this, m_shard_number);
 }
 
@@ -255,7 +302,7 @@ void shard::send_resume() const {
 	std::string temp(R"({
 		"op":6,
 		"d":{
-			"token":)"s + m_parent->token() + R"(
+			"token":)"s + std::string(m_parent->token()) + R"(
 			"session_id:)"s + m_session_id + R"(
 			"seq:")" + std::to_string(m_seqNum) + R"(
 		}
@@ -279,7 +326,7 @@ void shard::m_sendIdentity()const {
 	std::string identity = R"({
 		"op":2,
 		"d":{
-			"token":")"s + m_parent->token() + R"(",
+			"token":")"s + std::string(m_parent->token()) + R"(",
 			"properties":{
 				"$os":")"s + s_os + R"(",
 				"$browser":"cerwy",
@@ -315,6 +362,7 @@ void shard::procces_event<event_name::GUILD_CREATE>(nlohmann::json& data) {
 		guild.m_is_ready = false;
 		request_guild_members(guild);
 	} else {
+		//add members to guild
 		for (const auto& member_json : data["members"]) {
 			auto member = member_json.get<guild_member>();
 			member.m_guild = &guild;
@@ -346,13 +394,6 @@ void shard::procces_event<event_name::GUILD_CREATE>(nlohmann::json& data) {
 		}
 	}
 
-	/*
-	for (const auto& channel_id : guild.m_text_channels) {
-		auto& channel = m_text_channel_map[channel_id];
-		if (channel.m_parent_id.val)
-			channel.m_parent = &m_channel_catagory_map[channel.m_parent_id];
-	}
-	*/
 	for (auto& channel:	guild.m_text_channels |
 						ranges::view::transform(hof::map_with(m_text_channel_map)) |
 		 				ranges::view::filter(&text_channel::has_parent)) {
@@ -374,14 +415,13 @@ void shard::procces_event<event_name::GUILD_CREATE>(nlohmann::json& data) {
 				member.m_game.emplace(temp.get<activity>());
 		}
 	}else {
-		guild.m_presences = std::move(const_cast<nlohmann::json&>(data["presences"]));//save it for later
+		guild.m_presences = std::move(data["presences"]);//save it for later
 	}
 	//auto qaudijhsadff = data.get<std::optional<int>>();
 
 	guild.m_shard = this;	
 }
 
-//fix me, might not work, use coroutines?
 template<>
 void shard::procces_event<event_name::GUILD_MEMBERS_CHUNK>(nlohmann::json& e) {//really bad ;-;
 	Guild& g = m_guilds[e["guild_id"].get<snowflake>()];
@@ -404,7 +444,7 @@ void shard::procces_event<event_name::GUILD_MEMBERS_CHUNK>(nlohmann::json& e) {/
 
 		replay_events_for(g.id());
 		
-		g.m_presences.clear();
+		//g.m_presences.clear();
 		g.m_presences = 0;//to deallocate memory, .clear keeps the buffer
 	}
 }
@@ -471,7 +511,7 @@ void shard::procces_event<event_name::MESSAGE_CREATE>(nlohmann::json& e) {
 	if (auto it = m_text_channel_map.find(channel_id); it != m_text_channel_map.end()) {
 
 		text_channel& ch = it->second;
-		auto msg = [&]()->guild_text_message {
+		auto msg = [&]()->guild_text_message {//iife
 			if(!e["mentions"].empty())
 				return create_msg<guild_text_message>(ch, e, m_guilds[ch.m_guild_id].m_members);
 
@@ -629,7 +669,8 @@ void shard::procces_event<event_name::CHANNEL_PINS_UPDATE>(nlohmann::json& e){
 
 };
 
-template<>	void shard::procces_event<event_name::GUILD_UPDATE>(nlohmann::json& e){
+template<>	
+void shard::procces_event<event_name::GUILD_UPDATE>(nlohmann::json& e){
 	const auto guild_id = e["id"].get<snowflake>();
 	Guild& g = m_guilds[guild_id];
 	if(!g.m_is_ready) {
@@ -643,8 +684,13 @@ template<>	void shard::procces_event<event_name::GUILD_UPDATE>(nlohmann::json& e
 template<>	
 void shard::procces_event<event_name::GUILD_DELETE>(nlohmann::json& e){
 	const auto unavailable = e["unavailable"].get<bool>();
-	const Guild g = std::move(m_guilds.extract(e["id"].get<snowflake>()).mapped());
-	m_parent->on_guild_remove(g, unavailable, *this);
+	try {
+		//in case guild_create never came for some reason
+		const Guild g = std::move(m_guilds.extract(e["id"].get<snowflake>()).mapped());
+		m_parent->on_guild_remove(g, unavailable, *this);
+	}catch(...) {
+		//swallow		 
+	}
 }
 
 template<>	
@@ -659,7 +705,7 @@ void shard::procces_event<event_name::GUILD_BAN_REMOVE>(nlohmann::json& e){
 	auto member = e.get<user>();
 	Guild& g = m_guilds[member.id()];
 	m_parent->on_ban_remove(g, member, *this);
-};
+}
 
 template<>
 void shard::procces_event<event_name::GUILD_EMOJI_UPDATE>(nlohmann::json& e){
@@ -971,11 +1017,20 @@ void shard::procces_event<event_name::USER_UPDATE>(nlohmann::json& e){
 
 template<>	
 void shard::procces_event<event_name::VOICE_STATE_UPDATE>(nlohmann::json& e){
-	Guild& guild = m_guilds[e["guild_id"].get<snowflake>()];
-	const auto user_id = e["user_id"].get<snowflake>();
-	auto it = ranges::find_if(guild.m_voice_states, [&](const auto& a) {return a.user_id() == user_id; });
+	const auto guild_id = e.value("guild_id",snowflake());
+
+	Guild& guild = guild_id.val ? m_guilds[guild_id] : *m_voice_channel_map[e["channel_id"].get<snowflake>()].m_guild;
+
+	const auto user_id = e.value("user_id",self_user().id());
+
+	if(user_id == self_user().id()) {
+		m_things_waiting_for_voice_endpoint2[guild.id()].set_value(e["session_id"].get<std::string>());
+	}
+
+	const auto it = ranges::find_if(guild.m_voice_states, [&](const auto& a) {return a.user_id() == user_id; });
 	if(it != guild.m_voice_states.end()) {
-		if(e["channel_id"].get<snowflake>().val == 0) 
+		//update the state
+		if(e.count("channel_id")) //wat does this do ;-;
 			*it = e.get<voice_state>();
 		else 
 			guild.m_voice_states.erase(it);		
@@ -987,14 +1042,7 @@ void shard::procces_event<event_name::VOICE_STATE_UPDATE>(nlohmann::json& e){
 template<>
 void shard::procces_event<event_name::VOICE_SERVER_UPDATE>(nlohmann::json& json){
 	const auto guild_id = json["guild_id"].get<snowflake>();
-	auto it = m_guilds.find(guild_id);
-	if(it == m_guilds.end()) {
-		//????
-	}else {
-		auto& guild = it->second;
-		guild.m_region = json["endpoint"].get<std::string>();
-	}
-
+	m_things_waiting_for_voice_endpoint[guild_id].set_value(std::move(json));
 };
 
 template<>
@@ -1005,10 +1053,9 @@ void shard::procces_event<event_name::WEBHOOKS_UPDATE>(nlohmann::json&) {
 // ReSharper disable once CppMemberFunctionMayBeConst
 void shard::update_presence(const Status s, std::string g) {// NOLINT
 	m_status = s;
-	m_game_name= std::move(g);
+	m_game_name = std::move(g);
 	m_opcode3();
 }
-
 
 rq::send_message shard::send_message(const text_channel& channel, std::string content) {
 	nlohmann::json body;

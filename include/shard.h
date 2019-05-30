@@ -14,44 +14,34 @@
 #include "range-like-stuffs.h"
 #include "discord_enums.h"
 #include "task.h"
-#include "ssl_stream.hpp"
 #include "rename_later_5.h"
 #include "attachment.h"
+#include "discord_voice_connection.h"
 
 
 using namespace std::string_literals;
 using namespace std::chrono_literals;
+
 struct client;
+
+struct voice_connection;
 
 struct shard {
 	static constexpr int large_threshold = 51;
+	//not in here cuz shard.cpp would be too big to compile without /bigobj on vc;-;
+	friend cerwy::task<void> init_shard(int shardN, shard& t_parent, boost::asio::io_context& ioc, std::string_view gateway);
 
 	using wsClient = rename_later_5;
-	//TODO: make this work when i remove more classes/functions from shard.cpp
-	explicit shard(int shard_number,client* t_parent, boost::asio::io_context& ioc) :
-		m_shard_number(shard_number),
-		m_parent(t_parent),
-		m_http_connection(t_parent,ioc),
-		m_ioc(ioc)
-	{
-		//create connections
-	}
+	explicit shard(int shard_number, client* t_parent, boost::asio::io_context& ioc,std::string_view);
 
-
-	explicit shard(int shardN, wsClient* t_client, client* t_parent,boost::asio::io_context& ioc) :
-		m_shard_number(shardN),
-		m_parent(t_parent), 
-		m_client(t_client),
-		m_http_connection(t_parent, ioc), 
-		m_ioc(ioc)
-	{
-		
-	}
-	
 	shard& operator=(const shard&) = delete;
 	shard& operator=(shard&&) = delete;
 	shard(const shard&) = delete;
-	shard(shard&&) = delete;	
+	shard(shard&&) = delete;
+
+	~shard()noexcept {
+		m_client->close(4000);
+	}
 	
 	const ref_stable_map<snowflake, text_channel> & text_channels() const noexcept { return m_text_channel_map; }
 
@@ -132,12 +122,36 @@ struct shard {
 	const user& self_user()const noexcept {
 		return m_self_user;
 	}
-	std::string_view session_id() {
+	std::string_view session_id() const noexcept{
 		return m_session_id;
 	}
 
 	nlohmann::json presence()const;
 
+	boost::asio::io_context::strand& strand() {
+		return m_strand;
+	}
+
+	cerwy::task<voice_connection> connect_voice(const voice_channel&);
+
+	auto& resolver() {
+		return m_resolver;
+	}
+
+	const auto& resolver() const{
+		return m_resolver;
+	}
+
+	auto& ssl_context() {
+		return m_ssl_ctx;
+	}
+
+	const auto& ssl_context() const {
+		return m_ssl_ctx;
+	}
+	client& parent_client() {
+		return *m_parent;
+	}
 private:
 	cerwy::task<boost::beast::error_code> connect_http_connection();
 
@@ -171,6 +185,8 @@ private:
 	void m_opcode2() const;
 	//status update
 	void m_opcode3() const;//update presence
+	//voice state
+	std::pair<cerwy::task<nlohmann::json>,cerwy::task<std::string>> m_opcode4(const voice_channel&);
 	//resume
 	void m_opcode6() const;
 	//reconnect
@@ -178,7 +194,7 @@ private:
 	//request guild members
 	void m_opcode8(snowflake) const;
 	//invalid session
-	cerwy::task<void> m_opcode9(const nlohmann::json&) const;
+	cerwy::task<void> m_opcode9(const nlohmann::json&);
 	//hello
 	void m_opcode10(nlohmann::json&);
 	//heartbeat ack
@@ -230,12 +246,12 @@ private:
 	static reaction& add_reaction(std::vector<reaction>&, partial_emoji&, snowflake, snowflake);
 	static reaction& remove_reaction(std::vector<reaction>&, partial_emoji&, snowflake, snowflake);
 
-
 	template<typename msg_t,typename channel_t,typename map_t>
 	msg_t create_msg(channel_t&, const nlohmann::json&,map_t&&);
 
 	template<typename msg_t, typename channel_t, typename map_t>
 	msg_t createMsgUpdate(channel_t&, const nlohmann::json&, map_t&&);
+
 	//HB stuff
 	std::atomic<bool> m_op11 = true;
 	size_t m_HBd = 0;
@@ -264,19 +280,23 @@ private:
 	const int m_shard_number = 0;
 	client* m_parent = nullptr;
 
-	wsClient* m_client = nullptr;
+	std::unique_ptr<wsClient> m_client = nullptr;
 	http_connection m_http_connection;
 
 	boost::asio::io_context& m_ioc;
+	boost::asio::ssl::context m_ssl_ctx{ boost::asio::ssl::context_base::sslv23 };
+	boost::asio::ip::tcp::resolver m_resolver;
+	boost::asio::io_context::strand m_strand;
+	boost::beast::websocket::stream<boost::beast::ssl_stream<boost::asio::ip::tcp::socket>> m_socket;
 	
 	ska::bytell_hash_map<snowflake, std::vector<std::pair<nlohmann::json,event_name>>> m_backed_up_events;
 	void replay_events_for(snowflake);
 
-	//not in here cuz shard.cpp would be too big to compile without /bigobj on vc;-;
-	friend cerwy::task<void> create_shard(int shardN, client* t_parent, boost::asio::io_context& ioc, std::string_view gateway);
+	//TODO: rename these
+	ska::bytell_hash_map<snowflake, cerwy::promise<nlohmann::json>> m_things_waiting_for_voice_endpoint;
+	ska::bytell_hash_map<snowflake, cerwy::promise<std::string>> m_things_waiting_for_voice_endpoint2;
 
 	friend struct client;
-	
 };
 
 namespace rawrland{//rename later ;-;
@@ -301,6 +321,7 @@ std::enable_if_t<rq::has_content_type_v<T>, T> shard::send_request(std::string&&
 	set_up_request(r.req);
 	r.req.body() = std::move(body);
 	r.req.prepare_payload();
+	r.state->strand = &m_strand;
 	m_http_connection.send(std::move(r));
 	return std::move(retVal);//no nrvo
 }
@@ -310,6 +331,7 @@ std::enable_if_t<!rq::has_content_type_v<T>, T> shard::send_request(args&&... Ar
 	auto[retVal, r] = rawrland::get_default_stuffs<T>(std::forward<args>(Args)...);
 	set_up_request(r.req);
 	r.req.prepare_payload();
+	r.state->strand = &m_strand;
 	m_http_connection.send(std::move(r));
 	return std::move(retVal);//no nrvo
 }
@@ -320,9 +342,11 @@ rq::modify_channel_positions shard::modify_channel_positions(const Guild& g, rng
 		positions |
 		ranges::view::transform([](auto&& a){
 			auto[id, position] = a;
+
 			using id_type = decltype(id);
 			static_assert(std::is_integral_v<position>);
 			static_assert(std::is_same_v<id_type, snowflake>);
+
 			nlohmann::json ret;
 			ret["id"] = id;
 			ret["position"] = position;
@@ -348,11 +372,10 @@ std::enable_if_t<std::is_same_v<std::decay_t<range_type<rng>>, snowflake>, rq::a
 	body["nick"] = std::move(nick);
 	body["deaf"] = deaf;
 	body["mute"] = mute;
-	if constexpr(std::is_convertible_v<rng,nlohmann::json>)
+	if constexpr (std::is_convertible_v<rng, nlohmann::json>) {
 		body["roles"] = roles;
-	else {
-		std::vector<snowflake> stuff;
-		std::copy(roles.begin(), roles.end(), std::back_inserter(stuff));
+	}else {
+		std::vector<snowflake> stuff = roles | ranges::to_<std::vector<snowflake>>();
 		body["roles"] = std::move(stuff);
 	}
 	return send_request<rq::add_guild_member>(body.dump(), guild, id);
@@ -422,11 +445,13 @@ msg_t shard::createMsgUpdate(channel_t& ch, const nlohmann::json& stuffs, map_t&
 		retVal.m_author = &members[retVal.m_author_id];
 	}
 	auto it_to_mentions = stuffs.find("mentions");
-	if(it_to_mentions != stuffs.end())
-		for (const auto& mention : *it_to_mentions)/* *it is list of users*/{
-			auto& t = members[mention["id"].get<snowflake>()];			
+	if (it_to_mentions != stuffs.end()) {
+		for (const auto& mention : *it_to_mentions)/* *it is list of users*/ {
+			auto& t = members[mention["id"].get<snowflake>()];
 			retVal.m_mentions.push_back(&t);
 		}
+	}
+
 	if constexpr(std::is_same_v<msg_t, guild_text_message>)
 		retVal.m_mention_roles_ids = stuffs.value("mention_roles", std::vector<snowflake>());
 
@@ -450,7 +475,7 @@ reaction& shard::update_reactions(
 	const snowflake my_id) 
 {
 	static_assert(n == -1 || n == 1);
-	const auto it = ranges::find(reactions, emoji.id(), hof::fold(&reaction::emoji, &emoji::id));
+	const auto it = ranges::find(reactions, emoji.id(), hof::flow(&reaction::emoji, &emoji::id));
 	if (it == reactions.end()) {
 		reaction temp;
 		temp.m_count = n;

@@ -1,9 +1,10 @@
-#include "create_shard.h"
+#include "init_shard.h"
 #include "task_completion_handler.h"
 #include "web_socket_helpers.h"
 #include "client.h"
 #include "rename_later_5.h"
 #include <fmt/core.h>
+#include "executor_binder.h"
 
 namespace discord_ec{
 	constexpr int unknown_error = 4000;
@@ -19,33 +20,35 @@ namespace discord_ec{
 	constexpr int sharding_required = 4011;
 }
 
-cerwy::task<void> create_shard(const int shard_number, client* t_parent, boost::asio::io_context& ioc, std::string_view gateway) {
+cerwy::task<void> init_shard(const int shard_number, shard& me, boost::asio::io_context& ioc, std::string_view gateway) {
 	try {
+		int i = 0;
+		co_await reconnect_wss_from_url(me.m_socket, gateway, me.resolver(), me.ssl_context());
 
-		boost::asio::ssl::context ssl_ctx{ boost::asio::ssl::context_base::tlsv12 };
-		boost::asio::ip::tcp::resolver resolver(ioc);
+		auto& m_socket = me.m_socket;
 
-		boost::beast::websocket::stream<ssl_stream<boost::asio::ip::tcp::socket>> socket = co_await wss_from_uri(gateway, resolver, ssl_ctx);
-		rename_later_5 rename_me(socket);
+		me.m_client = std::make_unique<rename_later_5>(m_socket);
+		rename_later_5& m_client = *me.m_client;
+
+		co_await me.connect_http_connection();
 		
 		boost::beast::multi_buffer buffer = {};
 
-		shard me(shard_number, &rename_me, t_parent, ioc);
-		co_await me.connect_http_connection();
-		t_parent->add_shard(&me);
+		auto& strand = me.strand();
 
 		while (true) {
 			std::cerr << "recieving stuffs\n";
-			auto[ec, n] = co_await socket.async_read(buffer, use_task_return_tuple2);
+			const auto[ec, n] = co_await m_socket.async_read(buffer, cerwy::bind_executor(strand,use_task_return_tuple2));
 			
 			if (ec) {
+				std::cout << ec << std::endl;
 				if(ec.value() == discord_ec::unknown_error) {
-					socket = co_await wss_from_uri(gateway, resolver, ssl_ctx);
-					rename_me.maybe_restart();
+					co_await reconnect_wss_from_url(m_socket, gateway, me.resolver(), me.ssl_context());
+					m_client.maybe_restart();
 					me.on_reconnect();
 				}else if(ec.value() == discord_ec::not_authenticated) {
-					socket = co_await wss_from_uri(gateway, resolver, ssl_ctx);
-					rename_me.maybe_restart();
+					co_await reconnect_wss_from_url(m_socket, gateway, me.resolver(), me.ssl_context());
+					m_client.maybe_restart();
 					me.on_reconnect();
 				}else if(ec.value() == discord_ec::authentication_failed) {					
 					fmt::print("authentication failed");
@@ -54,20 +57,24 @@ cerwy::task<void> create_shard(const int shard_number, client* t_parent, boost::
 					fmt::print("already authenticated");
 					break;
 				}else if(ec.value() == discord_ec::invalid_seq) {
-					socket = co_await wss_from_uri(gateway, resolver, ssl_ctx);
-					rename_me.maybe_restart();
+					co_await reconnect_wss_from_url(m_socket ,gateway, me.resolver(), me.ssl_context());
+					m_client.maybe_restart();
 					me.on_reconnect();
 				}else if(ec.value() == discord_ec::rate_limited) {
 					fmt::print("rate limited");
 					break;
 				}else if (ec.value() == discord_ec::timeout) {
 					fmt::print("session timedout, reconnecting");
-					socket = co_await wss_from_uri(gateway, resolver, ssl_ctx);
-					rename_me.maybe_restart();
+					co_await reconnect_wss_from_url(m_socket, gateway, me.resolver(), me.ssl_context());
+					m_client.maybe_restart();
 					me.on_reconnect();
 				}else if (ec.value() == discord_ec::sharding_required) {
 					fmt::print("sharding required");
 					break;
+				}else {
+					std::cout << ec << std::endl;
+					m_client.close((int)boost::beast::websocket::close_code::normal);
+					co_return;
 				}
 			}
 			auto data = buffer.data();
@@ -85,3 +92,4 @@ cerwy::task<void> create_shard(const int shard_number, client* t_parent, boost::
 		std::cerr << "failed for some reason\n";
 	}
 }
+

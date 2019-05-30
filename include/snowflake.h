@@ -10,7 +10,6 @@
 #include "iterator_facade.h"
 
 struct snowflake{
-	size_t val = 0;
 	constexpr bool operator==(const snowflake& other) const noexcept{ return val == other.val; }
 	constexpr snowflake() = default;
 	~snowflake() = default;
@@ -28,6 +27,10 @@ struct snowflake{
 		other.val = 0;
 	}
 	constexpr snowflake(const snowflake& other) = default;
+	//TODO: remove me after im done debugging
+	constexpr snowflake(size_t a):val(a){}
+
+	size_t val = 0;
 };
 
 constexpr bool operator!=(const snowflake& a,const snowflake& b) {
@@ -162,7 +165,7 @@ private:
 };
 
 
-//just use auto
+//just use auto, basically a transform_view
 template<typename T,typename snowflake_range>
 struct discord_obj_list{
 	discord_obj_list() = default;
@@ -263,4 +266,4 @@ std::pair<snowflake,T> get_then_return_id(const nlohmann::json& json) {
 
 static inline const auto id_comp = [](auto&& a, snowflake b) {return a.id() < b; };
 
-static inline const auto get_id = [](auto&& a) {return a.id(); };
+static inline constexpr auto get_id = [](auto&& a) {return a.id(); };

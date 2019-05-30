@@ -40,6 +40,7 @@ private:
 	friend struct client;
 	friend struct shard;
 	friend void from_json(const nlohmann::json& json, partial_message& msg);
+	friend struct msg_update_access;
 };
 
 
@@ -63,6 +64,7 @@ private:
 	guild_member* m_author = nullptr;
 	text_channel* m_channel = nullptr;
 	friend struct shard;
+	friend struct msg_update_access;
 };
 
 struct dm_message:partial_message {
@@ -76,6 +78,7 @@ private:
 	std::vector<user*> m_mentions;
 	dm_channel * m_channel = nullptr;
 	friend struct shard;
+	friend struct msg_update_access;
 };
 
 void from_json(const nlohmann::json& json, partial_message& msg);
@@ -137,10 +140,13 @@ private:
 
 void from_json(const nlohmann::json& json, msg_update& msg);
 
-inline void update_msg(guild_text_message&,const guild_msg_update&) {
-	
-}
+struct msg_update_access {
+	//TODO
+	static void update_msg(guild_text_message& msg, guild_msg_update& update) {
 
-inline void update_msg(dm_message&, const dm_msg_update&) {
+	}
 
-}
+	static void update_msg(dm_message&, dm_msg_update&) {
+
+	}
+};

@@ -11,6 +11,7 @@ struct voice_state{
 	bool self_deaf()const noexcept { return m_self_deaf; }
 	bool self_mute()const noexcept { return m_self_mute; }
 	bool suppress()const noexcept { return m_suppress; }
+	const std::optional<guild_member>& member() const { return m_member; }
 private:
 	snowflake m_channel_id;
 	snowflake m_user_id;
@@ -20,6 +21,8 @@ private:
 	bool m_self_deaf = false;
 	bool m_self_mute = false;
 	bool m_suppress = false;
+	std::optional<guild_member> m_member;
+
 	friend void from_json(const nlohmann::json& json, voice_state& vs);
 };
 
@@ -38,7 +41,8 @@ inline void from_json(const nlohmann::json& json, voice_state& vs){
 	vs.m_mute = json["mute"].get<bool>();
 	vs.m_self_deaf = json["self_deaf"].get<bool>();
 	vs.m_self_mute = json["self_mute"].get<bool>();
-	vs.m_suppress = json["surpress"].get<bool>();
+	vs.m_suppress = json["suppress"].get<bool>();
+	vs.m_member = json.value("member",std::optional<guild_member>());
 }
 
 inline void from_json(const nlohmann::json& json, voice_state2& vs) {
