@@ -146,6 +146,7 @@ void shard::request_guild_members(Guild& g) const {
 
 void shard::m_opcode0(nlohmann::json data, event_name event, size_t s) {
 	m_seqNum = std::max(s, m_seqNum);
+	std::cout << m_seqNum << std::endl;
 	try {
 		switch (event) {
 		case event_name::HELLO:							procces_event<event_name::HELLO>(data); break;

@@ -25,6 +25,8 @@ struct discord_voice_connection_impl:
 
 	discord_voice_connection_impl& operator=(const discord_voice_connection_impl&) = delete;
 
+	~discord_voice_connection_impl() = default;
+
 	snowflake channel_id;
 	snowflake my_id;
 	snowflake guild_id;
@@ -46,10 +48,11 @@ struct discord_voice_connection_impl:
 		cerwy::promise<void>* waiter = nullptr;
 		//only 1 of these will be used at any time ;-;
 	};
+	int delay = 0;
+	std::atomic<bool> is_alive = true;
 
 	void start() {
 		send_identify();
-		socket.start_writes();
 		socket.start_reads();
 	}
 	boost::asio::ip::udp::socket voice_socket;
@@ -58,9 +61,8 @@ struct discord_voice_connection_impl:
 		return socket.socket().get_executor();
 	}
 
-	int delay = 0;
 
-	void control_speaking(bool is_speaking = true) {
+	cerwy::task<void> control_speaking(bool is_speaking = true) {
 		std::string msg = fmt::format(R"(
 {
     "op": 5,
@@ -72,8 +74,13 @@ struct discord_voice_connection_impl:
 }
 )",is_speaking,delay);
 
-		socket.send_thing(std::move(msg));
+		co_await socket.send_thing(std::move(msg));
 
+	}
+
+	void close() {
+		is_alive = false;
+		socket.close(1000);
 	}
 
 private:
@@ -84,24 +91,7 @@ private:
 
 	std::vector<int> m_secret_key;
 
-	void send_heartbeat() {
-		heartbeat_sender->execute([me = ref_count_ptr(this)]() {
-			if(me->ref_count() > 1 &&me->socket.is_open()) {
-				//send heartbeat
-				std::string hb = R"(
-				{
-				"op":3,
-				"d":1
-				}
-				)";
-				me->socket.send_thing(std::move(hb));
-				me->send_heartbeat();
-			}else {
-				if(me->socket.is_open())
-					me->socket.close(1000);
-			}
-		}, std::chrono::steady_clock::now() + std::chrono::milliseconds(heartbeat_interval));
-	}
+	cerwy::task<void> send_heartbeat();
 
 	void on_msg_recv(nlohmann::json data,int opcode) {
 		constexpr int ready = 2;
@@ -166,10 +156,13 @@ struct voice_connection{
 		m_connection(std::move(connection)){}
 
 	void disconnect() {
+		m_connection->close();
 		m_connection = nullptr;
 	}
 
-	
+	cerwy::task<void> send() {
+		co_return;
+	};
 	
 private:
 	ref_count_ptr<discord_voice_connection_impl> m_connection = nullptr;

@@ -27,12 +27,12 @@ namespace rawr {
 	struct url_port_parser{
 		parse_result<int> operator()(std::string_view part) {
 			if(part.empty() || part[0] !=':') {
-				return std::nullopt;
+				return parse_fail();
 			}
 			part.remove_prefix(1);
 			const auto end_of_port = part.find_first_not_of("1234567890");
 			if(end_of_port == 0) {
-				return std::nullopt;
+				return parse_fail();
 			}
 			int port = 0;
 			std::from_chars(part.data(), part.data() + end_of_port, port);

@@ -5,6 +5,7 @@
 #include <algorithm>
 #include "timer_queue.h"
 
+//TODO: replace this with boost asio timer
 struct timed_task_executor{
 	timed_task_executor(){
 		m_thread = std::thread([this](){

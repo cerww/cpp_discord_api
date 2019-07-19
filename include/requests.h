@@ -34,10 +34,17 @@ namespace rq {
 
 	struct gateway_unavailable :std::exception {
 		using exception::exception;
+
+		const char* what()const final {
+			return "gateway unavailible try again";
+		}
 	};
 
 	struct server_error :std::exception {
 		using exception::exception;
+		const char* what()const final {
+			return "server error";
+		}
 	};
 
 	struct shared_state:ref_counted{
@@ -58,10 +65,7 @@ namespace rq {
 			const auto execute_on_strand = [&](auto&& f) {
 				boost::asio::post(*strand, f);
 			};
-
-			//for(auto& coro:waiters) {				
-//				boost::asio::post(*strand, coro);
-			//}
+		
 			ranges::for_each(waiters, execute_on_strand);			
 		}
 	};
@@ -133,7 +137,7 @@ namespace rq {
 		}
 		
 		bool await_ready() const noexcept {
-			return ready();
+			return false;//await suspend checks instead
 		}
 		
 		void await_suspend(std::experimental::coroutine_handle<> h) const{
@@ -163,40 +167,10 @@ namespace rq {
 		decltype(auto) get() {
 			wait();
 			handle_errors();
-			if constexpr(!std::is_same_v<void, typename reqeust::return_type>)
+			if constexpr(!std::is_void_v<typename reqeust::return_type>)
 				return value();
 		}
-
-		/*
-		decltype(auto) to_future(std::launch thing = std::launch::async) {
-			return std::async(thing, [me = *this]()mutable {return me.get(); });
-		}
-
-		template<typename executor>
-		decltype(auto) to_future(executor&& exec) {
-			return std::async(std::forward<executor>(exec), [me = *this]() mutable{return me.get(); });
-		}
-
-		template<typename fn>
-		auto then(fn&& Fun,std::launch thing = std::launch::async) {
-			return std::async(thing, [this,_fun = std::forward<fn>(Fun)](){
-				if constexpr(!std::is_same_v<typename reqeust::return_type, void>)
-					return _fun(get());
-				else
-					_fun();
-			});
-		}
 		
-		template<typename fn,typename executor>
-		auto then(executor&& exec, fn&& Fun) {
-			return std::async(std::forward<executor>(exec), [this, _fun = Fun](){
-				if constexpr(!std::is_same_v<typename reqeust::return_type, void>)
-					return _fun(get());
-				else
-					_fun();
-			});
-		}
-		*/
 	protected:
 		ref_count_ptr<shared_state> state;
 	};
@@ -516,7 +490,7 @@ namespace rq {
 	{
 		using request_base::request_base;
 		using return_type = void;
-
+		//TODO make this work
 		static std::string target(const partial_message& msg,const partial_emoji& emo) {
 			return "/channel/{}/messages/{}/reactions/{}:{}/@me"_format(msg.channel_id().val, msg.id().val, emo.id().val, emo.name());
 		}

@@ -183,7 +183,7 @@ void http_connection::send_rq(discord_request& r) {
 	boost::beast::error_code ec;
 	boost::beast::http::write(m_socket, r.req, ec);
 	if (ec) {		
-		std::cout << "rawrrrrr " << ec << std::endl;
+		std::cout << "send_rq " << ec << std::endl;
 		if(ec.value() == 100053) {
 			reconnect();
 		}
@@ -191,7 +191,7 @@ void http_connection::send_rq(discord_request& r) {
 	}
 	boost::beast::http::read(m_socket, m_buffer, r.state->res, ec);
 	if (ec) {		
-		std::cout << "rawrrrrr " << ec << std::endl;
+		std::cout << "send_rq " << ec << std::endl;
 		if (ec.value() == 1) {
 			reconnect();
 		}

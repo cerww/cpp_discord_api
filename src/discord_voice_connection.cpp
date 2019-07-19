@@ -15,6 +15,41 @@ discord_voice_connection_impl::discord_voice_connection_impl(web_socket_session 
 	};
 }
 
+cerwy::task<void> discord_voice_connection_impl::send_heartbeat() {
+	/*
+	heartbeat_sender->execute([me = ref_count_ptr(this)]() {
+		if(me->ref_count() > 1 &&me->socket.is_open()) {
+			//send heartbeat
+			std::string hb = R"(
+			{
+			"op":3,
+			"d":1
+			}
+			)";
+			me->socket.send_thing(std::move(hb));
+			me->send_heartbeat();
+		}else {
+			if(me->socket.is_open())
+				me->socket.close(1000);
+		}
+	}, std::chrono::steady_clock::now() + std::chrono::milliseconds(heartbeat_interval));
+	*/
+	auto pin = ref_count_ptr(this);
+	while(is_alive) {
+		boost::asio::steady_timer timer(ioc());
+		timer.expires_after(std::chrono::milliseconds(heartbeat_interval));
+		std::string hb = R"(
+			{
+			"op":3,
+			"d":1
+			}
+			)";
+		socket.send_thing(std::move(hb));
+	}
+
+	co_return;
+}
+
 void discord_voice_connection_impl::on_hello(nlohmann::json d) {
 	heartbeat_interval = (d["heartbeat_interval"].get<int>() * 3) / 4;
 	std::string hb = R"(

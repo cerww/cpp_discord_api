@@ -17,12 +17,7 @@ struct rename_later_5{
 
 	cerwy::task<void> start_stuffs();
 
-	void send_thing(std::string s) {
-		send_thing2(std::move(s));
-		//m_queue.push(std::move(s));
-	}
-
-	cerwy::task<void> send_thing2(std::string);
+	cerwy::task<void> send_thing(std::string);
 
 	void close(int code) noexcept;
 

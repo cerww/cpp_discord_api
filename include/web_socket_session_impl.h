@@ -5,6 +5,7 @@
 #include <boost/beast/ssl.hpp>
 #include "task.h"
 #include "concurrent_async_queue.h"
+#include "async_mutex.h"
 
 
 struct web_socket_session_impl:ref_counted{
@@ -25,22 +26,14 @@ struct web_socket_session_impl:ref_counted{
 	cerwy::task<void> reconnect(std::string uri);
 	cerwy::task<void> connect(std::string uri);
 
-	void send_thing(std::string msg);
-
-	void send_thing(std::string msg, std::function<void()>);
+	cerwy::task<void> send_thing(std::string);
 
 	void close(int);
 
 	cerwy::task<void> start_reads();
 
-	cerwy::task<void> start_writes();
-
 	bool is_reading() const{
 		return m_is_reading;
-	}
-
-	bool is_writing() const {
-		return m_is_writing;
 	}
 
 	void kill_me();
@@ -62,13 +55,11 @@ private:
 	boost::beast::websocket::stream<boost::beast::ssl_stream<boost::asio::ip::tcp::socket>> m_socket;
 	boost::beast::multi_buffer m_buffer;
 
-	concurrent_async_queue<std::pair<std::string,std::optional<std::function<void()>>>> m_queue;
-	std::vector<std::pair<std::string, std::optional<std::function<void()>>>> m_tossed_away;
+	async_mutex m_mut;
 
 	boost::asio::ip::tcp::resolver* m_resolver = nullptr;
 	boost::asio::ssl::context* m_ssl_ctx = nullptr;
 
-	std::atomic<bool> m_is_writing = false;
 	std::atomic<bool> m_is_reading = false;
 
 	std::atomic<bool> m_is_alive = true;
@@ -113,9 +104,9 @@ struct web_socket_session{
 		return m_me->connect(std::move(uri));
 	}
 
-	void send_thing(std::string msg) {
-		m_me->send_thing(std::move(msg));
-	}
+	cerwy::task<void> send_thing(std::string what) {
+		return m_me->send_thing(std::move(what));
+	};
 
 	template<typename fn>
 	void send_thing(std::string msg,fn&& f) {
@@ -130,16 +121,8 @@ struct web_socket_session{
 		m_me->start_reads();
 	}
 
-	void start_writes() {
-		m_me->start_writes();
-	}
-
 	bool is_reading() const {
 		return m_me->is_reading();
-	}
-
-	bool is_writing() const {
-		return m_me->is_writing();
 	}
 
 	auto& socket() {

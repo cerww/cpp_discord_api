@@ -68,6 +68,7 @@ int main() {
 		};
 		c.on_guild_typing_start = [&](const guild_member& member, const text_channel& channel, shard& s) {
 			s.send_message(channel, "rawr");
+			std::cout << "rawr" << std::endl;
 			/*
 			msgs.push_back(s.send_message(channel,member.username()+ " has started typing").get());
 			s.send_message(channel, member.username() + " has started typing");

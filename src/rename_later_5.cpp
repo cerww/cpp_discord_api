@@ -36,7 +36,7 @@ cerwy::task<void> rename_later_5::start_stuffs() {
 	m_open = false;
 }
 
-cerwy::task<void> rename_later_5::send_thing2(std::string msg) {
+cerwy::task<void> rename_later_5::send_thing(std::string msg) {
 	auto lock = co_await m_mut.async_lock();
 	auto [ec, n] = co_await m_socket.async_write(boost::asio::buffer(msg), use_task_return_tuple2);
 	while(ec) {
