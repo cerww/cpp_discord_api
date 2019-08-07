@@ -12,3 +12,5 @@ Dependancies:
 -nlohmann json
 
 -fmt
+
+c++20 coroutines
