@@ -15,7 +15,7 @@ struct Guild;
 struct guild_member:partial_guild_member{
 	const Guild& guild() const noexcept;;
 	auto roles()const {
-		return role_ids() | ranges::view::transform(hof::map_with(parent_roles()));
+		return role_ids() | ranges::views::transform(hof::map_with(parent_roles()));
 	}
 	Status status() const noexcept;
 private:

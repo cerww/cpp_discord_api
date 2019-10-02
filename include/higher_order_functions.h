@@ -115,7 +115,7 @@ namespace hof {
 		constexpr explicit is_equal_to(TT&& a) :value(std::forward<TT>(a)) {}
 
 		template<typename U>
-		constexpr bool operator()(U&& other) {
+		constexpr bool operator()(U&& other) {			
 			return other == value;
 		}
 		
@@ -279,22 +279,30 @@ namespace hof {
 			last_fn(std::forward<L>(last)) {}
 
 		template<typename... Args, std::enable_if_t<std::is_invocable_v<Last, Args...>, int> = 0>
-		constexpr auto operator()(Args&& ... args) ->decltype(std::invoke(std::declval<Last>(), std::forward<Args>(args)...)){
+		constexpr auto operator()(Args&& ... args)
+			->decltype(std::invoke(std::declval<Last>(), std::forward<Args>(args)...))
+		{
 			return std::invoke(last_fn, std::forward<Args>(args)...);
 		}
 
 		template<typename... Args,std::enable_if_t<std::is_invocable_v<const Last,Args...>,int> = 0>
-		constexpr auto operator()(Args&& ... args) const ->decltype(std::invoke(std::declval<const Last>(), std::forward<Args>(args)...)) {
+		constexpr auto operator()(Args&& ... args) const
+			->decltype(std::invoke(std::declval<const Last>(), std::forward<Args>(args)...))
+		{
 			return std::invoke(last_fn, std::forward<Args>(args)...);
 		}
 		
 		template<typename ...Args, std::enable_if_t<!std::is_invocable_v<Last, Args...>, int> = 0>
-		constexpr auto operator()(Args&& ... args) const->decltype(std::apply(std::declval<Last>(), std::forward<Args>(args)...)) {
+		constexpr auto operator()(Args&& ... args) const
+			->decltype(std::apply(std::declval<Last>(), std::forward<Args>(args)...))
+		{
 			return std::apply(last_fn, std::forward<Args>(args)...);
 		}
 
 		template<typename ...Args, std::enable_if_t<!std::is_invocable_v<const Last, Args...>, int> = 0>
-		constexpr auto operator()(Args&& ... args) const->decltype(std::apply(std::declval<const Last>(), std::forward<Args>(args)...)) {
+		constexpr auto operator()(Args&& ... args) const
+			->decltype(std::apply(std::declval<const Last>(), std::forward<Args>(args)...))
+		{
 			return std::apply(last_fn, std::forward<Args>(args)...);
 		}
 
@@ -338,6 +346,7 @@ namespace hof {
 					return (std::apply(funcs, tuple) && ...);
 				}, functions);
 			}
+			
 		}
 
 
@@ -624,6 +633,27 @@ namespace hof {
 		std::invoke(fn, std::forward<decltype(args)>(args)...);
 	};
 
+	constexpr inline auto swap_with2 = [](auto&& thing) {
+		return[t = std::forward<decltype(thing)>(thing)](auto& other)mutable {
+			std::swap(other, t);
+		};
+	};
+
+	template<typename T>
+	struct swap_with {
+		swap_with() = delete;
+		swap_with(T a):current_thing(std::forward<T>(a)){}
+		
+		template<typename U>
+		void operator()(U& a){
+			std::swap(a, current_thing);
+		}		
+		T current_thing;		
+	};
+
+	template<typename T>
+	swap_with(T&&)->swap_with<T>;
+
 	inline void asdasdasd() {
 		auto i = flow([]() {return 1; }, [](int u) {return 5; });
 		auto t = i();
@@ -657,6 +687,7 @@ namespace hof {
 
 
 }
+
 #include <tuple>
 #include <random>
 namespace hof_tests{

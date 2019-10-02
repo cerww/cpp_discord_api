@@ -132,8 +132,9 @@ struct web_socket_session{
 	const auto& socket() const{
 		return m_me->socket();
 	}
-	bool is_open()const { return 
-		m_me->is_open(); 
+	
+	bool is_open()const {
+		return m_me->is_open(); 
 	}
 
 private:

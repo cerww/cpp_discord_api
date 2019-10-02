@@ -340,7 +340,7 @@ template<typename rng>
 rq::modify_channel_positions shard::modify_channel_positions(const Guild& g, rng&& positions) {
 	nlohmann::json json = 
 		positions |
-		ranges::view::transform([](auto&& a){
+		ranges::views::transform([](auto&& a){
 			auto[id, position] = a;
 
 			using id_type = decltype(id);
@@ -351,7 +351,7 @@ rq::modify_channel_positions shard::modify_channel_positions(const Guild& g, rng
 			ret["id"] = id;
 			ret["position"] = position;
 			return ret;
-		}) | ranges::to_<std::vector>();
+		}) | ranges::to<std::vector>();
 	
 	return send_request<rq::modify_channel_positions>(json.dump(), g);
 }
@@ -392,8 +392,8 @@ auto shard::add_guild_member(const Guild& guild , snowflake id, std::string acce
 	body["mute"] = mute;	
 	body["roles"] = 
 		roles | 
-		ranges::view::transform([](auto&& role) {return role.id(); }) | 
-		ranges::to_<std::vector>();
+		ranges::views::transform([](auto&& role) {return role.id(); }) | 
+		ranges::to<std::vector>();
 	return send_request<rq::add_guild_member>(body.dump(), guild, id);
 }
 

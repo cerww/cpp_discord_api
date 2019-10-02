@@ -7,6 +7,7 @@
 #include <fmt/format.h>
 #include "invite.h"
 #include <boost/asio.hpp>
+#include <range/v3/all.hpp>
 
 using namespace std::string_literals;
 using namespace fmt::literals;
@@ -105,7 +106,7 @@ namespace rq {
 	template<typename reqeust>
 	struct request_base:private crtp<reqeust> {
 		request_base() = default;
-		request_base(ref_count_ptr<shared_state> t_state):state(std::move(t_state)){}
+		explicit request_base(ref_count_ptr<shared_state> t_state):state(std::move(t_state)){}
 
 		template<typename ...Ts>
 		static auto request(Ts&&... t) {
@@ -129,7 +130,7 @@ namespace rq {
 
 		void wait() {
 			std::unique_lock<std::mutex> lock{state->mut};
-			state->cv.wait(lock, [&]()->bool {return ready(); });
+			state->cv.wait(lock, [this]()->bool {return ready(); });
 		}
 
 		bool ready()const noexcept {
@@ -142,8 +143,6 @@ namespace rq {
 		
 		void await_suspend(std::experimental::coroutine_handle<> h) const{
 			std::unique_lock lock(state->waiter_mut);
-			//ready() can change inbetween await_ready and after the lock, if it chagned right after calling await_ready(), 
-			//notify() can aquire the mut first,call all the waiters, then if i add it to the list, it'll never be called
 			if(ready()) {
 				lock.unlock();
 				h.resume();

@@ -1,6 +1,5 @@
 #pragma once
 #include <nlohmann/json.hpp>
-#include "snowflake.h"
 
 //needs to be own class so i can use | and & and add functions to it
 struct permission {

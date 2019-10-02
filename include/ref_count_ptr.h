@@ -5,7 +5,8 @@ struct ref_counted {
 	void increment_ref_count() const noexcept {
 		m_ref_count.fetch_add(1, std::memory_order_relaxed);
 	}
-
+	
+	//returns weather or not this shuold be deleted
 	bool decrement_ref_count()const noexcept {
 		return m_ref_count.fetch_sub(1, std::memory_order_relaxed) == 1;
 	}
@@ -22,6 +23,7 @@ struct ref_counted_thread_unsafe {
 	void increment_ref_count() const noexcept {
 		++m_ref_count;
 	}
+	//returns weather or not this shuold be deleted
 	bool decrement_ref_count() const noexcept {
 		return --m_ref_count == 0;
 	}

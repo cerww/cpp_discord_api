@@ -19,10 +19,10 @@ struct partial_message{
 	bool tts() const noexcept;
 	bool mention_everyone() const noexcept;
 	auto reactions() const noexcept {
-		return m_reactions | ranges::view::all;
+		return m_reactions | ranges::views::all;
 	};
 	auto attachments() const noexcept {
-		return m_attachments | ranges::view::all;
+		return m_attachments | ranges::views::all;
 	};
 private:
 	snowflake m_author_id;
@@ -49,13 +49,13 @@ struct guild_text_message:partial_message{
 	const Guild& guild()const noexcept;
 	const guild_member& author() const noexcept;
 	auto mention_roles_ids() const noexcept {
-		return m_mention_roles_ids | ranges::view::all;
+		return m_mention_roles_ids | ranges::views::all;
 	};
 	auto mentions() const noexcept {
-		return m_mentions | ranges::view::indirect;
+		return m_mentions | ranges::views::indirect;
 	};
 	auto mention_roles()const noexcept {
-		return m_mention_roles | ranges::view::indirect;
+		return m_mention_roles | ranges::views::indirect;
 	};
 private:
 	std::vector<snowflake> m_mention_roles_ids;
@@ -70,7 +70,7 @@ private:
 struct dm_message:partial_message {
 	const user& author() const noexcept;
 	auto mentions() const noexcept {
-		return m_mentions | ranges::view::indirect;
+		return m_mentions | ranges::views::indirect;
 	};
 	const dm_channel& channel() const noexcept;
 private:
@@ -106,13 +106,13 @@ private:
 struct guild_msg_update:msg_update{
 	const guild_member& author()const noexcept;
 	auto mention_role_ids()const noexcept {
-		return m_mention_role_ids | ranges::view::all;
+		return m_mention_role_ids | ranges::views::all;
 	};
 	auto mentions()const noexcept {
-		return m_mentions | ranges::view::indirect;
+		return m_mentions | ranges::views::indirect;
 	};
 	auto mention_roles()const noexcept {
-		return m_mention_roles | ranges::view::indirect;
+		return m_mention_roles | ranges::views::indirect;
 	};
 	const text_channel& channel()const noexcept;
 
@@ -128,7 +128,7 @@ private:
 struct dm_msg_update:msg_update{
 	const user& author() const;
 	auto mentions()const noexcept {
-		return m_mentions | ranges::view::indirect;
+		return m_mentions | ranges::views::indirect;
 	};
 	const dm_channel& channel()const noexcept;
 private:

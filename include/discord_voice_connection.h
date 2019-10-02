@@ -41,6 +41,7 @@ struct discord_voice_connection_impl:
 
 	int heartbeat_interval = 0;
 	int ssrc = 0;
+	
 	union {		
 		const voice_channel* channel;
 
@@ -48,21 +49,24 @@ struct discord_voice_connection_impl:
 		cerwy::promise<void>* waiter = nullptr;
 		//only 1 of these will be used at any time ;-;
 	};
+
+	
 	int delay = 0;
 	std::atomic<bool> is_alive = true;
 
+	boost::asio::ip::udp::socket voice_socket;
+	
 	void start() {
 		send_identify();
 		socket.start_reads();
 	}
-	boost::asio::ip::udp::socket voice_socket;
 
 	decltype(auto) ioc() {
 		return socket.socket().get_executor();
 	}
 
 
-	cerwy::task<void> control_speaking(bool is_speaking = true) {
+	cerwy::task<void> control_speaking(bool is_speaking = true) {		
 		std::string msg = fmt::format(R"(
 {
     "op": 5,
@@ -78,10 +82,14 @@ struct discord_voice_connection_impl:
 
 	}
 
+	cerwy::task<void> send_silent_frames();
+	
 	void close() {
 		is_alive = false;
 		socket.close(1000);
 	}
+
+	cerwy::task<void> send_voice();
 
 private:
 	std::string m_ip;
@@ -150,7 +158,9 @@ struct voice_connection{
 	voice_connection(voice_connection&&) = default;
 	voice_connection& operator=(voice_connection&&) = default;
 
-	~voice_connection() = default;
+	~voice_connection() {
+		disconnect();
+	};
 
 	explicit voice_connection(ref_count_ptr<discord_voice_connection_impl> connection):
 		m_connection(std::move(connection)){}
@@ -160,8 +170,8 @@ struct voice_connection{
 		m_connection = nullptr;
 	}
 
-	cerwy::task<void> send() {
-		co_return;
+	cerwy::task<void> send() {	
+		return m_connection->send_voice();
 	};
 	
 private:

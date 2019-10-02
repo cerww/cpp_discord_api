@@ -23,7 +23,7 @@ struct shared_state_base_non_void :ref_counted {
 		return !std::holds_alternative<no_state>(m_data);
 	}
 
-	T value() {
+	T value() {		
 		return std::visit([this](auto& a)->T {
 			using type = std::decay_t<decltype(a)>;
 			if constexpr (std::is_same_v<type, T>) {
@@ -35,7 +35,7 @@ struct shared_state_base_non_void :ref_counted {
 			} else if constexpr (std::is_same_v<type, no_state>) {
 				throw something_happened{};
 			} else {
-				throw a;
+				std::rethrow_exception(a);
 			}
 		}, m_data);
 	}
@@ -62,7 +62,7 @@ struct shared_state_base_void : ref_counted {
 
 	void value()  {
 		if (m_watland)
-			throw *m_watland;
+			std::rethrow_exception(*m_watland);
 	}
 
 protected:
@@ -337,5 +337,20 @@ using shared_promise = templated_promise<shared_shared_state<T>>;
 		return r;
 	}
 
-}
+
+	template<typename T>
+	using awaitable_result_t = decltype(std::declval<T>().await_result());
+	
+	template<typename Awaitable>
+	auto async_invoke(Awaitable&& awaitable) ->task<awaitable_result_t<Awaitable>>{
+		co_return co_await awaitable;
+	}
+	
+	template<typename callable>
+	task<std::invoke_result_t<callable>> make_async(callable&& fn) {
+		co_return std::invoke(fn);
+	}
+	
+	
+};
 

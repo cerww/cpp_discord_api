@@ -91,7 +91,7 @@ struct client {//<(^.^)>
 	
 	void rate_limit_global(const std::chrono::system_clock::time_point);
 
-	Status status = Status::online;
+	Status status = Status::online;	
 	std::string gameName = "";
  	timed_task_executor heartbeat_sender;
 

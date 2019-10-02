@@ -15,7 +15,7 @@ private:
 struct emoji:partial_emoji{
 	snowflake user_id()const noexcept { return m_user_id; }	
 	auto roles()const noexcept {
-		return m_roles | ranges::view::all;
+		return m_roles | ranges::views::all;
 	}
 private:
 	std::vector<snowflake> m_roles;

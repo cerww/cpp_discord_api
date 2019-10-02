@@ -1,6 +1,5 @@
 #pragma once
 #include "partial_channel.h"
-#include <experimental/generator>
 #include "range-like-stuffs.h"
 #include <range/v3/all.hpp>
 
@@ -12,22 +11,26 @@ struct guild_channel: partial_channel{
 	snowflake guild_id() const noexcept;
 	const Guild& guild() const noexcept;
 	auto permission_overwrites() const noexcept {
-		return m_permission_overwrites | ranges::view::all;
+		return m_permission_overwrites | ranges::views::all;
 	};
 	bool nsfw() const noexcept;
 	int position() const noexcept;
 	snowflake catagory_id() const noexcept;
-	ranges::view::all_t<const std::vector<permission_overwrite>&> parent_overwrites()const noexcept;
+	ranges::views::all_t<const std::vector<permission_overwrite>&> parent_overwrites()const noexcept;
 	const channel_catagory& parent() const noexcept;
 	bool has_parent() const noexcept;
 
-	//std::experimental::generator<permission_overwrite> total_permissions()const {//fix this somehow
+	//std::experimental::generator<permission_overwrite> total_permissions()const {
+	//
+	//fix this somehow
+	///*
 	ranges::any_view<permission_overwrite> all_permissions()const{
 		if (m_parent) {
-			return ranges::view::concat(permission_overwrites(), parent_overwrites());
+			return ranges::views::concat(permission_overwrites(), parent_overwrites());
 		}
 		return permission_overwrites();
 	}
+	//*/
 private:
 	snowflake m_guild_id;
 	bool m_nsfw = false;

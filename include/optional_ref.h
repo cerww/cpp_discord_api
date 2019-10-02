@@ -33,13 +33,15 @@ struct optional_ref{
 	constexpr T& value() {
 		if(m_self) {
 			return *m_self;
-		}throw std::bad_optional_access();		
+		}
+		throw std::bad_optional_access();		
 	}
 
 	constexpr const T& value()const {
 		if (m_self) {
 			return *m_self;
-		}throw std::bad_optional_access();
+		}
+		throw std::bad_optional_access();
 	}
 
 	constexpr bool has_value()const noexcept {

@@ -47,7 +47,7 @@ enum class event_name {
 	VOICE_SERVER_UPDATE,
 	WEBHOOKS_UPDATE
 };
-
+//TODO reorder these to mkae it chek more common ones first. Or use a trie
 inline event_name to_event_name(std::string_view name) {
 	if (name == "HELLO") return event_name::HELLO;
 	if (name == "READY")return event_name::READY;
@@ -102,11 +102,11 @@ inline Status string_to_status(str_t&& string) {
 
 inline std::string enum_to_string(const Status s) {
 	switch (s) {
-		case Status::dnd:return "dnd"; break;
-		case Status::online: return "online"; break;
-		case Status::idle: return "idle"; break;
-		case Status::invisible: return "invisible"; break;
-		case Status::offline: return "offline"; break;
+		case Status::dnd:return "dnd";
+		case Status::online: return "online";
+		case Status::idle: return "idle";
+		case Status::invisible: return "invisible";
+		case Status::offline: return "offline";
 		default: return "";
 	}
 }

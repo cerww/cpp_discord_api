@@ -45,9 +45,9 @@ int main() {
 			} else if (msg.content() == "rolesy") {
 				std::string stuff =
 					msg.author().roles() |
-					ranges::view::transform(&guild_role::name) |
-					ranges::view::join(" "sv) |
-					ranges::to_<std::string>();
+					ranges::views::transform(&guild_role::name) |
+					ranges::views::join(" "sv) |
+					ranges::to<std::string>();
 
 				s.send_message(msg.channel(), stuff);
 			}else if (msg.content() == "invite") {
@@ -59,7 +59,7 @@ int main() {
 
 			for (const auto& i : msg.mentions()) {
 				s.change_nick(i, std::string(msg.content()));
-			}
+			}			
 
 			if (msg.author().id() != s.self_user().id())
 				s.send_message(msg.channel(), std::to_string(msg.author().id().val));
@@ -82,7 +82,7 @@ int main() {
 			*/
 		};
 		c.on_guild_member_add = [&](const guild_member& member, shard& s) {
-			//s.send_message(member.guild().general_channel(),member.username()).get();
+			s.send_message(member.guild().system_channel(),"rawr");
 		};
 		c.setToken(token_type::BOT, getFileContents("token.txt"));		
 		c.run();

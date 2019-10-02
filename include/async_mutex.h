@@ -165,7 +165,7 @@ private:
 	bool m_is_locked = false;
 };
 
-//TODO make this work
+
 struct async_mutex {
 	struct async_lock_t {
 		explicit async_lock_t() = default;

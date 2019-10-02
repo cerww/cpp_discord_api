@@ -15,9 +15,9 @@ struct partial_guild{
 	std::string_view icon() const noexcept;
 	snowflake owner_id() const noexcept;
 	auto emojis() const noexcept {
-		return m_emojis | ranges::view::all;
+		return m_emojis | ranges::views::all;
 	}
-	snowflake general_channel_id()const noexcept;
+	snowflake system_channel_id()const noexcept;
 	std::string_view region() const noexcept;
 	int afk_timeout() const noexcept;
 	snowflake afk_channel_id() const noexcept;
@@ -26,7 +26,7 @@ struct partial_guild{
 	int verification_level() const noexcept;
 	bool explicit_content_filter() const noexcept;
 	auto features() const noexcept {
-		return m_features | ranges::view::all;
+		return m_features | ranges::views::all;
 	}
 private:
 	snowflake m_id;

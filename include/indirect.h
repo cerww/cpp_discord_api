@@ -4,7 +4,7 @@
 
 struct defer_construction{};
 
-//TODO: switch to unique_allocate once c++20 is here
+
 template<typename T,typename Allocator = std::allocator<T>>
 struct indirect {
 	indirect():m_data(new(m_allocator.allocate(1)) T()){};

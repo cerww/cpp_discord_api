@@ -11,12 +11,12 @@ struct dm_channel: partial_channel{
 	snowflake last_message_id() const noexcept;
 
 	auto recipients() const noexcept {
-		return m_recipients | ranges::view::all;
+		return m_recipients | ranges::views::all;
 	};
 	timestamp last_pin_timestamp() const noexcept;
 
 	auto msg_cache() const noexcept {
-		return m_msg_cache.data() | ranges::view::all;
+		return m_msg_cache.data() | ranges::views::all;
 	};
 private:
 	snowflake m_last_message_id;

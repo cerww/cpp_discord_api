@@ -3,6 +3,7 @@
 #include <string>
 #include <nlohmann/json.hpp>
 #include "permission.h"
+#include "snowflake.h"
 
 enum class overwrite_type {
 	role,

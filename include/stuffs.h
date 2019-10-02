@@ -29,7 +29,7 @@ inline permission combined_permissions(const guild_member& member) {
 
 template<typename rng>
 std::enable_if_t<is_range_of_v<rng,permission_overwrite>,permission> combined_permissions(const guild_member& member, rng&& range) {
-	return combined_permissions(combined_permissions(member),range |  ranges::view::filter([&](permission_overwrite p) {
+	return combined_permissions(combined_permissions(member),range |  ranges::views::filter([&](permission_overwrite p) {
 		if (p.type() == overwrite_type::member) {
 			return member.id() == p.id();
 		}

@@ -7,7 +7,7 @@
 struct partial_guild_member:user{
 	std::string_view nick() const noexcept;
 	auto role_ids() const noexcept {
-		return m_roles | ranges::view::all;
+		return m_roles | ranges::views::all;
 	}
 	timestamp joined_at() const noexcept;
 	bool deaf() const noexcept;
