@@ -6,9 +6,9 @@
 #include "timer_queue.h"
 
 //TODO: replace this with boost asio timer
-struct timed_task_executor{
-	timed_task_executor(){
-		m_thread = std::thread([this](){
+struct timed_task_executor {
+	timed_task_executor() {
+		m_thread = std::thread([this]() {
 			try {
 				while (!m_done.load()) {
 					auto t = m_queue.try_pop_next_time_blocking();
@@ -19,7 +19,7 @@ struct timed_task_executor{
 						std::this_thread::sleep_until(*t.second);
 					}
 				}
-			}catch(...){}
+			} catch (...) {}
 		});
 	}
 
@@ -30,15 +30,15 @@ struct timed_task_executor{
 
 	~timed_task_executor() {
 		m_done.store(true);
-		execute([]() {}, std::chrono::steady_clock::now() - std::chrono::seconds(1));//to trigger the cv
+		execute([]() {}, std::chrono::steady_clock::now() - std::chrono::seconds(1));//to trigger the ready_cv
 		m_thread.join();
 	}
 
-	void execute(std::pair<std::function<void()>,std::chrono::steady_clock::time_point> task) {
-		m_queue.push(std::move(task.first),task.second);
+	void execute(std::pair<std::function<void()>, std::chrono::steady_clock::time_point> task) {
+		m_queue.push(std::move(task.first), task.second);
 	}
 
-	void execute(std::function<void()> task,std::chrono::steady_clock::time_point tp) {
+	void execute(std::function<void()> task, std::chrono::steady_clock::time_point tp) {
 		execute(std::make_pair(std::move(task), tp));
 	}
 

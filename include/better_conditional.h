@@ -14,4 +14,3 @@ struct better_conditional<false> {
 
 template<bool condition, typename T, typename F>
 using better_conditional_t = typename better_conditional<condition>::template value<T, F>;
-

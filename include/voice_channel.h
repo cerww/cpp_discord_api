@@ -7,7 +7,7 @@ struct voice_channel :guild_channel {
 	int bitrate() const noexcept;
 
 private:
-	int m_user_limit = 0;	
+	int m_user_limit = 0;
 	int m_bitrate = 0;
 
 	friend void from_json(const nlohmann::json& json, voice_channel& out);
@@ -15,5 +15,3 @@ private:
 };
 
 void from_json(const nlohmann::json& json, voice_channel& out);
-
-

@@ -7,16 +7,18 @@ struct channel_catagory;
 
 struct Guild;
 
-struct guild_channel: partial_channel{
+struct guild_channel :partial_channel {
 	snowflake guild_id() const noexcept;
 	const Guild& guild() const noexcept;
+
 	auto permission_overwrites() const noexcept {
 		return m_permission_overwrites | ranges::views::all;
 	};
+
 	bool nsfw() const noexcept;
 	int position() const noexcept;
 	snowflake catagory_id() const noexcept;
-	ranges::views::all_t<const std::vector<permission_overwrite>&> parent_overwrites()const noexcept;
+	ranges::views::all_t<const std::vector<permission_overwrite>&> parent_overwrites() const noexcept;
 	const channel_catagory& parent() const noexcept;
 	bool has_parent() const noexcept;
 
@@ -24,7 +26,7 @@ struct guild_channel: partial_channel{
 	//
 	//fix this somehow
 	///*
-	ranges::any_view<permission_overwrite> all_permissions()const{
+	ranges::any_view<permission_overwrite> all_permissions() const {
 		if (m_parent) {
 			return ranges::views::concat(permission_overwrites(), parent_overwrites());
 		}

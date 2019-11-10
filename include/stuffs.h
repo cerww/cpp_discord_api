@@ -12,8 +12,8 @@ constexpr permission combined_permissions(permission p1, permission p2) {
 }
 
 template<typename range>
-std::enable_if_t<is_range_of_v<range,permission_overwrite>,permission> combined_permissions(permission return_val,range&& overwrites) {
-	for(auto&& overwrite:overwrites) {
+std::enable_if_t<is_range_of_v<range, permission_overwrite>, permission> combined_permissions(permission return_val, range&& overwrites) {
+	for (auto&& overwrite : overwrites) {
 		return_val.add_permissions(overwrite.allow());
 		return_val.remove_permissions(overwrite.deny());
 	}
@@ -22,14 +22,14 @@ std::enable_if_t<is_range_of_v<range,permission_overwrite>,permission> combined_
 
 inline permission combined_permissions(const guild_member& member) {
 	permission retVal;
-	for(auto&& role:member.roles()) 
+	for (auto&& role : member.roles())
 		retVal = combined_permissions(retVal, role.permissions());
 	return retVal;
 }
 
 template<typename rng>
-std::enable_if_t<is_range_of_v<rng,permission_overwrite>,permission> combined_permissions(const guild_member& member, rng&& range) {
-	return combined_permissions(combined_permissions(member),range |  ranges::views::filter([&](permission_overwrite p) {
+std::enable_if_t<is_range_of_v<rng, permission_overwrite>, permission> combined_permissions(const guild_member& member, rng&& range) {
+	return combined_permissions(combined_permissions(member), range | ranges::views::filter([&](permission_overwrite p) {
 		if (p.type() == overwrite_type::member) {
 			return member.id() == p.id();
 		}
@@ -48,4 +48,3 @@ std::enable_if_t<is_range_of_v<rng,permission_overwrite>,permission> combined_pe
 inline permission combined_permissions(const guild_member& member, const guild_channel& channel) {
 	return combined_permissions(combined_permissions(member), channel.permission_overwrites());
 }
-

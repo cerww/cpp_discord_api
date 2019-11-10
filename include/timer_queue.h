@@ -21,7 +21,9 @@ struct timer_queue {
 	using allocator_type = typename std::allocator_traits<A>::template rebind_alloc<std::pair<T, time_point>>;
 
 	timer_queue() = default;
-	explicit timer_queue(A a) :m_queue(container(std::move(a))) {}
+
+	explicit timer_queue(A a) :
+		m_queue(container(std::move(a))) {}
 
 	void push(T a, std::chrono::steady_clock::time_point tp) {
 		m_queue.emplace(std::move(a), tp);
@@ -40,26 +42,26 @@ struct timer_queue {
 
 	std::pair<std::optional<T>, std::optional<time_point>> try_pop_next_time() {
 		if (m_queue.empty())
-			return { std::nullopt ,std::nullopt };
+			return {std::nullopt, std::nullopt};
 		if (m_queue.top().second < clock_t::now()) {
 			auto r = do_pop();
 			const auto next_tp = time_till_next();
-			return { std::move(r),next_tp };
+			return {std::move(r), next_tp};
 		}
-		return { std::nullopt,time_till_next() };
+		return {std::nullopt, time_till_next()};
 	}
 
-	std::optional<time_point> time_till_next()const noexcept {
+	std::optional<time_point> time_till_next() const noexcept {
 		if (m_queue.empty())
 			return std::nullopt;
 		return m_queue.top().second;
 	}
 
-	size_t size()const noexcept {
+	size_t size() const noexcept {
 		return m_queue.size();
 	}
 
-	bool empty()const noexcept {
+	bool empty() const noexcept {
 		return size() == 0;
 	}
 
@@ -83,7 +85,8 @@ struct concurrent_timer_queue {
 
 	concurrent_timer_queue() = default;
 
-	explicit concurrent_timer_queue(A a) :m_queue(std::move(a)) {}
+	explicit concurrent_timer_queue(A a) :
+		m_queue(std::move(a)) {}
 
 	void push(T a, time_point tp) {
 		{
@@ -141,26 +144,26 @@ struct concurrent_timer_queue {
 	std::pair<std::optional<T>, std::optional<time_point>> pop_next_time_busy() {
 		std::unique_lock locky(m_mut, std::try_to_lock);
 		if (!locky)
-			return { std::nullopt,std::nullopt };
+			return {std::nullopt, std::nullopt};
 		return m_queue.try_pop_next_time();
 	}
 
-	std::optional<time_point> time_till_next()const noexcept {
+	std::optional<time_point> time_till_next() const noexcept {
 		std::lock_guard locky(m_mut);
 		return m_queue.time_till_next();
 	}
 
-	std::optional<time_point> time_till_next_busy()const noexcept {
+	std::optional<time_point> time_till_next_busy() const noexcept {
 		std::unique_lock locky(m_mut, std::try_to_lock);
 		if (!locky)
 			return std::nullopt;
 		return m_queue.time_till_next();
 	}
 
-	std::optional<time_point> time_till_next_unsafe()const noexcept {
+	std::optional<time_point> time_till_next_unsafe() const noexcept {
 		return m_queue.time_till_next();
 	}
-	
+
 private:
 	T unsafe_pop() {
 		return m_queue.do_pop();
@@ -170,5 +173,3 @@ private:
 	std::mutex m_mut;
 	std::condition_variable m_cv;
 };
-
-

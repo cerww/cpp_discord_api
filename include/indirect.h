@@ -2,171 +2,178 @@
 #include <utility>
 #include <memory>
 
-struct defer_construction{};
+struct defer_construction {};
 
 
-template<typename T,typename Allocator = std::allocator<T>>
+template<typename T, typename Allocator = std::allocator<T>>
 struct indirect {
-	indirect():m_data(new(m_allocator.allocate(1)) T()){};
+	indirect():
+		m_data(new(m_allocator.allocate(1)) T()) {};
 
 	indirect(T stuff, Allocator al = Allocator()) :
 		m_allocator(std::move(al)),
 		m_data(new(m_allocator.allocate(1)) T(std::move(stuff))) {}
 
-	template<typename allo, std::enable_if_t<std::is_constructible_v<Allocator,allo>,int> = 0>
-	explicit indirect(allo&& alloc,T thing = T()): // NOLINT
+	template<typename allo, std::enable_if_t<std::is_constructible_v<Allocator, allo>, int>  = 0>
+	explicit indirect(allo&& alloc, T thing = T()): // NOLINT
 		m_allocator(std::forward<allo>(alloc)),
-		m_data(new(m_allocator.allocate(1)) T(std::move(thing))){}
+		m_data(new(m_allocator.allocate(1)) T(std::move(thing))) {}
 
 	template<
-		typename... Ts, 
+		typename... Ts,
 		std::enable_if_t<
-			std::is_constructible_v<Allocator, Ts...> && 
+			std::is_constructible_v<Allocator, Ts...> &&
 			!std::is_constructible_v<T, Ts...>,
-		int> = 0 >
+			int>  = 0>
 	explicit indirect(Ts&&... args):
 		m_allocator(std::forward<Ts>(args)...),
-		m_data(new(m_allocator.allocate(1)) T()){}
+		m_data(new(m_allocator.allocate(1)) T()) {}
 
 	template<
-		typename... Ts, 
+		typename... Ts,
 		std::enable_if_t<
-			std::is_constructible_v<Allocator, Ts...> && 
+			std::is_constructible_v<Allocator, Ts...> &&
 			!std::is_constructible_v<T, Ts...>,
-		int> = 0>
-	explicit indirect(defer_construction,Ts&&... args) :
-		m_allocator(std::forward<Ts>(args)...){}
+			int>  = 0>
+	explicit indirect(defer_construction, Ts&&... args) :
+		m_allocator(std::forward<Ts>(args)...) {}
 
-	template<typename... Ts, std::enable_if_t<std::is_constructible_v<T, Ts...>, int> = 0>
+	template<typename... Ts, std::enable_if_t<std::is_constructible_v<T, Ts...>, int>  = 0>
 	explicit indirect(Ts&&... args):
-		m_data(new(m_allocator.allocate(1)) T(std::forward<Ts>(args)...)){}
+		m_data(new(m_allocator.allocate(1)) T(std::forward<Ts>(args)...)) {}
 
 	template<typename ...Ts1, typename ...Ts2>
-	explicit indirect(std::tuple<Ts1...> alloc_args,std::tuple<Ts2...> T_args):
+	explicit indirect(std::tuple<Ts1...> alloc_args, std::tuple<Ts2...> T_args):
 		m_allocator(std::make_from_tuple<Allocator>(std::move(alloc_args))),
-		m_data(new (m_allocator.allocate(1)) T(std::make_from_tuple<T>(std::move(T_args)))){}
+		m_data(new(m_allocator.allocate(1)) T(std::make_from_tuple<T>(std::move(T_args)))) {}
 
 	template<typename U>
-	indirect(std::initializer_list<U> li):m_data(new(m_allocator.allocate(1)) T(li)) {}
+	indirect(std::initializer_list<U> li):
+		m_data(new(m_allocator.allocate(1)) T(li)) {}
 
 	template<typename U>
 	indirect& operator=(std::initializer_list<U> li) {
 		*m_data = T(li);
 		return *this;
 	}
-	
+
 	indirect(const indirect& other):
 		m_allocator(other.m_allocator),
-		m_data(new(m_allocator.allocate(1)) T(*other.m_data)){}
+		m_data(new(m_allocator.allocate(1)) T(*other.m_data)) {}
 
-	indirect(indirect&& other) noexcept: 
+	indirect(indirect&& other) noexcept:
 		m_allocator(std::move(other.m_allocator)),
-		m_data(std::exchange(other.m_data,nullptr)) {}
-	
-	template<typename U, typename A, std::enable_if_t<!std::is_same_v<A, Allocator>, int> = 0>
-	indirect(const indirect<U,A>& other) :
-		m_data(new(m_allocator.allocate(1)) T(*other.m_data)){}
+		m_data(std::exchange(other.m_data, nullptr)) {}
 
-	template<typename U, typename A, std::enable_if_t<!std::is_same_v<A, Allocator>, int> = 0>
+	template<typename U, typename A, std::enable_if_t<!std::is_same_v<A, Allocator>, int>  = 0>
+	indirect(const indirect<U, A>& other) :
+		m_data(new(m_allocator.allocate(1)) T(*other.m_data)) {}
+
+	template<typename U, typename A, std::enable_if_t<!std::is_same_v<A, Allocator>, int>  = 0>
 	indirect(indirect<U, A>&& other):
 		m_data(new(m_allocator.allocate(1)) T(std::move(*other.m_data))) {}
-	
-	indirect& operator=(const indirect& other) {		
+
+	indirect& operator=(const indirect& other) {
 		*m_data = *other.m_data;
 		return *this;
 	}
 
-	indirect& operator=(indirect&& other) noexcept{
+	indirect& operator=(indirect&& other) noexcept {
 		indirect new_me(std::move(other));
-		std::swap(m_allocator,new_me.m_allocator);
+		std::swap(m_allocator, new_me.m_allocator);
 		std::swap(m_data, new_me.m_data);
 		return *this;
 	}
-	
-	template<typename U,typename A, std::enable_if_t<std::is_convertible_v<U, T> && !std::is_same_v<A, Allocator>,int> = 0>
-	indirect& operator=(const indirect<U,A>& other) {
+
+	template<typename U, typename A, std::enable_if_t<std::is_convertible_v<U, T> && !std::is_same_v<A, Allocator>, int>  = 0>
+	indirect& operator=(const indirect<U, A>& other) {
 		*m_data = *other.m_data;
 		return *this;
 	}
 
-	template<typename U, typename A, std::enable_if_t<std::is_convertible_v<U, T> && !std::is_same_v<A, Allocator>, int> = 0>
-	indirect& operator=(indirect<U,A>&& other) {		
-		if(!m_data) 
+	template<typename U, typename A, std::enable_if_t<std::is_convertible_v<U, T> && !std::is_same_v<A, Allocator>, int>  = 0>
+	indirect& operator=(indirect<U, A>&& other) {
+		if (!m_data)
 			m_data = new(m_allocator.allocate(1)) T(std::move(*other.m_data));
 		else
 			*m_data = std::move(*other.m_data);
 		return *this;
 	}
 
-	indirect& operator=(T other){
-		if(!m_data) 
+	indirect& operator=(T other) {
+		if (!m_data)
 			m_data = new(m_allocator.allocate(1)) T(std::move(other));
 		else
 			*m_data = std::move(other);
 		return *this;
 	}
 
-	~indirect(){
-		if(m_data){
+	~indirect() {
+		if (m_data) {
 			std::allocator_traits<Allocator>::destroy(m_allocator, m_data);
-			m_allocator.deallocate(m_data,1);
+			m_allocator.deallocate(m_data, 1);
 		}
 	}
-	
-	T& value() noexcept{ return *m_data; }
-	const T& value()const noexcept { return *m_data; }
 
-	T* get()noexcept { return m_data; }
-	const T* get()const noexcept { return m_data; }
+	T& value() noexcept { return *m_data; }
 
-	operator T&() { 
-		return *m_data;	
-	}
-	
-	operator const T&() const{
+	const T& value() const noexcept { return *m_data; }
+
+	T* get() noexcept { return m_data; }
+
+	const T* get() const noexcept { return m_data; }
+
+	operator T&() {
 		return *m_data;
 	}
 
-	T& operator*() noexcept{ return *m_data; }
-	const T& operator*()const noexcept{ return *m_data; }
-	T* operator->() noexcept{ return m_data; }
-	const T* operator->()const noexcept{ return m_data; }
-	
+	operator const T&() const {
+		return *m_data;
+	}
+
+	T& operator*() noexcept { return *m_data; }
+
+	const T& operator*() const noexcept { return *m_data; }
+
+	T* operator->() noexcept { return m_data; }
+
+	const T* operator->() const noexcept { return m_data; }
+
 	template<typename U>
-	bool operator==(U&& other)const {
+	bool operator==(U&& other) const {
 		return other == *m_data;
 	}
 
 	template<typename U>
-	bool operator!=(U&& other)const {
+	bool operator!=(U&& other) const {
 		return other == *m_data;
-	}
-	
-	template<typename U>
-	bool operator<(U&& other)const {
-		return std::less<>()(*m_data,other);//why do i use std::less
 	}
 
 	template<typename U>
-	bool operator>=(U&& other)const {
+	bool operator<(U&& other) const {
+		return std::less<>()(*m_data, other);//why do i use std::less
+	}
+
+	template<typename U>
+	bool operator>=(U&& other) const {
 		return !std::less<>()(*m_data, other);
 	}
 
 	template<typename U>
-	bool operator>(U&& other)const {
+	bool operator>(U&& other) const {
 		return std::less<>()(other, *m_data);
 	}
 
 	template<typename U>
-	bool operator<=(U&& other)const {
+	bool operator<=(U&& other) const {
 		return !std::less<>()(other, *m_data);
 	}
-	
+
 	Allocator& allocator() {
 		return m_allocator;
 	}
 
-	const Allocator& allocator() const{
+	const Allocator& allocator() const {
 		return m_allocator;
 	}
 
@@ -178,7 +185,8 @@ struct indirect {
 private:
 	Allocator m_allocator{};
 	T* m_data = nullptr;
-	template<typename,typename> friend struct indirect;
+	template<typename, typename>
+	friend struct indirect;
 };
 
 /*
@@ -250,4 +258,3 @@ inline void qwettrsffdh() {
 	std::cout << d << std::endl;
 }
 */
-

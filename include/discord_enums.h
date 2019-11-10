@@ -102,11 +102,11 @@ inline Status string_to_status(str_t&& string) {
 
 inline std::string enum_to_string(const Status s) {
 	switch (s) {
-		case Status::dnd:return "dnd";
-		case Status::online: return "online";
-		case Status::idle: return "idle";
-		case Status::invisible: return "invisible";
-		case Status::offline: return "offline";
-		default: return "";
+	case Status::dnd: return "dnd";
+	case Status::online: return "online";
+	case Status::idle: return "idle";
+	case Status::invisible: return "invisible";
+	case Status::offline: return "offline";
+	default: return "";
 	}
 }

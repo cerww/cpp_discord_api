@@ -9,8 +9,6 @@
 #include <boost/beast/ssl.hpp>
 
 
-
-
 cerwy::task<boost::beast::websocket::stream<boost::asio::ip::tcp::socket>> ws_from_uri(std::string_view full_uri, boost::asio::ip::tcp::resolver& resolver);
 
 cerwy::task<boost::beast::websocket::stream<boost::beast::ssl_stream<boost::asio::ip::tcp::socket>>> wss_from_uri(
@@ -25,5 +23,3 @@ cerwy::task<void> reconnect_wss_from_url(
 	boost::asio::ip::tcp::resolver& resolver,
 	boost::asio::ssl::context& ssl_ctx
 );
-
-

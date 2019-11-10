@@ -3,7 +3,7 @@
 #include <mutex>
 #include "concurrent_queue.h"
 
-struct get_current_coroutine_handle{
+struct get_current_coroutine_handle {
 	static bool await_ready() {
 		return false;
 	}
@@ -20,7 +20,7 @@ struct get_current_coroutine_handle{
 	std::experimental::coroutine_handle<> me;
 };
 
-struct resume_coro{
+struct resume_coro {
 	//resume_coro
 	cerwy::task<void> pause() {
 		auto current_coro = co_await get_current_coroutine_handle();
@@ -28,20 +28,24 @@ struct resume_coro{
 	}
 
 	void resume() {
-		auto t = std::exchange(current_waiter,nullptr);
-		t.resume();		
+		auto t = std::exchange(current_waiter, nullptr);
+		t.resume();
 	}
 
 	std::experimental::coroutine_handle<> current_waiter = nullptr;
 };
 
-struct async_mutex1{
-	struct lock_t{
+struct async_mutex1 {
+	struct lock_t {
 		lock_t() = default;
-		explicit lock_t(async_mutex1* m):m_mut(m){}
+
+		explicit lock_t(async_mutex1* m):
+			m_mut(m) {}
+
 		lock_t(const lock_t&) = delete;
 
-		lock_t(lock_t&& o) noexcept :m_mut(std::exchange(o.m_mut, nullptr)) {}
+		lock_t(lock_t&& o) noexcept :
+			m_mut(std::exchange(o.m_mut, nullptr)) {}
 
 		lock_t& operator=(const lock_t&) = delete;
 
@@ -52,29 +56,32 @@ struct async_mutex1{
 		};
 
 		~lock_t() {
-			if(m_mut)
+			if (m_mut)
 				m_mut->unlock();
 		}
+
 	private:
 		async_mutex1* m_mut = nullptr;
 	};
 
-	
+
 	void unlock() {
-		if(!m_waiters.empty()) {
+		if (!m_waiters.empty()) {
 			if (m_unlocker) {
 				m_unlocker.resume();
-			}else {
+			}
+			else {
 				unlock_impl();
 			}
-		}			
+		}
 	}
 
 	cerwy::task<lock_t> lock() {
-		if(!m_is_locked) {
+		if (!m_is_locked) {
 			m_is_locked = true;
-			return cerwy::make_ready_task(lock_t(this));			
-		} else {
+			return cerwy::make_ready_task(lock_t(this));
+		}
+		else {
 			cerwy::promise<lock_t> promise;
 			auto ret = promise.get_task();
 			m_waiters.push_back(std::move(promise));
@@ -91,7 +98,7 @@ private:
 			m_waiters.erase(m_waiters.begin());
 			t.set_value(lock_t(this));
 		}
-		while(!m_waiters.empty()) {
+		while (!m_waiters.empty()) {
 			co_await std::experimental::suspend_always();
 			auto t = std::move(m_waiters.front());
 			m_waiters.erase(m_waiters.begin());
@@ -101,18 +108,23 @@ private:
 		m_unlocker = nullptr;
 		m_is_locked = false;
 	}
+
 	std::experimental::coroutine_handle<> m_unlocker = nullptr;
 	std::vector<cerwy::promise<lock_t>> m_waiters;
 	bool m_is_locked = false;
 };
 
-struct async_mutex2{
+struct async_mutex2 {
 	struct lock_t {
 		lock_t() = default;
-		explicit lock_t(async_mutex2* m) :m_mut(m) {}
+
+		explicit lock_t(async_mutex2* m) :
+			m_mut(m) {}
+
 		lock_t(const lock_t&) = delete;
 
-		lock_t(lock_t&& o) noexcept :m_mut(std::exchange(o.m_mut, nullptr)) {}
+		lock_t(lock_t&& o) noexcept :
+			m_mut(std::exchange(o.m_mut, nullptr)) {}
 
 		lock_t& operator=(const lock_t&) = delete;
 
@@ -126,22 +138,25 @@ struct async_mutex2{
 			if (m_mut)
 				m_mut->unlock();
 		}
+
 	private:
 		async_mutex2* m_mut = nullptr;
 	};
 
-	void unlock() {		
-		if(!m_waiters.empty()) {
+	void unlock() {
+		if (!m_waiters.empty()) {
 			if (m_count_state & 3) {
 				auto t = std::move(m_waiters.front());
 				m_waiters.erase(m_waiters.begin());
 				t.set_value(lock_t(this));
-			}else {
+			}
+			else {
 				auto t = std::move(m_waiters.back());
 				m_waiters.pop_back();
 				t.set_value(lock_t(this));
 			}
-		}else {
+		}
+		else {
 			m_is_locked = false;
 		}
 		++m_count_state;
@@ -151,7 +166,8 @@ struct async_mutex2{
 		if (!m_is_locked) {
 			m_is_locked = true;
 			return cerwy::make_ready_task(lock_t(this));
-		} else {
+		}
+		else {
 			cerwy::promise<lock_t> promise;
 			auto ret = promise.get_task();
 			m_waiters.push_back(std::move(promise));
@@ -169,16 +185,21 @@ private:
 struct async_mutex {
 	struct async_lock_t {
 		explicit async_lock_t() = default;
-		explicit async_lock_t(async_mutex* p) :m_parent(p) {}
 
-		async_lock_t(async_lock_t&& o)noexcept :m_parent(std::exchange(o.m_parent, nullptr)) {}
+		explicit async_lock_t(async_mutex* p) :
+			m_parent(p) {}
+
+		async_lock_t(async_lock_t&& o) noexcept :
+			m_parent(std::exchange(o.m_parent, nullptr)) {}
 
 		async_lock_t& operator=(async_lock_t&& o) noexcept {
 			std::swap(o.m_parent, m_parent);
 			return *this;
 		}
+
 		async_lock_t(const async_lock_t&) = delete;
 		async_lock_t& operator=(const async_lock_t&) = delete;
+
 		~async_lock_t() {
 			if (m_parent)
 				m_parent->unlock();
@@ -218,7 +239,8 @@ struct async_mutex {
 	private:
 		friend async_mutex;
 		//private so this can only be created from .lock()
-		explicit awaiter_for_lock(async_mutex* p) :m_parent(p) {}
+		explicit awaiter_for_lock(async_mutex* p) :
+			m_parent(p) {}
 
 		async_mutex* m_parent = nullptr;
 		std::experimental::coroutine_handle<> m_handle = nullptr;
@@ -253,18 +275,19 @@ struct async_mutex {
 		return m_state.compare_exchange_strong(is_unlocked, locked_no_waiters);
 	}
 
-	bool is_locked()const {
+	bool is_locked() const {
 		return m_state.load() != unlocked;
 	}
 
 
-	bool is_unlocked()const {
+	bool is_unlocked() const {
 		return m_state.load() == unlocked;
 	}
+
 private:
 	friend awaiter_for_lock;
 	/*
-	same as the following but atomic:
+	same as the following, but atomic:
 
 	if(m_state == unlocked){
 		m_state = locked_no_waiters;

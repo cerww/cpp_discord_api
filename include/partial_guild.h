@@ -8,16 +8,18 @@
 #include <range/v3/all.hpp>
 #include <optional>
 
-struct partial_guild{
+struct partial_guild {
 	snowflake id() const noexcept;
 	discord_obj_map<guild_role> roles() const noexcept;
 	std::string_view name() const noexcept;
 	std::string_view icon() const noexcept;
 	snowflake owner_id() const noexcept;
+
 	auto emojis() const noexcept {
 		return m_emojis | ranges::views::all;
 	}
-	snowflake system_channel_id()const noexcept;
+
+	snowflake system_channel_id() const noexcept;
 	std::string_view region() const noexcept;
 	int afk_timeout() const noexcept;
 	snowflake afk_channel_id() const noexcept;
@@ -25,9 +27,11 @@ struct partial_guild{
 	snowflake embed_channel_id() const noexcept;
 	int verification_level() const noexcept;
 	bool explicit_content_filter() const noexcept;
+
 	auto features() const noexcept {
 		return m_features | ranges::views::all;
 	}
+
 private:
 	snowflake m_id;
 	std::string m_name;

@@ -4,15 +4,16 @@
 //#include <boost/container/deque.hpp>
 
 template<typename T>
-struct concurrent_async_queue{
+struct concurrent_async_queue {
 
 	cerwy::task<T> pop() {
 		std::lock_guard lock(m_mut);
-		if(!m_data.empty()) {
+		if (!m_data.empty()) {
 			auto top = std::move(m_data.front());
 			m_data.erase(m_data.begin());
 			return cerwy::make_ready_task(std::move(top));
-		}else {
+		}
+		else {
 			cerwy::promise<T> promise;
 			auto task = promise.get_task();
 			m_waiters.push_back(std::move(promise));
@@ -22,11 +23,12 @@ struct concurrent_async_queue{
 
 	void push(T val) {
 		std::lock_guard lock(m_mut);
-		if(!m_waiters.empty()) {
+		if (!m_waiters.empty()) {
 			auto p = std::move(m_waiters.front());
 			m_waiters.erase(m_waiters.begin());
 			p.set_value(std::move(val));
-		}else {
+		}
+		else {
 			m_data.push_back(std::move(val));
 		}
 	}
@@ -37,9 +39,9 @@ struct concurrent_async_queue{
 			std::lock_guard lock(m_mut);
 			std::swap(waiters, m_waiters);
 		}
-		for(auto& p:waiters) {			
+		for (auto& p : waiters) {
 			p.set_exception(std::make_exception_ptr(1));
-		}		
+		}
 	}
 
 	std::vector<T> pop_all() {
@@ -52,6 +54,3 @@ private:
 	std::vector<T> m_data;
 	std::vector<cerwy::promise<T>> m_waiters;
 };
-
-
-

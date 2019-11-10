@@ -12,9 +12,8 @@
 #include "voice_channel.h"
 
 
-struct discord_voice_connection_impl:
-	ref_counted
-{
+struct discord_voice_connection_impl :
+		ref_counted {
 
 	explicit discord_voice_connection_impl(web_socket_session sock);
 
@@ -41,8 +40,8 @@ struct discord_voice_connection_impl:
 
 	int heartbeat_interval = 0;
 	int ssrc = 0;
-	
-	union {		
+
+	union {
 		const voice_channel* channel;
 
 		//used in setting up vc only
@@ -50,12 +49,12 @@ struct discord_voice_connection_impl:
 		//only 1 of these will be used at any time ;-;
 	};
 
-	
+
 	int delay = 0;
 	std::atomic<bool> is_alive = true;
 
 	boost::asio::ip::udp::socket voice_socket;
-	
+
 	void start() {
 		send_identify();
 		socket.start_reads();
@@ -66,7 +65,7 @@ struct discord_voice_connection_impl:
 	}
 
 
-	cerwy::task<void> control_speaking(bool is_speaking = true) {		
+	cerwy::task<void> control_speaking(bool is_speaking = true) {
 		std::string msg = fmt::format(R"(
 {
     "op": 5,
@@ -76,14 +75,14 @@ struct discord_voice_connection_impl:
         "ssrc": 1
     }
 }
-)",is_speaking,delay);
+)", is_speaking, delay);
 
 		co_await socket.send_thing(std::move(msg));
 
 	}
 
 	cerwy::task<void> send_silent_frames();
-	
+
 	void close() {
 		is_alive = false;
 		socket.close(1000);
@@ -101,7 +100,7 @@ private:
 
 	cerwy::task<void> send_heartbeat();
 
-	void on_msg_recv(nlohmann::json data,int opcode) {
+	void on_msg_recv(nlohmann::json data, int opcode) {
 		constexpr int ready = 2;
 		constexpr int session_discription = 4;
 		constexpr int speaking = 5;
@@ -110,7 +109,7 @@ private:
 		constexpr int resumed = 9;
 		constexpr int disconnect = 13;
 
-		switch(opcode) {
+		switch (opcode) {
 		case ready:
 			on_ready(std::move(data));
 			break;
@@ -149,9 +148,9 @@ private:
 
 };
 
-struct voice_connection{
+struct voice_connection {
 	voice_connection() = default;
-	
+
 	voice_connection(const voice_connection&) = delete;
 	voice_connection& operator=(const voice_connection&) = delete;
 
@@ -163,18 +162,17 @@ struct voice_connection{
 	};
 
 	explicit voice_connection(ref_count_ptr<discord_voice_connection_impl> connection):
-		m_connection(std::move(connection)){}
+		m_connection(std::move(connection)) {}
 
 	void disconnect() {
 		m_connection->close();
 		m_connection = nullptr;
 	}
 
-	cerwy::task<void> send() {	
+	cerwy::task<void> send() {
 		return m_connection->send_voice();
 	};
-	
+
 private:
 	ref_count_ptr<discord_voice_connection_impl> m_connection = nullptr;
 };
-

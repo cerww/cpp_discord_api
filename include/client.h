@@ -44,13 +44,14 @@ struct client {//<(^.^)>
 	~client() = default;
 	void run();
 
-	void setToken(token_type type, std::string token);	
+	void setToken(std::string token, token_type type);
 
 	void set_up_request(boost::beast::http::request<boost::beast::http::string_body>& req) const;
 
-	std::string_view token()const { return m_token; }
-		
-	size_t num_shards()const noexcept { return m_num_shards; }
+	std::string_view token() const { return m_token; }
+
+	size_t num_shards() const noexcept { return m_num_shards; }
+
 	std::function<void(const guild_text_message&, shard&)> on_guild_text_msg = nothing;
 	std::function<void(const dm_message&, shard&)> on_dm_msg = nothing;
 	std::function<void(const text_channel&, shard&)> on_guild_text_channel_create = nothing;
@@ -73,13 +74,13 @@ struct client {//<(^.^)>
 	std::function<void(const Guild&, const guild_role&, shard&)> on_role_delete = nothing;
 	std::function<void(const dm_msg_update&, optional_ref<const dm_message>, shard&)> on_dm_msg_update = nothing;
 	std::function<void(const guild_msg_update&, optional_ref<const guild_text_message>, shard&)> on_guild_msg_update = nothing;
-	std::function<void(std::optional<dm_message>,snowflake, shard&)> on_dm_msg_delete = nothing;
-	std::function<void(std::optional<guild_text_message>,snowflake, shard&)> on_guild_msg_delete = nothing;
+	std::function<void(std::optional<dm_message>, snowflake, shard&)> on_dm_msg_delete = nothing;
+	std::function<void(std::optional<guild_text_message>, snowflake, shard&)> on_guild_msg_delete = nothing;
 	std::function<void(const guild_member&, const text_channel&, shard&)> on_guild_typing_start = nothing;
 	std::function<void(const user&, const dm_channel&, shard&)> on_dm_typing_start = nothing;
 	std::function<void(const text_channel&, shard&)> on_text_channel_delete = nothing;
 	std::function<void(const dm_channel&, shard&)> on_dm_channel_delete = nothing;
-	std::function<void(const guild_member&, const text_channel&, optional_ref<guild_text_message>, const reaction&,shard&)> on_guild_reaction_add = nothing;
+	std::function<void(const guild_member&, const text_channel&, optional_ref<guild_text_message>, const reaction&, shard&)> on_guild_reaction_add = nothing;
 	std::function<void(const user&, const dm_channel&, optional_ref<dm_message>, const reaction&, shard&)> on_dm_reaction_add = nothing;
 	std::function<void(const guild_member&, const text_channel&, optional_ref<guild_text_message>, const reaction&, shard&)> on_guild_reaction_remove = nothing;
 	std::function<void(const user&, const dm_channel&, optional_ref<dm_message>, reaction&, shard&)> on_dm_reaction_remove = nothing;
@@ -88,12 +89,12 @@ struct client {//<(^.^)>
 	std::function<void(const guild_member&, shard&)> on_presence_update = nothing;
 	std::function<void(std::vector<snowflake>, const text_channel&, shard&)> on_message_bulk = nothing;
 	std::function<void(std::vector<snowflake>, const dm_channel&, shard&)> on_dm_message_bulk = nothing;
-	
+
 	void rate_limit_global(const std::chrono::system_clock::time_point);
 
-	Status status = Status::online;	
+	Status status = Status::online;
 	std::string gameName = "";
- 	timed_task_executor heartbeat_sender;
+	timed_task_executor heartbeat_sender;
 
 	/*
 	void add_shard(shard* sh) {
@@ -104,11 +105,11 @@ struct client {//<(^.^)>
 
 	void stop();
 
-private:	
+private:
 	void m_getGateway();
 	std::chrono::system_clock::time_point m_last_global_rate_limit = std::chrono::system_clock::now();
 	std::string m_endpoint;
-		
+
 	std::string m_authToken;
 	std::string m_gateway = ""s;
 	size_t m_num_shards = 0;
@@ -120,8 +121,5 @@ private:
 	//std::vector<shard*> m_shards_vec;
 	std::vector<std::unique_ptr<shard>> m_shards;
 	std::vector<std::thread> m_threads;
-	boost::asio::io_context m_ioc{};	
+	boost::asio::io_context m_ioc{};
 };
-
-
-

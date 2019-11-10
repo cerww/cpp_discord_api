@@ -4,11 +4,13 @@
 #include "guild_role.h"
 #include <range/v3/view/all.hpp>
 
-struct partial_guild_member:user{
+struct partial_guild_member :user {
 	std::string_view nick() const noexcept;
+
 	auto role_ids() const noexcept {
 		return m_roles | ranges::views::all;
 	}
+
 	timestamp joined_at() const noexcept;
 	bool deaf() const noexcept;
 	bool mute() const noexcept;
@@ -31,7 +33,7 @@ private:
 inline void from_json(const nlohmann::json& in, partial_guild_member& out) {
 	from_json(in["user"], static_cast<user&>(out));
 	const auto it = in.find("nick");
-	if (it != in.end()) 
+	if (it != in.end())
 		out.m_nick = in["nick"].is_null() ? "" : in["nick"].get<std::string>();
 	out.m_roles = in["roles"].get<std::vector<snowflake>>();
 	//out.m_joined_at = in["joined_at"].get<timestamp>();

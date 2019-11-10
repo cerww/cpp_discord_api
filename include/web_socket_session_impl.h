@@ -8,7 +8,7 @@
 #include "async_mutex.h"
 
 
-struct web_socket_session_impl:ref_counted{
+struct web_socket_session_impl :ref_counted {
 	web_socket_session_impl() = default;
 
 	web_socket_session_impl(
@@ -19,7 +19,7 @@ struct web_socket_session_impl:ref_counted{
 		m_socket(std::move(s)),
 		m_resolver(&resolver),
 		m_ssl_ctx(&ssl_ctx) {};
-	
+
 	std::function<void(std::string)> on_read;
 	std::function<void(boost::beast::error_code)> on_error;
 
@@ -32,7 +32,7 @@ struct web_socket_session_impl:ref_counted{
 
 	cerwy::task<void> start_reads();
 
-	bool is_reading() const{
+	bool is_reading() const {
 		return m_is_reading;
 	}
 
@@ -42,11 +42,11 @@ struct web_socket_session_impl:ref_counted{
 		return m_socket;
 	}
 
-	const auto& socket() const{ 
+	const auto& socket() const {
 		return m_socket;
 	}
 
-	bool is_open()const {
+	bool is_open() const {
 		return m_socket.is_open();
 	}
 
@@ -65,9 +65,11 @@ private:
 	std::atomic<bool> m_is_alive = true;
 };
 
-struct web_socket_session{
+struct web_socket_session {
 	web_socket_session() = default;
-	web_socket_session(ref_count_ptr<web_socket_session_impl> me):m_me(std::move(me)){}
+
+	web_socket_session(ref_count_ptr<web_socket_session_impl> me):
+		m_me(std::move(me)) {}
 
 	web_socket_session(const web_socket_session&) = delete;
 
@@ -76,30 +78,31 @@ struct web_socket_session{
 	web_socket_session(web_socket_session&&) = default;
 	web_socket_session& operator=(web_socket_session&&) = default;
 
-	~web_socket_session()noexcept {
-		if(m_me)
+	~web_socket_session() noexcept {
+		if (m_me)
 			m_me->close(1000);
 	}
 
-	std::function<void(std::string)>& on_read(){
+	std::function<void(std::string)>& on_read() {
 		return m_me->on_read;
 	};
 
-	std::function<void(boost::beast::error_code)>& on_error() {		
+	std::function<void(boost::beast::error_code)>& on_error() {
 		return m_me->on_error;
 	};
 
-	const std::function<void(std::string)>& on_read() const{
+	const std::function<void(std::string)>& on_read() const {
 		return m_me->on_read;
 	};
 
-	const std::function<void(boost::beast::error_code)>& on_error() const{
+	const std::function<void(boost::beast::error_code)>& on_error() const {
 		return m_me->on_error;
 	};
 
 	cerwy::task<void> reconnect(std::string uri) {
 		return m_me->reconnect(std::move(uri));
 	};
+
 	cerwy::task<void> connect(std::string uri) {
 		return m_me->connect(std::move(uri));
 	}
@@ -109,7 +112,7 @@ struct web_socket_session{
 	};
 
 	template<typename fn>
-	void send_thing(std::string msg,fn&& f) {
+	void send_thing(std::string msg, fn&& f) {
 		m_me->send_thing(std::move(msg), std::forward<fn>(f));
 	}
 
@@ -129,12 +132,12 @@ struct web_socket_session{
 		return m_me->socket();
 	}
 
-	const auto& socket() const{
+	const auto& socket() const {
 		return m_me->socket();
 	}
-	
-	bool is_open()const {
-		return m_me->is_open(); 
+
+	bool is_open() const {
+		return m_me->is_open();
 	}
 
 private:

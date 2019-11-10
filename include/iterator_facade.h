@@ -6,7 +6,7 @@
 #include "better_conditional.h"
 #include <range/v3/core.hpp>
 
-
+// clang-format off
 namespace detail_iterator_facade {
 	template<typename T, typename = void>
 	struct readable :std::false_type {};
@@ -263,4 +263,6 @@ private:
 };
 
 
+
+// clang-format on
 

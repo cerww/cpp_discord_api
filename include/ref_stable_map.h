@@ -12,12 +12,12 @@ struct ref_stable_map {
 	using reference = ranges::common_pair<const K&, V&>;//can't use std::pair for some reason
 	using const_reference = ranges::common_pair<const K&,const V&>;
 		
-	template<typename value_type_,typename iterator_t>
+	template<typename reference_type_t,typename iterator_t>
 	struct templated_iterator{
 		using iterator_category = std::forward_iterator_tag;
 		using difference_type = ptrdiff_t;
 		using value_type = std::pair<const K, V>;
-		using reference = value_type_;
+		using reference = reference_type_t;
 		using pointer = arrow_proxy<reference>;
 		
 

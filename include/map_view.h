@@ -2,7 +2,7 @@
 #include <utility>
 
 template<typename map_type>
-struct map_view{
+struct map_view {
 	using map_iterator_type = decltype(std::declval<const map_type>().begin());
 	using key_type = std::decay_t<decltype(std::declval<map_iterator_type>()->first)>;
 	using mapped_type = std::decay_t<decltype(std::declval<map_iterator_type>()->second)>;
@@ -11,28 +11,35 @@ struct map_view{
 	using difference_type = ptrdiff_t;
 
 	map_view() = default;
-	map_view(const map_type& o) :m_me(&o) {}
-	explicit map_view(const map_type* o) :m_me(o) {}
+
+	map_view(const map_type& o) :
+		m_me(&o) {}
+
+	explicit map_view(const map_type* o) :
+		m_me(o) {}
 
 	template<typename T>
-	decltype(auto) operator[](T&& thing)const{
+	decltype(auto) operator[](T&& thing) const {
 		return m_me->at(std::forward<T>(thing));
 	}
 
 	template<typename T>
-	decltype(auto) at(T&& thing)const {
+	decltype(auto) at(T&& thing) const {
 		return m_me->at(std::forward<T>(thing));
 	}
 
 	template<typename it_type>
-	struct cursor{
+	struct cursor {
 		cursor() = default;
-		cursor(map_iterator_type it):m_it(std::move(it)){}
-		decltype(auto) operator*() const{
+
+		cursor(map_iterator_type it):
+			m_it(std::move(it)) {}
+
+		decltype(auto) operator*() const {
 			return *m_it;
 		}
-				
-		cursor& operator++(int){
+
+		cursor& operator++(int) {
 			++m_it;
 			return *this;
 		}
@@ -65,7 +72,7 @@ struct map_view{
 	using iterator = cursor<map_iterator_type>;
 	using const_iterator = iterator;
 
-	iterator begin() const noexcept{
+	iterator begin() const noexcept {
 		return iterator(m_me->begin());
 	}
 
@@ -87,12 +94,12 @@ struct map_view{
 	}
 
 	template<typename T>
-	auto contains(T&& t) const->decltype(std::declval<map_type>().find(t) != std::declval<map_type>().end()){
+	auto contains(T&& t) const->decltype(std::declval<map_type>().find(t) != std::declval<map_type>().end()) {
 		return m_me->find(std::forward<T>(t)) != m_me->end();
 	}
 
 	template<typename T>
-	auto count(T&& t) const ->decltype(std::declval<map_type>().count(std::forward<T>(t))){
+	auto count(T&& t) const->decltype(std::declval<map_type>().count(std::forward<T>(t))) {
 		return m_me->count(std::forward<T>(t));
 	}
 
@@ -100,4 +107,3 @@ struct map_view{
 private:
 	const map_type* m_me = nullptr;
 };
-

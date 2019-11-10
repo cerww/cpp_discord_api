@@ -15,7 +15,7 @@ struct discord_request {
 
 struct client;
 
-struct http_connection{
+struct http_connection {
 	void sleep_till(std::chrono::system_clock::time_point time_point) {
 		m_rate_limted_until = time_point;
 		m_global_rate_limited.store(true);
@@ -27,7 +27,7 @@ struct http_connection{
 	http_connection& operator=(const http_connection&) = delete;
 	http_connection& operator=(http_connection&&) = delete;
 
-	explicit http_connection(client*,boost::asio::io_context&);
+	explicit http_connection(client*, boost::asio::io_context&);
 
 	~http_connection() {
 		m_done.store(true);
@@ -56,14 +56,14 @@ private:
 	boost::asio::io_context& m_ioc;
 	boost::asio::ip::tcp::resolver m_resolver;
 
-	boost::asio::ssl::context m_sslCtx{ boost::asio::ssl::context::tlsv12_client };
-	boost::asio::ssl::stream<boost::asio::ip::tcp::socket> m_socket{ m_ioc, m_sslCtx };	
+	boost::asio::ssl::context m_sslCtx{boost::asio::ssl::context::tlsv12_client};
+	boost::asio::ssl::stream<boost::asio::ip::tcp::socket> m_socket{m_ioc, m_sslCtx};
 	boost::beast::flat_buffer m_buffer{};
 	concurrent_queue<discord_request> m_request_queue = {};
 	client* m_client = nullptr;
 
 	void send_to_discord(discord_request);
-	bool send_to_discord_(discord_request&, size_t);	
+	bool send_to_discord_(discord_request&, size_t);
 	void connect();
 	void reconnect();
 

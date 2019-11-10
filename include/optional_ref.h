@@ -3,16 +3,21 @@
 
 
 template<typename T>
-struct optional_ref{
+struct optional_ref {
 	constexpr optional_ref() = default;
 
-	constexpr optional_ref(T& thing):m_self(&thing) {}
-	constexpr optional_ref(T* thing) : m_self(thing) {}
+	constexpr optional_ref(T& thing):
+		m_self(&thing) {}
+
+	constexpr optional_ref(T* thing) :
+		m_self(thing) {}
+
 	constexpr optional_ref(T&& thing) = delete;
-	
+
 	constexpr optional_ref(std::nullopt_t) {}
+
 	constexpr optional_ref(std::nullptr_t) {}
-	
+
 	constexpr optional_ref& operator=(std::nullopt_t) {
 		m_self = nullptr;
 		return *this;
@@ -25,30 +30,30 @@ struct optional_ref{
 
 	constexpr optional_ref& operator=(T&& other) = delete;
 
-	constexpr optional_ref& operator=(T& other) noexcept{
+	constexpr optional_ref& operator=(T& other) noexcept {
 		m_self = &other;
 		return *this;
 	}
-	
-	constexpr T& value() {
-		if(m_self) {
-			return *m_self;
-		}
-		throw std::bad_optional_access();		
-	}
 
-	constexpr const T& value()const {
+	constexpr T& value() {
 		if (m_self) {
 			return *m_self;
 		}
 		throw std::bad_optional_access();
 	}
 
-	constexpr bool has_value()const noexcept {
+	constexpr const T& value() const {
+		if (m_self) {
+			return *m_self;
+		}
+		throw std::bad_optional_access();
+	}
+
+	constexpr bool has_value() const noexcept {
 		return m_self;
 	}
 
-	constexpr T& operator*() noexcept{
+	constexpr T& operator*() noexcept {
 		return *m_self;
 	}
 
@@ -56,20 +61,20 @@ struct optional_ref{
 		return *m_self;
 	}
 
-	constexpr T* operator->() noexcept{
+	constexpr T* operator->() noexcept {
 		return m_self;
 	}
 
-	constexpr const T* operator->()const noexcept {
+	constexpr const T* operator->() const noexcept {
 		return m_self;
 	}
 
-	constexpr T& emplace(T& thing) noexcept{
+	constexpr T& emplace(T& thing) noexcept {
 		m_self = &thing;
 		return thing;
 	}
 
-	constexpr operator bool()const noexcept{
+	constexpr operator bool() const noexcept {
 		return m_self;
 	}
 
@@ -81,7 +86,7 @@ struct optional_ref{
 		return value();
 	}
 
-	constexpr void reset()noexcept {
+	constexpr void reset() noexcept {
 		m_self = nullptr;
 	}
 
@@ -89,26 +94,26 @@ struct optional_ref{
 		return *m_self;
 	}
 
-	constexpr const T& get()const {
+	constexpr const T& get() const {
 		return *m_self;
 	}
 
 	constexpr T& value_or(T&&) noexcept = delete;
 	constexpr T& value_or(T&&) const noexcept = delete;
 
-	constexpr T& value_or(T& other) noexcept{
+	constexpr T& value_or(T& other) noexcept {
 		if (has_value())
 			return *m_self;
 		return other;
 	}
 
-	constexpr const T& value_or(const T& other)const noexcept {
+	constexpr const T& value_or(const T& other) const noexcept {
 		if (has_value())
 			return *m_self;
 		return other;
 	}
 
-	operator optional_ref<const T>()const noexcept{
+	operator optional_ref<const T>() const noexcept {
 		optional_ref<const T> ret(m_self);
 		return ret;
 	}
@@ -118,85 +123,88 @@ private:
 };
 
 
-template<typename T,typename U>
-constexpr auto operator==(const optional_ref<T>& rhs,U&& lhs) noexcept
-	->decltype(*rhs == lhs) 
-{
+template<typename T, typename U>
+constexpr auto operator==(const optional_ref<T>& rhs, U&& lhs) noexcept
+->decltype(*rhs == lhs) {
+
 	return rhs.has_value() ? *rhs == lhs : false;
 }
 
 template<typename T, typename U>
-constexpr auto operator!=(const optional_ref<T>& rhs, U&& lhs) noexcept 
-	->decltype(*rhs != lhs) 
-{
+constexpr auto operator!=(const optional_ref<T>& rhs, U&& lhs) noexcept
+->decltype(*rhs != lhs) {
+
 	return rhs.has_value() ? *rhs != lhs : true;
 }
 
 template<typename T, typename U>
-constexpr auto operator<(const optional_ref<T>& rhs, U&& lhs) noexcept 
-	->decltype(*rhs < lhs) 
-{
+constexpr auto operator<(const optional_ref<T>& rhs, U&& lhs) noexcept
+->decltype(*rhs < lhs) {
+
 	return rhs.has_value() ? *rhs < lhs : true;
 }
 
 template<typename T, typename U>
-constexpr auto operator<=(const optional_ref<T>& rhs, U&& lhs) noexcept 
-	->decltype(*rhs <= lhs) 
-{
+constexpr auto operator<=(const optional_ref<T>& rhs, U&& lhs) noexcept
+->decltype(*rhs <= lhs) {
+
 	return rhs.has_value() ? *rhs <= lhs : true;
 }
 
 template<typename T, typename U>
-constexpr auto operator>(const optional_ref<T>& rhs, U&& lhs) noexcept 
-	->decltype(*rhs > lhs) 
-{
+constexpr auto operator>(const optional_ref<T>& rhs, U&& lhs) noexcept
+->decltype(*rhs > lhs) {
+
 	return rhs.has_value() ? *rhs > lhs : false;
 }
 
 template<typename T, typename U>
-constexpr auto operator>=(const optional_ref<T>& rhs, U&& lhs)noexcept 
-	->decltype(*rhs >= lhs)
-{
+constexpr auto operator>=(const optional_ref<T>& rhs, U&& lhs) noexcept
+->decltype(*rhs >= lhs) {
+
 	return rhs.has_value() ? *rhs >= lhs : false;
 }
 
 
 template<typename T, typename U>
-constexpr auto operator==(T&& rhs, const optional_ref<U>& lhs) noexcept 
-->decltype(rhs == *lhs){
+constexpr auto operator==(T&& rhs, const optional_ref<U>& lhs) noexcept
+->decltype(rhs == *lhs) {
+
 	return lhs.has_value() ? rhs == *lhs : false;
 }
 
 template<typename T, typename U>
-constexpr auto operator!=(T&& rhs, const optional_ref<U>& lhs)noexcept
-->decltype(rhs != *lhs)
-{
+constexpr auto operator!=(T&& rhs, const optional_ref<U>& lhs) noexcept
+->decltype(rhs != *lhs) {
+
 	return lhs.has_value() ? rhs != *lhs : true;
 }
 
 template<typename T, typename U>
-constexpr auto operator<(T&& rhs, const optional_ref<U>& lhs)noexcept 
-	->decltype(rhs < *lhs) 
-{
+constexpr auto operator<(T&& rhs, const optional_ref<U>& lhs) noexcept
+->decltype(rhs < *lhs) {
+
 	return lhs.has_value() ? rhs < *lhs : false;
 }
 
 template<typename T, typename U>
-constexpr auto operator<=(T&& rhs, const optional_ref<U>& lhs)noexcept
+constexpr auto operator<=(T&& rhs, const optional_ref<U>& lhs) noexcept
 ->decltype(rhs <= *lhs) {
+
 	return lhs.has_value() ? rhs <= *lhs : false;
 }
 
 template<typename T, typename U>
-constexpr auto operator>(T&& rhs, const optional_ref<U>& lhs)noexcept 
+constexpr auto operator>(T&& rhs, const optional_ref<U>& lhs) noexcept
 ->decltype(rhs > *lhs) {
+
 	return lhs.has_value() ? rhs > *lhs : true;
 }
 
 template<typename T, typename U>
 constexpr auto operator>=(T&& rhs, const optional_ref<U>& lhs) noexcept
-	->decltype(rhs>=*lhs)
-{
+->decltype(rhs >= *lhs) {
+
 	return lhs.has_value() ? rhs >= *lhs : true;
 }
 
@@ -207,6 +215,5 @@ inline void asdasdasd() {
 	w = nullptr;
 	w = a;
 	w.value() = 1;
-	if(w){}
+	if (w) {}
 }
-

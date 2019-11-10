@@ -9,10 +9,12 @@
 #include <boost/asio.hpp>
 #include <range/v3/all.hpp>
 
-using namespace std::string_literals;
-using namespace fmt::literals;
 
+// clang-format off
 namespace rq {
+	using namespace std::string_literals;
+	using namespace fmt::literals;
+	
 	struct bad_request :std::exception {
 		using exception::exception;
 	};
@@ -49,8 +51,9 @@ namespace rq {
 	};
 
 	struct shared_state:ref_counted{
-		std::condition_variable cv{};
-		std::mutex mut{};
+		//rename some of these.
+		std::condition_variable ready_cv{};
+		std::mutex ready_mut{};
 		std::atomic<bool> done = false;
 		boost::beast::http::response<boost::beast::http::string_body> res = {};
 		std::vector<std::experimental::coroutine_handle<>> waiters{};
@@ -58,7 +61,7 @@ namespace rq {
 		boost::asio::io_context::strand* strand = nullptr;
 
 		void notify() {
-			cv.notify_all();
+			ready_cv.notify_all();
 			
 			std::lock_guard lock(waiter_mut);
 			auto all_waiters = std::move(waiters);
@@ -129,8 +132,8 @@ namespace rq {
 		}
 
 		void wait() {
-			std::unique_lock<std::mutex> lock{state->mut};
-			state->cv.wait(lock, [this]()->bool {return ready(); });
+			std::unique_lock<std::mutex> lock{state->ready_mut};
+			state->ready_cv.wait(lock, [this]()->bool {return ready(); });
 		}
 
 		bool ready()const noexcept {
@@ -735,4 +738,4 @@ namespace rq {
 }
 
 
-
+// clang-format on
