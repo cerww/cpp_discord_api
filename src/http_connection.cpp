@@ -63,7 +63,7 @@ void http_connection::send_to_discord(discord_request r) {
 
 //returns wether or not it's not local rate limited
 bool http_connection::send_to_discord_(discord_request& r,size_t major_param_id_) {
-	std::lock_guard<std::mutex> locky(r.state->mut);
+	std::lock_guard<std::mutex> locky(r.state->ready_mut);
 	send_rq(r);
 	//this is "while" loop not "if" because of global rate limits
 	//it shuld keep trying to send the same request if it's global rate limited
@@ -205,7 +205,7 @@ template<typename Socket,typename Buffer>
 void send_thingy(discord_request& r, Socket& sock, Buffer& buffer, client* parent) {
 	std::cout << r.req << std::endl;
 	
-	std::lock_guard<std::mutex> locky(r.state->mut);
+	std::lock_guard<std::mutex> locky(r.state->ready_mut);
 	boost::beast::error_code ec;
 	boost::beast::http::write(sock, r.req, ec);
 	boost::beast::http::read(sock, buffer, r.state->res, ec);
@@ -245,7 +245,7 @@ std::future<void> http_conn(d::subscriber_thingy_async<std::variant<discord_requ
 			using type = std::decay_t<decltype(thing)>;
 			if constexpr(std::is_same_v<type, discord_request>) {				
 				send_thingy(thing, m_ssl_stream, m_buffer, parent);
-				thing.state->cv.notify_all();
+				thing.state->ready_cv.notify_all();
 			}
 			else if constexpr(std::is_same_v<type, std::chrono::milliseconds>) {//
 				std::this_thread::sleep_for(thing);

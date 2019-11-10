@@ -23,6 +23,8 @@ static constexpr const char* s_os = "\\u00AF\\\\_(\\u30C4)_\\/\\u00AF";  //shrug
 #endif
 //copy paste end
 
+using namespace fmt::literals;
+
 template<typename rng, typename U>
 [[maybe_unused]]
 constexpr bool erase_first_quick(rng&& range, U&& val) {
@@ -253,14 +255,14 @@ void shard::m_opcode8(snowflake id) const {
 	s["d"]["guild_id"] = std::to_string(id.val);
 	s["d"]["query"] = "";
 	s["d"]["limit"] = 0;
-	m_client->send_thing(s.dump());
+	m_client->send_thing(s.dump());	
 }
 
 cerwy::task<void> shard::m_opcode9(const nlohmann::json& d) {
 	//boost::asio::steady_timer timer(m_ioc, std::chrono::steady_clock::now() + 5s);
 	//auto ec = co_await timer.async_wait(cerwy::bind_executor(strand(),use_task_return_ec));
 
-	//remove this for ^ later when concepts are in cuz it'll too big to compile ;-;
+	//remove this for the above later when concepts and modules are in cuz it'll too big to compile ;-;
 	std::this_thread::sleep_for(5s);
 
 	if (d.get<bool>())
@@ -396,8 +398,8 @@ void shard::procces_event<event_name::GUILD_CREATE>(nlohmann::json& data) {
 	}
 
 	for (auto& channel:	guild.m_text_channels |
-						ranges::view::transform(hof::map_with(m_text_channel_map)) |
-		 				ranges::view::filter(&text_channel::has_parent)) {
+						ranges::views::transform(hof::map_with(m_text_channel_map)) |
+		 				ranges::views::filter(&text_channel::has_parent)) {
 		channel.m_parent = &m_channel_catagory_map[channel.m_parent_id];
 	}
 
@@ -1297,7 +1299,7 @@ rq::get_invite shard::get_invite(std::string s, int n) {
 	}
 }
 
-rq::delete_invite shard::delete_invite(std::string s) {
+rq::delete_invite shard::delete_invite(std::string s) {	
 	return send_request<rq::delete_invite>(s);
 }
 

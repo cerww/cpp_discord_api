@@ -2,6 +2,7 @@
 
 
 int voice_channel::user_limit() const noexcept { return m_user_limit; }
+
 int voice_channel::bitrate() const noexcept { return m_bitrate; }
 
 void from_json(const nlohmann::json& json, voice_channel& out) {

@@ -2,7 +2,6 @@
 #include "shard.h"
 #include <boost/asio.hpp>
 #include <boost/asio/ssl.hpp>
-//#include "randomThings.h"
 #include "init_shard.h"
 
 client::client(int threads):
@@ -35,7 +34,7 @@ void client::stop() {
 	m_ioc.stop();
 }
 
-void client::setToken(const token_type type, std::string token) {
+void client::setToken(std::string token, const token_type type = token_type::BOT) {
 	m_token = token;
 	switch (type) {
 	case token_type::BOT: m_authToken = "Bot " + std::move(token);
@@ -65,8 +64,8 @@ void client::rate_limit_global(const std::chrono::system_clock::time_point tp) {
 	const auto now = std::chrono::system_clock::now();
 	if (m_last_global_rate_limit - now < std::chrono::seconds(3)){//so i don't rate_limit myself twice
 		m_last_global_rate_limit = now;
-		for(auto& i:m_shards) {
-			i->rate_limit(tp);
+		for (auto& i : m_shards) {
+			i->rate_limit(tp); 
 		}
 	}	
 }
@@ -79,12 +78,11 @@ void client::m_getGateway() {
 	boost::asio::ssl::stream<boost::asio::ip::tcp::socket> ssl_socket{ ioc, ssl_context };
 	boost::beast::flat_buffer buffer;
 
-	const auto results = resolver.resolve("discordapp.com", "https");
-	boost::asio::connect(ssl_socket.next_layer(), results.begin(), results.end());
+	boost::asio::connect(ssl_socket.next_layer(), resolver.resolve("discordapp.com", "https"));
 	ssl_socket.handshake(boost::asio::ssl::stream_base::client);
 	boost::beast::http::request<boost::beast::http::string_body> request(boost::beast::http::verb::get, "/api/v6/gateway/bot", 11);
 	request.set("Application", "cerwy");
-	request.set(boost::beast::http::field::authorization, m_token);
+	request.set(boost::beast::http::field::authorization, m_authToken);
 	request.set("Host", "discordapp.com"s);
 	request.set("Upgrade-Insecure-Requests", "1");
 	request.set(boost::beast::http::field::user_agent, "potato_world");
@@ -92,7 +90,7 @@ void client::m_getGateway() {
 	request.keep_alive(true);
 
 	request.set(boost::beast::http::field::accept, "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
-	//req.set(boost::beast::http::field::accept_encoding, "gzip,deflate,br");
+	//request.set(boost::beast::http::field::accept_encoding, "gzip,deflate,br");
 
 	request.set(boost::beast::http::field::accept_language, "en-US,en;q=0.5");
 
@@ -101,9 +99,11 @@ void client::m_getGateway() {
 	boost::beast::http::response<boost::beast::http::string_body> response;
 
 	boost::beast::http::read(ssl_socket, buffer, response);
-
+	if(response.result_int() == 401) {
+		throw std::runtime_error("unauthorized");
+	}
 	nlohmann::json yay = nlohmann::json::parse(response.body());
-
+	
 	m_gateway = yay["url"].get<std::string>() +"/?v=6&encoding=json";
 	m_num_shards = yay["shards"].get<int>();
 	//m_num_shards = 2;

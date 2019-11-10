@@ -12,7 +12,7 @@ snowflake partial_guild::owner_id() const noexcept { return m_owner_id; }
 
 //std::vector<emoji>& partial_guild::emojis() noexcept { return m_emojis; }
 
-snowflake partial_guild::general_channel_id() const noexcept { return m_system_channel_id; }
+snowflake partial_guild::system_channel_id() const noexcept { return m_system_channel_id; }
 
 std::string_view partial_guild::region() const noexcept { return m_region; }
 

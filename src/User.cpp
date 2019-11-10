@@ -1,6 +1,7 @@
 #include "user.h"
 
 snowflake user::id() const noexcept { return m_id; }
+
 bool user::is_bot() const noexcept { return m_bot; }
 
 std::string_view user::username() const noexcept {
@@ -26,4 +27,3 @@ void from_json(const nlohmann::json& json, user& other) {
 	other.m_bot = json.value("bot", false);
 	other.m_discriminator = std::stoi(json["discriminator"].get<std::string>());
 }
-

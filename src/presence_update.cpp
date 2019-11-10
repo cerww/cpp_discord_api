@@ -2,7 +2,9 @@
 
 
 std::string_view activity::name() const noexcept { return m_name; }
+
 activity_type activity::type() const noexcept { return m_type; }
+
 const std::optional<std::string>& activity::url() const noexcept { return m_url; }
 
 void from_json(const nlohmann::json& json, activity& thing) {
@@ -11,6 +13,7 @@ void from_json(const nlohmann::json& json, activity& thing) {
 }
 
 snowflake partial_presence_update::id() const noexcept { return m_id; }
+
 Status partial_presence_update::status() const noexcept { return m_status; }
 
 const std::optional<activity>& partial_presence_update::game() const noexcept { return m_game; }

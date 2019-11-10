@@ -1,7 +1,6 @@
 #include "permision_overwrite.h"
 
 
-
 std::string overwrite_type_to_string(const overwrite_type e) {
 	if (e == overwrite_type::role) return "role";
 	if (e == overwrite_type::member) return "member";

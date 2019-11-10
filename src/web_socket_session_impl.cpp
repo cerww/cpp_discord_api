@@ -14,7 +14,7 @@ cerwy::task<void> web_socket_session_impl::connect(std::string uri) {
 	 co_await reconnect_wss_from_url(m_socket,uri, *m_resolver, *m_ssl_ctx);
 }
 
-cerwy::task<void> web_socket_session_impl::send_thing(std::string msg) {
+cerwy::task<void> web_socket_session_impl::send_thing(const std::string msg) {
 	auto pin = ref_count_ptr(this);
 
 	auto lock = co_await m_mut.async_lock();
@@ -48,9 +48,9 @@ cerwy::task<void> web_socket_session_impl::start_reads() {
 			auto data = m_buffer.data();
 			auto str =
 				data |
-				ranges::view::transform([](auto a) {return std::string_view((const char*)a.data(), a.size()); }) |
-				ranges::view::join |
-				ranges::to_<std::string>();
+				ranges::views::transform([](auto a) {return std::string_view((const char*)a.data(), a.size()); }) |
+				ranges::views::join |
+				ranges::to<std::string>();
 			m_buffer.consume(n);
 
 			on_read(std::move(str));

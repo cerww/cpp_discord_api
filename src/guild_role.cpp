@@ -1,11 +1,17 @@
 #include "guild_role.h"
 
 int guild_role::position() const noexcept { return m_position; }
+
 permission guild_role::permissions() const noexcept { return m_permissions; }
+
 snowflake guild_role::id() const noexcept { return m_id; }
+
 bool guild_role::managed() const noexcept { return m_managed; }
+
 bool guild_role::mentionable() const noexcept { return m_mentionable; }
+
 bool guild_role::hoist() const noexcept { return m_hoist; }
+
 std::string_view guild_role::name() const noexcept { return m_name; }
 
 void to_json(nlohmann::json& json, const guild_role& r) {

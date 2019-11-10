@@ -1,5 +1,5 @@
 #include "discord_voice_connection.h"
-
+#include <sodium.h>
 
 discord_voice_connection_impl::discord_voice_connection_impl(web_socket_session sock):
 	socket(std::move(sock)),
@@ -13,6 +13,18 @@ discord_voice_connection_impl::discord_voice_connection_impl(web_socket_session 
 	socket.on_error() = [this](boost::system::error_code ec) {
 		socket.reconnect(endpoint);
 	};
+}
+
+cerwy::task<void> discord_voice_connection_impl::send_silent_frames() {
+	//0xF8, 0xFF,0xFE
+	co_return;
+}
+
+cerwy::task<void> discord_voice_connection_impl::send_voice() {
+	//....idk wat to do ;-;
+	
+	
+	co_return;
 }
 
 cerwy::task<void> discord_voice_connection_impl::send_heartbeat() {
@@ -38,6 +50,7 @@ cerwy::task<void> discord_voice_connection_impl::send_heartbeat() {
 	while(is_alive) {
 		boost::asio::steady_timer timer(ioc());
 		timer.expires_after(std::chrono::milliseconds(heartbeat_interval));
+		auto t = co_await timer.async_wait(use_task_return_ec);
 		std::string hb = R"(
 			{
 			"op":3,
@@ -79,6 +92,7 @@ void discord_voice_connection_impl::send_identify() {
 		guild_id.val, my_id.val, session_id, token);
 
 	socket.send_thing(std::move(thing));
+	sodium_init();
 }
 
 void discord_voice_connection_impl::on_ready(nlohmann::json data) {

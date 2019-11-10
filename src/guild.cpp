@@ -35,12 +35,12 @@ void from_json(const nlohmann::json& json, Guild& guild) {
 	guild.m_voice_states = json["voice_states"].get<std::vector<voice_state>>();
 }
 
-const text_channel& Guild::general_channel() const noexcept {
-	return m_shard->text_channels().at(general_channel_id());
+const text_channel& Guild::system_channel() const noexcept {
+	return m_shard->text_channels().at(system_channel_id());
 }
 
 optional_ref<const voice_channel> Guild::afk_channel() const noexcept {
 	if (afk_channel_id().val)
 		return m_shard->voice_channels().at(afk_channel_id());
-	return std::nullopt;		
+	return std::nullopt;
 }

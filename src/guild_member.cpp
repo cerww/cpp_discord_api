@@ -14,7 +14,7 @@ void from_json(const nlohmann::json& in, guild_member& out) {
 	from_json(in, static_cast<partial_guild_member&>(out));
 }
 
-discord_obj_map<guild_role> guild_member::parent_roles()const noexcept {
+discord_obj_map<guild_role> guild_member::parent_roles() const noexcept {
 	return m_guild->roles();
 };
 

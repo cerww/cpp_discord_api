@@ -6,7 +6,7 @@
 #include <fmt/core.h>
 #include "executor_binder.h"
 
-namespace discord_ec{
+namespace discord_ec {
 	constexpr int unknown_error = 4000;
 	constexpr int unknown_opcode = 4001;
 	constexpr int decode_error = 4002;
@@ -31,47 +31,55 @@ cerwy::task<void> init_shard(const int shard_number, shard& me, boost::asio::io_
 		rename_later_5& m_client = *me.m_client;
 
 		co_await me.connect_http_connection();
-		
+
 		boost::beast::multi_buffer buffer = {};
 
 		auto& strand = me.strand();
 
 		while (true) {
 			std::cerr << "recieving stuffs\n";
-			const auto[ec, n] = co_await m_socket.async_read(buffer, cerwy::bind_executor(strand,use_task_return_tuple2));
-			
+			const auto [ec, n] = co_await m_socket.async_read(buffer, cerwy::bind_executor(strand, use_task_return_tuple2));
+
 			if (ec) {
 				std::cout << ec << std::endl;
-				if(ec.value() == discord_ec::unknown_error) {
+				if (ec.value() == discord_ec::unknown_error) {
 					co_await reconnect_wss_from_url(m_socket, gateway, me.resolver(), me.ssl_context());
 					m_client.maybe_restart();
 					me.on_reconnect();
-				}else if(ec.value() == discord_ec::not_authenticated) {
+				}
+				else if (ec.value() == discord_ec::not_authenticated) {
 					co_await reconnect_wss_from_url(m_socket, gateway, me.resolver(), me.ssl_context());
 					m_client.maybe_restart();
 					me.on_reconnect();
-				}else if(ec.value() == discord_ec::authentication_failed) {					
+				}
+				else if (ec.value() == discord_ec::authentication_failed) {
 					fmt::print("authentication failed");
 					break;
-				}else if(ec.value() == discord_ec::already_authenticated) {
+				}
+				else if (ec.value() == discord_ec::already_authenticated) {
 					fmt::print("already authenticated");
 					break;
-				}else if(ec.value() == discord_ec::invalid_seq) {
-					co_await reconnect_wss_from_url(m_socket ,gateway, me.resolver(), me.ssl_context());
+				}
+				else if (ec.value() == discord_ec::invalid_seq) {
+					co_await reconnect_wss_from_url(m_socket, gateway, me.resolver(), me.ssl_context());
 					m_client.maybe_restart();
 					me.on_reconnect();
-				}else if(ec.value() == discord_ec::rate_limited) {
+				}
+				else if (ec.value() == discord_ec::rate_limited) {
 					fmt::print("rate limited");
 					break;
-				}else if (ec.value() == discord_ec::timeout) {
+				}
+				else if (ec.value() == discord_ec::timeout) {
 					fmt::print("session timedout, reconnecting");
 					co_await reconnect_wss_from_url(m_socket, gateway, me.resolver(), me.ssl_context());
 					m_client.maybe_restart();
 					me.on_reconnect();
-				}else if (ec.value() == discord_ec::sharding_required) {
+				}
+				else if (ec.value() == discord_ec::sharding_required) {
 					fmt::print("sharding required");
 					break;
-				}else {
+				}
+				else {
 					std::cout << ec << std::endl;
 					m_client.close((int)boost::beast::websocket::close_code::normal);
 					co_return;
@@ -80,16 +88,15 @@ cerwy::task<void> init_shard(const int shard_number, shard& me, boost::asio::io_
 			auto data = buffer.data();
 			auto json = nlohmann::json::parse(
 				data |
-				ranges::view::transform([](auto a) {return std::string_view((const char*)a.data(), a.size()); }) |
+				ranges::view::transform([](auto a) { return std::string_view((const char*)a.data(), a.size()); }) |
 				ranges::view::join |
 				ranges::to_<std::string>()
 			);
 			buffer.consume(n);
 			auto op = json["op"].get<int>();
-			me.doStuff(std::move(json), op);			
+			me.doStuff(std::move(json), op);
 		}
 	} catch (...) {
 		std::cerr << "failed for some reason\n";
 	}
 }
-
