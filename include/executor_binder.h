@@ -47,7 +47,10 @@ namespace boost::asio {
 
 			template<typename ...Args>
 			void operator()(Args&&... args) {
-				m_executor->post([stuff = std::make_tuple(std::forward<Args>(args)...),handler = std::move(m_handler)]()mutable {
+				m_executor->post([
+					stuff = std::make_tuple(std::forward<Args>(args)...),
+					handler = std::move(m_handler)
+				]()mutable{
 					std::apply(handler, std::move(stuff));
 				});
 			}

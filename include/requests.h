@@ -15,27 +15,27 @@ namespace rq {
 	using namespace std::string_literals;
 	using namespace fmt::literals;
 	
-	struct bad_request :std::exception {
+	struct bad_request final :std::exception {
 		using exception::exception;
 	};
 
-	struct unauthorized :std::exception {
+	struct unauthorized final :std::exception {
 		using exception::exception;
 	};
 
-	struct forbidden :std::exception {
+	struct forbidden final :std::exception {
 		using exception::exception;
 	};
 
-	struct not_found : std::exception {
+	struct not_found final : std::exception {
 		using exception::exception;
 	};
 
-	struct method_not_allowed :std::exception {
+	struct method_not_allowed final :std::exception {
 		using exception::exception;
 	};
 
-	struct gateway_unavailable :std::exception {
+	struct gateway_unavailable final :std::exception {
 		using exception::exception;
 
 		const char* what()const final {
@@ -43,7 +43,7 @@ namespace rq {
 		}
 	};
 
-	struct server_error :std::exception {
+	struct server_error final :std::exception {
 		using exception::exception;
 		const char* what()const final {
 			return "server error";
@@ -160,6 +160,7 @@ namespace rq {
 		}
 				
 		decltype(auto) value() const{
+			handle_errors();
 			if constexpr(has_overload_value<reqeust>::value)
 				return this->self().overload_value();
 			else if constexpr(!std::is_void_v<typename reqeust::return_type>) 
@@ -171,6 +172,26 @@ namespace rq {
 			handle_errors();
 			if constexpr(!std::is_void_v<typename reqeust::return_type>)
 				return value();
+		}
+
+		auto async_wait() {
+			struct r {
+				request_base* me = nullptr;
+
+				bool await_ready() {
+					return me->await_ready();
+				}
+
+				decltype(auto) await_suspend(std::experimental::coroutine_handle<> h) {
+					me->await_suspend(h);
+				}
+
+				void await_resume() {
+					
+				}
+				
+			};
+			return r{this};			
 		}
 		
 	protected:
@@ -197,10 +218,9 @@ namespace rq {
 		using request_base::request_base;
 		using return_type = partial_message;
 
-		static std::string target(const partial_channel& channel) {	
+		static std::string target(const partial_channel& channel) {
 			return "/channels/{}/messages"_format(channel.id().val);
 		}
-
 	};
 
 	struct add_role:
@@ -372,14 +392,18 @@ namespace rq {
 		post_verb 
 	{
 		using request_base::request_base;
-		using return_type = snowflake;
+		//using return_type = snowflake;
+		using return_type = partial_guild_channel;
 
-		static std::string target(const partial_guild& guild) {
+		static std::string target(const partial_guild& guild) {			
 			return "/guilds/{}/channels"_format(guild.id().val);
 		}
+		/*
 		snowflake overload_value() const{
 			return nlohmann::json::parse(state->res.body())["id"].get<snowflake>();
 		}
+
+		//*/
 	};
 
 	struct create_voice_channel :
@@ -388,14 +412,15 @@ namespace rq {
 		json_content_type 
 	{
 		using request_base::request_base;
-		using return_type = snowflake;
+		//using return_type = snowflake;
+		using return_type = partial_guild_channel;
 
 		static std::string target(const partial_guild& guild) {
 			return "/guilds/{}/channels"_format(guild.id().val);
 		}
-		snowflake overload_value() const{
+		/*snowflake overload_value() const{
 			return nlohmann::json::parse(state->res.body())["id"].get<snowflake>();
-		}
+		}*/
 	};
 
 	struct create_channel_catagory :
@@ -404,7 +429,7 @@ namespace rq {
 		json_content_type 
 	{
 		using request_base::request_base;
-		using return_type = snowflake;
+		using return_type = partial_guild_channel;
 
 		static std::string target(const partial_guild& guild) {
 			return "/guilds/{}/channels"_format(guild.id().val);
@@ -517,7 +542,7 @@ namespace rq {
 		using request_base::request_base;
 		using return_type = void;
 
-		static std::string target(const guild_channel& ch, const permission_overwrite& o) {
+		static std::string target(const partial_guild_channel& ch, const permission_overwrite& o) {
 			return "/channels/{}/permissions/{}"_format(ch.id().val,o.id().val);
 		}
 	};
@@ -622,7 +647,7 @@ namespace rq {
 		using request_base::request_base;
 		using return_type = void;
 
-		static std::string target(const guild_channel& c,const permission_overwrite& p) {
+		static std::string target(const partial_guild_channel& c,const permission_overwrite& p) {
 			return "/channels/{}/permissions/{}"_format(c.id().val, p.id().val);
 		};
 	};
@@ -633,15 +658,16 @@ namespace rq {
 		json_content_type
 	{
 		using request_base::request_base;
-		using return_type = snowflake;
+		using return_type = partial_channel;
+		// using return_type = snowflake;
 
 		static std::string target() {
 			return "/users/@me/channels";
 		}
 
-		return_type overload_value() const{
-			return nlohmann::json::parse(state->res.body())["id"].get<snowflake>();
-		}
+		// return_type overload_value() const{
+		// 	return nlohmann::json::parse(state->res.body())["id"].get<snowflake>();
+		// }
 	};
 
 	struct create_group_dm :
@@ -650,15 +676,16 @@ namespace rq {
 		json_content_type 
 	{
 		using request_base::request_base;
-		using return_type = snowflake;
+		using return_type = partial_channel;
+		// using return_type = snowflake;
 
 		static std::string target() {
 			return "/users/@me/channels";
 		}
-
-		return_type overload_value() const {
-			return nlohmann::json::parse(state->res.body())["id"].get<snowflake>();
-		}
+		//
+		// return_type overload_value() const {
+		// 	return nlohmann::json::parse(state->res.body())["id"].get<snowflake>();
+		// }
 	};
 
 	struct create_channel_invite:
@@ -669,7 +696,7 @@ namespace rq {
 		using request_base::request_base;
 		using return_type = invite;
 
-		static std::string target(const guild_channel& ch) {
+		static std::string target(const partial_guild_channel& ch) {
 			return "/channels/{}/invites"_format(ch.id().val);
 		}
 	};
@@ -698,22 +725,7 @@ namespace rq {
 			return "/invites/{}"_format(code);
 		}
 	};
-	/*
-	struct create_group_dm:
-		request_base<create_group_dm>,
-		post_verb,
-		json_content_type
-	{
-		using return_type = snowflake;
-		static std::string target() {
-			return "/users/@me/channels";
-		}
-
-		return_type overload_value() const {
-			return nlohmann::json::parse(state->res.body())["id"].get<snowflake>();
-		}
-	};
-	*/
+	
 	//not needed ;-;
 	struct get_guild_channels :
 		request_base<get_guild_channels>,

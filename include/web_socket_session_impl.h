@@ -66,6 +66,8 @@ private:
 };
 
 struct web_socket_session {
+	
+	//idk if this is safe to do ;-;
 	web_socket_session() = default;
 
 	web_socket_session(ref_count_ptr<web_socket_session_impl> me):
@@ -103,9 +105,12 @@ struct web_socket_session {
 		return m_me->reconnect(std::move(uri));
 	};
 
-	cerwy::task<void> connect(std::string uri) {
-		return m_me->connect(std::move(uri));
+	/*
+	cerwy::task<void> connect(std::string uri) {		
+		return m_me->connect(std::move(uri));		
 	}
+	
+	*/
 
 	cerwy::task<void> send_thing(std::string what) {
 		return m_me->send_thing(std::move(what));

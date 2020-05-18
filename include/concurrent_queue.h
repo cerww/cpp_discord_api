@@ -39,7 +39,8 @@ struct concurrent_queue {
 
 	std::optional<T> try_pop_busy() {
 		std::unique_lock<std::mutex> locky(m_mut, std::try_to_lock);
-		if (!locky || m_data.empty()) return std::nullopt;
+		if (!locky || m_data.empty()) 
+			return std::nullopt;
 		return std::optional<T>(do_pop());
 	}
 
@@ -53,7 +54,8 @@ struct concurrent_queue {
 	//false means that now >= time_point
 	template<typename time_point>
 	std::optional<T> try_pop_until(time_point end) {
-		if (time_point::clock::now() > end)return std::nullopt;
+		if (time_point::clock::now() > end)
+			return std::nullopt;
 		std::unique_lock<std::mutex> locky(m_mut);
 		if (m_cv.wait_until(locky, end, [this]() { return !m_data.empty(); }))
 			return do_pop();

@@ -46,7 +46,9 @@ struct discord_voice_connection_impl :
 
 		//used in setting up vc only
 		cerwy::promise<void>* waiter = nullptr;
-		//only 1 of these will be used at any time ;-;
+		
+		//only 1 of these two^ will be used at any time ;-;
+		//while setting up, the coroutine has access to the channel
 	};
 
 
@@ -100,39 +102,7 @@ private:
 
 	cerwy::task<void> send_heartbeat();
 
-	void on_msg_recv(nlohmann::json data, int opcode) {
-		constexpr int ready = 2;
-		constexpr int session_discription = 4;
-		constexpr int speaking = 5;
-		constexpr int heartbeat_ack = 6;
-		constexpr int hello = 8;
-		constexpr int resumed = 9;
-		constexpr int disconnect = 13;
-
-		switch (opcode) {
-		case ready:
-			on_ready(std::move(data));
-			break;
-		case session_discription:
-			on_session_discription(std::move(data));
-			break;
-		case speaking:
-			break;
-		case heartbeat_ack:
-			//do nothing? ;-;
-			break;
-		case hello:
-			on_hello(std::move(data));
-			break;
-		case resumed:
-			break;
-		case disconnect:
-			break;
-		default:
-			//wat
-			break;
-		}
-	}
+	void on_msg_recv(nlohmann::json data, int opcode);
 
 	void on_hello(nlohmann::json d);
 

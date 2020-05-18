@@ -17,6 +17,8 @@
 #include "rename_later_5.h"
 #include "attachment.h"
 #include "discord_voice_connection.h"
+#include "modify_guild_settings.h"
+#include "modify_role_settings.h"
 
 
 using namespace std::string_literals;
@@ -28,7 +30,7 @@ struct voice_connection;
 
 struct shard {
 	static constexpr int large_threshold = 51;
-	//not in here cuz shard.cpp would be too big to compile without /bigobj on vc;-;
+	//not in here cuz shard.cpp would be too big to compile without /bigobj on vc ;-;
 	friend cerwy::task<void> init_shard(int shardN, shard& t_parent, boost::asio::io_context& ioc, std::string_view gateway);
 
 	using wsClient = rename_later_5;
@@ -83,22 +85,23 @@ struct shard {
 	rq::modify_emoji modify_emoji(Guild&, emoji&, std::string, std::vector<snowflake>);
 	rq::delete_message delete_message(const partial_message&);
 
-	template<typename rng>
-	std::enable_if_t<is_range_of_v<rng, partial_message>, rq::delete_message_bulk> delete_message_bulk(const partial_channel&, rng&&);
+	template<typename rng> requires is_range_of_v<rng, partial_message>
+	rq::delete_message_bulk delete_message_bulk(const partial_channel&, rng&&);
 
 	rq::delete_message_bulk delete_message_bulk(const partial_channel&, std::vector<snowflake>);
 	rq::leave_guild leave_guild(const Guild&);
 	rq::add_reaction add_reaction(const partial_message&, const partial_emoji&);
 	rq::typing_start typing_start(const partial_channel&);
-	rq::delete_channel_permission delete_channel_permissions(const guild_channel&, const permission_overwrite&);
-	
+	rq::delete_channel_permission delete_channel_permissions(const partial_guild_channel&, const permission_overwrite&);
+
 	template<typename rng>
 	rq::modify_channel_positions modify_channel_positions(const Guild&, rng&&);
-	
+
 	rq::list_guild_members list_guild_members(const partial_guild&, int n = 1, snowflake after = {});
-	rq::edit_channel_permissions edit_channel_permissions(const guild_channel&, const permission_overwrite&);
+	rq::edit_channel_permissions edit_channel_permissions(const partial_guild_channel&, const permission_overwrite&);
 	rq::create_dm create_dm(const user&);
 	
+	//TODO: change these to use concepts
 	template<typename range>
 	std::enable_if_t<is_range_of<range, std::string>::value, rq::create_group_dm> create_group_dm(range&& access_tokens, std::unordered_map<snowflake, std::string> nicks = {});
 
@@ -112,11 +115,23 @@ struct shard {
 	rq::add_pinned_msg add_pinned_msg(const partial_channel&, const partial_message&);
 	rq::remove_pinned_msg remove_pinned_msg(const partial_channel&, const partial_message&);
 	rq::get_voice_regions get_voice_regions();
-	rq::create_channel_invite create_channel_invite(const guild_channel&, int max_age = 86400, int max_uses = 0, bool temporary = false, bool unique = false);
+	rq::create_channel_invite create_channel_invite(const partial_guild_channel&, int max_age = 86400, int max_uses = 0, bool temporary = false, bool unique = false);
 
 	rq::get_invite get_invite(std::string, int = 0);
 	rq::delete_invite delete_invite(std::string);
 
+	template<typename ...settings>
+	rq::modify_guild modify_guild(const partial_guild&, settings&&...);
+
+	template<typename ...settings>
+	rq::modify_guild modify_guild(const partial_guild&, modify_guild_settings<settings...>);
+
+	template<typename... settings>
+	rq::modify_role modify_role(const guild_role&, settings&&...);
+
+	template<typename... settings>
+	rq::modify_role modify_role(const guild_role&, modify_role_settings<settings...>);
+	
 	bool is_disconnected() const noexcept {
 		return m_is_disconnected;
 	}
@@ -133,11 +148,11 @@ struct shard {
 
 	nlohmann::json presence() const;
 
+	cerwy::task<voice_connection> connect_voice(const voice_channel&);
+
 	boost::asio::io_context::strand& strand() {
 		return m_strand;
 	}
-
-	cerwy::task<voice_connection> connect_voice(const voice_channel&);
 
 	auto& resolver() {
 		return m_resolver;
@@ -178,7 +193,7 @@ private:
 
 	template<typename T, typename ... args>
 	std::enable_if_t<!rq::has_content_type_v<T>, T> send_request(args&&...);
-	
+
 	bool m_is_disconnected = false;
 
 	void set_up_request(boost::beast::http::request<boost::beast::http::string_body>&) const;
@@ -188,23 +203,23 @@ private:
 	//dispatch
 	void m_opcode0(nlohmann::json, event_name, size_t);
 	//heartbeat
-	void m_opcode1() const;
+	void m_opcode1_send_heartbeat() const;
 	//identify
-	void m_opcode2() const;
+	void m_opcode2_send_identity() const;
 	//status update
-	void m_opcode3() const;//update presence
+	void m_opcode3_send_presence() const;//update presence
 	//voice state
 	std::pair<cerwy::task<nlohmann::json>, cerwy::task<std::string>> m_opcode4(const voice_channel&);
 	//resume
-	void m_opcode6() const;
+	void m_opcode6_send_resume() const;
 	//reconnect
-	void m_opcode7();
+	void m_opcode7_reconnect();
 	//request guild members
-	void m_opcode8(snowflake) const;
+	void m_opcode8_guild_member_chunk(snowflake) const;
 	//invalid session
-	cerwy::task<void> m_opcode9(const nlohmann::json&);
+	cerwy::task<void> m_opcode9_on_invalid_session(const nlohmann::json&);
 	//hello
-	void m_opcode10(nlohmann::json&);
+	void m_opcode10_on_hello(nlohmann::json&);
 	//heartbeat ack
 	void m_opcode11(nlohmann::json&);
 
@@ -324,7 +339,7 @@ private:
 	client* m_parent = nullptr;
 
 	std::unique_ptr<wsClient> m_client = nullptr;
-	http_connection m_http_connection;
+	http_connection2 m_http_connection;
 
 	boost::asio::io_context& m_ioc;
 	boost::asio::ssl::context m_ssl_ctx{boost::asio::ssl::context_base::sslv23};
@@ -386,10 +401,6 @@ rq::modify_channel_positions shard::modify_channel_positions(const Guild& g, rng
 			ranges::views::transform([](auto&& a) {
 				auto [id, position] = a;
 
-				using id_type = decltype(id);
-				static_assert(std::is_integral_v<position>);
-				static_assert(std::is_same_v<id_type, snowflake>);
-
 				nlohmann::json ret;
 				ret["id"] = id;
 				ret["position"] = position;
@@ -399,12 +410,10 @@ rq::modify_channel_positions shard::modify_channel_positions(const Guild& g, rng
 	return send_request<rq::modify_channel_positions>(json.dump(), g);
 }
 
-template<typename rng>
-std::enable_if_t<is_range_of_v<rng, partial_message>, rq::delete_message_bulk> shard::delete_message_bulk(const partial_channel& channel, rng&& msgs) {
+template<typename rng> requires is_range_of_v<rng,partial_message>
+rq::delete_message_bulk shard::delete_message_bulk(const partial_channel& channel, rng&& msgs) {
 	nlohmann::json body;
-	std::vector<snowflake> things(msgs.size());
-	std::transform(msgs.begin(), msgs.end(), things.begin(), [](const auto& msg) { return msg.id(); });
-	body["messages"] = std::move(things);
+	body["messages"] = msgs | ranges::views::transform(&partial_message::id) | ranges::to<std::vector>;
 	return send_request<rq::delete_message_bulk>(body.dump(), channel);
 }
 
@@ -419,10 +428,42 @@ std::enable_if_t<std::is_same_v<std::decay_t<range_type<rng>>, snowflake>, rq::a
 		body["roles"] = roles;
 	}
 	else {
-		std::vector<snowflake> stuff = roles | ranges::to_<std::vector<snowflake>>();
+		std::vector<snowflake> stuff = roles | ranges::to<std::vector<snowflake>>();
 		body["roles"] = std::move(stuff);
 	}
 	return send_request<rq::add_guild_member>(body.dump(), guild, id);
+}
+
+template<typename ... settings>
+rq::modify_guild shard::modify_guild(const partial_guild& g, settings&&... setting) {
+	nlohmann::json body;
+	((body[setting.vname] = std::move(setting.n)), ...);
+	return send_request<rq::modify_guild>(body.dump(), g);
+}
+
+template<typename ... settings>
+rq::modify_guild shard::modify_guild(const partial_guild& g, modify_guild_settings<settings...> s) {
+	nlohmann::json body;
+	std::apply([&](auto&&... setting) {
+		((body[setting.vname] = std::move(setting.n)), ...);
+	}, std::move(s.stuff));
+	return send_request<rq::modify_guild>(body.dump(), g);
+}
+
+template<typename ... settings>
+rq::modify_role shard::modify_role(const guild_role& g, settings&&... setting) {
+	nlohmann::json body;
+	((body[setting.vname] = std::move(setting.n)), ...);
+	return send_request<rq::modify_role>(body.dump(), g);
+}
+
+template<typename ... settings>
+rq::modify_role shard::modify_role(const guild_role& g, modify_role_settings<settings...> s) {
+	nlohmann::json body;
+	std::apply([&](auto&&... setting) {
+		((body[setting.vname] = std::move(setting.n)), ...);
+	}, std::move(s.stuff));
+	return send_request<rq::modify_role>(body.dump(), g);
 }
 
 template<typename rng>
@@ -435,7 +476,7 @@ auto shard::add_guild_member(const Guild& guild, snowflake id, std::string acces
 	body["mute"] = mute;
 	body["roles"] =
 			roles |
-			ranges::views::transform([](auto&& role) { return role.id(); }) |
+			ranges::views::transform(&guild_role::id) |
 			ranges::to<std::vector>();
 	return send_request<rq::add_guild_member>(body.dump(), guild, id);
 }
@@ -455,15 +496,16 @@ template<event_name e>
 void shard::procces_event(nlohmann::json&) {}
 
 template<typename msg_t, typename channel_t, typename map_t>
-msg_t shard::create_msg(channel_t& ch, const nlohmann::json& stuffs, map_t&& members) {
+msg_t shard::create_msg(channel_t& ch, const nlohmann::json& stuffs, map_t&& members_in_channel) {
 	msg_t retVal;
 	from_json(stuffs, static_cast<partial_message&>(retVal));
 	retVal.m_channel = &ch;
-	retVal.m_author = &members[retVal.author_id()];
+	retVal.m_author = &members_in_channel[retVal.author_id()];
 	retVal.m_mentions.reserve(stuffs["mentions"].size());
 	for (const auto& mention : stuffs["mentions"]) {
-		const auto it = members.find(mention["id"].get<snowflake>());
-		if (it == members.end())
+		const auto it = members_in_channel.find(mention["id"].get<snowflake>());
+		//idk why this would happen
+		if (it == members_in_channel.end())
 			continue;
 		retVal.m_mentions.push_back(&(it->second));
 	}
@@ -515,10 +557,11 @@ reaction& shard::update_reactions(
 	std::vector<reaction>& reactions,
 	partial_emoji& emoji,
 	const snowflake user_id,
-	const snowflake my_id) {
+	const snowflake my_id
+) {
 	static_assert(n == -1 || n == 1);
 	const auto it = ranges::find(reactions, emoji.id(), hof::flow(&reaction::emoji, &emoji::id));
-	if (it == reactions.end()) {
+	if (it == reactions.end()) {//reaction not in vector -> add it 
 		reaction temp;
 		temp.m_count = n;
 		temp.m_emoji = std::move(emoji);

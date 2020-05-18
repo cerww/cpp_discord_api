@@ -47,6 +47,7 @@ enum class event_name {
 	VOICE_SERVER_UPDATE,
 	WEBHOOKS_UPDATE
 };
+
 //TODO reorder these to mkae it chek more common ones first. Or use a trie
 inline event_name to_event_name(std::string_view name) {
 	if (name == "HELLO") return event_name::HELLO;

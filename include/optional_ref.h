@@ -9,9 +9,6 @@ struct optional_ref {
 	constexpr optional_ref(T& thing):
 		m_self(&thing) {}
 
-	constexpr optional_ref(T* thing) :
-		m_self(thing) {}
-
 	constexpr optional_ref(T&& thing) = delete;
 
 	constexpr optional_ref(std::nullopt_t) {}

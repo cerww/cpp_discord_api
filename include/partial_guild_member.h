@@ -1,5 +1,5 @@
 #pragma once
-#include "user.h"
+#include "User.h"
 #include "timestamp.h"
 #include "guild_role.h"
 #include <range/v3/view/all.hpp>
@@ -15,7 +15,7 @@ struct partial_guild_member :user {
 	bool deaf() const noexcept;
 	bool mute() const noexcept;
 
-	bool has_role(const snowflake role_id) const noexcept;
+	bool has_role(snowflake role_id) const noexcept;
 	bool has_role(const guild_role& role) const noexcept;
 
 private:

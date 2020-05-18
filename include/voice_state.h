@@ -74,8 +74,8 @@ struct voice_region {
 	bool custom() const noexcept { return m_custom; }
 
 private:
-	std::string m_id;
-	std::string m_name;
+	std::string m_id{};
+	std::string m_name{};
 	bool m_vip = false;
 	bool m_optimal = false;
 	bool m_depricated = false;

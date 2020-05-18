@@ -1,6 +1,6 @@
 #pragma once
 #include "partial_channel.h"
-#include "user.h"
+#include "User.h"
 #include "timestamp.h"
 #include <nlohmann/json.hpp>
 #include "partial_message.h"

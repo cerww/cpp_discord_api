@@ -6,6 +6,8 @@
 #include "requests.h"
 #include "concurrent_queue.h"
 #include "task.h"
+#include "async_mutex.h"
+#include "concurrent_async_queue.h"
 //#include <variant>
 
 struct discord_request {
@@ -168,3 +170,69 @@ namespace d{
 
 std::future<void> http_conn(d::subscriber_thingy_async<std::variant<discord_request, std::chrono::milliseconds>>& hand, client* parent);
 */
+
+
+
+
+struct http_connection2 {
+	void sleep_till(std::chrono::system_clock::time_point time_point) {
+		m_rate_limted_until = time_point;
+		m_global_rate_limited.store(true);
+	};
+
+	http_connection2() = delete;
+	http_connection2(http_connection2&&) = delete;
+	http_connection2(const http_connection2&) = delete;
+	http_connection2& operator=(const http_connection2&) = delete;
+	http_connection2& operator=(http_connection&&) = delete;
+
+	explicit http_connection2(client*, boost::asio::io_context&);
+
+	~http_connection2() {
+		m_done.store(true);
+		m_request_queue.cancel_all();
+		if (m_thread.joinable())
+			m_thread.join();
+	}
+
+	void send(discord_request&& d);
+
+	void stop() {
+		m_done.store(true);
+	}
+
+	cerwy::task<boost::beast::error_code> async_connect();
+
+private:
+	std::chrono::system_clock::time_point m_rate_limted_until = {};
+	std::atomic<bool> m_global_rate_limited = false;
+
+	std::atomic<bool> m_done = false;
+	std::thread m_thread{};
+
+	boost::asio::io_context& m_ioc;
+	boost::asio::ip::tcp::resolver m_resolver;
+	boost::asio::io_context::strand m_strand;
+	async_mutex m_mut;
+
+	boost::asio::ssl::context m_sslCtx{ boost::asio::ssl::context::tlsv12_client };
+	boost::asio::ssl::stream<boost::asio::ip::tcp::socket> m_socket{ m_ioc, m_sslCtx };
+	boost::beast::flat_buffer m_buffer{};
+	concurrent_async_queue<discord_request> m_request_queue = {};
+	client* m_client = nullptr;
+
+	cerwy::task<void> send_to_discord(discord_request);
+	cerwy::task<bool> send_to_discord_(discord_request&);
+
+	cerwy::task<void> start_sending();
+	
+	void resend_rate_limted_requests_for(size_t);
+	
+	void connect();
+	cerwy::task<void> reconnect();
+
+	cerwy::task<void> send_rq(discord_request&);
+
+	std::vector<std::tuple<size_t, std::chrono::system_clock::time_point, std::vector<discord_request>>> m_rate_limited_requests{};
+};
+

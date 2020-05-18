@@ -12,7 +12,7 @@ struct partial_channel {
 
 private:
 	snowflake m_id;
-	std::string m_name = "";
+	std::string m_name;
 
 	friend struct shard;
 	friend void from_json(const nlohmann::json& json, partial_channel& channel);
@@ -25,5 +25,5 @@ inline void to_json(nlohmann::json& json, const partial_channel& ch) {
 
 inline void from_json(const nlohmann::json& json, partial_channel& channel) {
 	channel.m_id = json["id"].get<snowflake>();
-	channel.m_name = json.value("name", "");
+	channel.m_name = json.value("name", std::string());
 }

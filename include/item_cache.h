@@ -23,7 +23,7 @@ private:
 
 template<typename T>
 struct dynamic_item_cache {
-	dynamic_item_cache(const size_t cache_size, const bool reserve_before = false):
+	explicit dynamic_item_cache(const size_t cache_size, const bool reserve_before = false):
 		m_cache_size(cache_size) {
 		if (reserve_before)
 			m_cache.reserve(m_cache_size);

@@ -51,6 +51,22 @@ struct permission {
 		return permission(m_permission & other.m_permission);
 	}
 
+	constexpr permission operator+(permission o) const noexcept{
+		return o.add_permissions(*this);
+	}
+
+	constexpr permission operator-(permission o) const noexcept {
+		return permission(*this).remove_permissions(o);
+	}
+
+	constexpr permission& operator+=(permission o) noexcept {
+		return add_permissions(o);
+	}
+
+	constexpr permission& operator-=(permission o) noexcept {
+		return remove_permissions(o);
+	}	
+	
 	constexpr size_t data()const noexcept { return m_permission; }
 private:
 	size_t m_permission = 0;

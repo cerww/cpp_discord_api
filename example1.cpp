@@ -1,6 +1,9 @@
 #include "client.h"
 #include <fstream>
 #include "async_mutex.h"
+#include "modify_guild_settings.h"
+
+
 using namespace std::literals;
 
 std::string getFileContents(const std::string& filePath, decltype(std::ios::in) mode = std::ios::in) {
@@ -17,7 +20,7 @@ std::string getFileContents(const std::string& filePath, decltype(std::ios::in) 
 }
 
 //spam bot
-int main_() {
+int main() {
 	//thingy_to_debugy();
 
 
@@ -43,7 +46,7 @@ int main_() {
 			//msgs.pop_back();
 		}
 		else if (msg.content() == "make new channel") {
-			s.create_text_channel(msg.guild(), "blargylandy").wait();
+			auto ch = s.create_text_channel(msg.guild(), "blargylandy").get();
 		}
 		else if (msg.content() == "rolesy") {
 			std::string stuff =
@@ -88,7 +91,10 @@ int main_() {
 	};
 	c.on_guild_member_add = [&](const guild_member& member, shard& s) {
 		s.send_message(member.guild().system_channel(), "rawr");
+		//s.modify_guild(member.guild(), guild_settings::default_message_notifications{1});
+		//auto t = modify_guild_settings().name("aaa");
 	};
+
 	c.setToken(getFileContents("token.txt"), token_type::BOT);
 	c.run();
 	//} catch (...) {
