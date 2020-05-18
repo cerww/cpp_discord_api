@@ -1,4 +1,5 @@
 #include "partial_guild.h"
+#include <fmt/core.h>
 
 snowflake partial_guild::id() const noexcept { return m_id; }
 
@@ -31,6 +32,7 @@ bool partial_guild::explicit_content_filter() const noexcept { return m_explicit
 
 void from_json(const nlohmann::json& json, partial_guild& guild) {
 	guild.m_id = json["id"].get<snowflake>();
+	//fmt::print("{}\n",guild.m_id.val);
 	guild.m_name = json["name"].get<std::string>();
 	guild.m_icon = json["icon"].is_null() ? "" : json["icon"].get<std::string>();
 	guild.m_splash = json["splash"].is_null() ? "" : json["splash"].get<std::string>();

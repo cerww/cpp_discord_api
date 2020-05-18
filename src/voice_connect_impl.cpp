@@ -27,7 +27,7 @@ cerwy::task<voice_connection> voice_connect_impl(shard& me, const voice_channel&
 
 	auto t = p.get_task();
 
-	co_await t;
+	co_await t;//wait till it's done setting up
 	vc->channel = &ch;
 	//resume on strand, user code is resumed after this
 	//idk how to do this better ;-;

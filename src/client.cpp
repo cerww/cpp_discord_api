@@ -64,8 +64,8 @@ void client::rate_limit_global(const std::chrono::system_clock::time_point tp) {
 	const auto now = std::chrono::system_clock::now();
 	if (m_last_global_rate_limit - now < std::chrono::seconds(3)){//so i don't rate_limit myself twice
 		m_last_global_rate_limit = now;
-		for (auto& i : m_shards) {
-			i->rate_limit(tp); 
+		for (auto& shard : m_shards) {
+			shard->rate_limit(tp);
 		}
 	}	
 }

@@ -11,7 +11,8 @@ discord_voice_connection_impl::discord_voice_connection_impl(web_socket_session 
 	};
 
 	socket.on_error() = [this](boost::system::error_code ec) {
-		socket.reconnect(endpoint);
+		if(ec!=boost::asio::error::operation_aborted)
+			socket.reconnect(endpoint);
 	};
 }
 
@@ -50,7 +51,10 @@ cerwy::task<void> discord_voice_connection_impl::send_heartbeat() {
 	while(is_alive) {
 		boost::asio::steady_timer timer(ioc());
 		timer.expires_after(std::chrono::milliseconds(heartbeat_interval));
-		auto t = co_await timer.async_wait(use_task_return_ec);
+		auto ec = co_await timer.async_wait(use_task_return_ec);
+		if(ec) {
+			break;
+		}
 		std::string hb = R"(
 			{
 			"op":3,
@@ -61,6 +65,40 @@ cerwy::task<void> discord_voice_connection_impl::send_heartbeat() {
 	}
 
 	co_return;
+}
+
+void discord_voice_connection_impl::on_msg_recv(nlohmann::json data, int opcode) {
+	constexpr int ready = 2;
+	constexpr int session_discription = 4;
+	constexpr int speaking = 5;
+	constexpr int heartbeat_ack = 6;
+	constexpr int hello = 8;
+	constexpr int resumed = 9;
+	constexpr int disconnect = 13;
+
+	switch (opcode) {
+	case ready:
+		on_ready(std::move(data));
+		break;
+	case session_discription:
+		on_session_discription(std::move(data));
+		break;
+	case speaking:
+		break;
+	case heartbeat_ack:
+		//do nothing? ;-;
+		break;
+	case hello:
+		on_hello(std::move(data));
+		break;
+	case resumed:
+		break;
+	case disconnect:
+		break;
+	default:
+		//wat
+		break;
+	}
 }
 
 void discord_voice_connection_impl::on_hello(nlohmann::json d) {
@@ -92,7 +130,7 @@ void discord_voice_connection_impl::send_identify() {
 		guild_id.val, my_id.val, session_id, token);
 
 	socket.send_thing(std::move(thing));
-	sodium_init();
+	//sodium_init();
 }
 
 void discord_voice_connection_impl::on_ready(nlohmann::json data) {

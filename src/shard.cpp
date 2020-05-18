@@ -99,7 +99,7 @@ void shard::doStuff(nlohmann::json stuffs,int op) {
 		m_opcode0(std::move(stuffs["d"]), to_event_name(stuffs["t"]), stuffs["s"]);
 		break;
 	case 1:
-		m_opcode1();
+		m_opcode1_send_heartbeat();
 		break;
 	case 2:break;
 	case 3:break;
@@ -107,14 +107,14 @@ void shard::doStuff(nlohmann::json stuffs,int op) {
 	case 5:break;
 	case 6:break;
 	case 7:
-		m_opcode7();
+		m_opcode7_reconnect();
 		break;
 	case 8:break;
 	case 9:
-		m_opcode9(stuffs["d"]);
+		m_opcode9_on_invalid_session(stuffs["d"]);
 		break;
 	case 10:
-		m_opcode10(stuffs["d"]);
+		m_opcode10_on_hello(stuffs["d"]);
 		break;
 	case 11:
 		m_opcode11(stuffs["d"]);
@@ -141,7 +141,7 @@ void shard::set_up_request(boost::beast::http::request<boost::beast::http::strin
 }
 
 void shard::request_guild_members(Guild& g) const {
-	m_opcode8(g.id());
+	m_opcode8_guild_member_chunk(g.id());
 	g.m_members.clear();
 	g.m_members.reserve(g.m_member_count);
 }
@@ -193,7 +193,7 @@ void shard::m_opcode0(nlohmann::json data, event_name event, size_t s) {
 	}
 }
 
-void shard::m_opcode1() const {
+void shard::m_opcode1_send_heartbeat() const {
 	if (is_disconnected())return;
 	std::string t = 
 R"({
@@ -203,11 +203,11 @@ R"({
 	m_client->send_thing(std::move(t));
 }
 
-void shard::m_opcode2() const {
+void shard::m_opcode2_send_identity() const {
 	m_sendIdentity();
 }
 
-void shard::m_opcode3() const {
+void shard::m_opcode3_send_presence() const {
 	nlohmann::json val;
 	val["op"] = 3;
 	val["data"] = presence();
@@ -241,15 +241,15 @@ std::pair<cerwy::task<nlohmann::json>, cerwy::task<std::string>> shard::m_opcode
 	return { std::move(name),std::move(session_id_task) };
 }
 
-void shard::m_opcode6() const {
+void shard::m_opcode6_send_resume() const {
 	send_resume();
 }
 
-void shard::m_opcode7() {
+void shard::m_opcode7_reconnect() {
 	reconnect();
 }
 
-void shard::m_opcode8(snowflake id) const {	
+void shard::m_opcode8_guild_member_chunk(snowflake id) const {	
 	nlohmann::json s;
 	s["op"] = 8;
 	s["d"]["guild_id"] = std::to_string(id.val);
@@ -258,17 +258,18 @@ void shard::m_opcode8(snowflake id) const {
 	m_client->send_thing(s.dump());	
 }
 
-cerwy::task<void> shard::m_opcode9(const nlohmann::json& d) {
+cerwy::task<void> shard::m_opcode9_on_invalid_session(const nlohmann::json& d) {
 	//boost::asio::steady_timer timer(m_ioc, std::chrono::steady_clock::now() + 5s);
 	//auto ec = co_await timer.async_wait(cerwy::bind_executor(strand(),use_task_return_ec));
 
-	//remove this for the above later when concepts and modules are in cuz it'll too big to compile ;-;
+	//remove this for the above later when concepts and modules are in boost asio,
+	//cuz it'll too big to compile on vc;-;
 	std::this_thread::sleep_for(5s);
 
 	if (d.get<bool>())
-		m_opcode6();
+		m_opcode6_send_resume();
 	else
-		m_opcode2();
+		m_opcode2_send_identity();
 
 	co_return;
 }
@@ -277,17 +278,28 @@ void shard::send_heartbeat() {
 	if (!m_op11.load()) {
 		reconnect();
 	}
-	m_opcode1();
+	m_opcode1_send_heartbeat();
 	m_op11 = false;
+	
 	m_parent->heartbeat_sender.execute(std::make_pair([this](){
 		send_heartbeat();
 	}, std::chrono::steady_clock::now() + std::chrono::milliseconds(m_hb_interval)));
+
+	/*
+	change ^ to v later
+	auto t = std::make_unique<boost::asio::steady_timer>(m_ioc);
+	t->expires_after(std::chrono::milliseconds(m_hb_interval));
+	t->async_wait([this,temp = std::move(t)](auto ec){
+		if(!ec)
+			send_heartbeat();
+	})
+	*/
+	
 }
 
-void shard::m_opcode10(nlohmann::json& stuff) {
+void shard::m_opcode10_on_hello(nlohmann::json& stuff) {
 	m_hb_interval = stuff["heartbeat_interval"].get<int>();
 	send_heartbeat();
-	//m_opcode1();
 	m_sendIdentity();
 }
 
@@ -1057,7 +1069,7 @@ void shard::procces_event<event_name::WEBHOOKS_UPDATE>(nlohmann::json&) {
 void shard::update_presence(const Status s, std::string g) {// NOLINT
 	m_status = s;
 	m_game_name = std::move(g);
-	m_opcode3();
+	m_opcode3_send_presence();
 }
 
 rq::send_message shard::send_message(const text_channel& channel, std::string content) {
@@ -1081,7 +1093,7 @@ rq::remove_role shard::remove_role(const partial_guild& guild, const guild_membe
 }
 
 rq::modify_member shard::remove_all_roles(const partial_guild& guild, const guild_member& member) {
-	return send_request<rq::modify_member>(R"({"roles":{}})"s,guild, member);
+	return send_request<rq::modify_member>(R"({"roles":[]})"s,guild, member);
 }
 
 rq::create_role shard::create_role(const partial_guild& g, std::string name, permission p, int color, bool hoist, bool mentionable) {
@@ -1244,7 +1256,7 @@ rq::typing_start shard::typing_start(const partial_channel& ch) {
 	return send_request<rq::typing_start>(ch);
 }
 
-rq::delete_channel_permission shard::delete_channel_permissions(const guild_channel& a,const permission_overwrite& b) {
+rq::delete_channel_permission shard::delete_channel_permissions(const partial_guild_channel& a,const permission_overwrite& b) {
 	return send_request<rq::delete_channel_permission>(a, b);
 }
 
@@ -1255,7 +1267,7 @@ rq::list_guild_members shard::list_guild_members(const partial_guild& g, int n, 
 	return send_request<rq::list_guild_members>(body.dump(),g);
 }
 
-rq::edit_channel_permissions shard::edit_channel_permissions(const guild_channel& ch, const permission_overwrite& overwrite) {
+rq::edit_channel_permissions shard::edit_channel_permissions(const partial_guild_channel& ch, const permission_overwrite& overwrite) {
 	nlohmann::json body = { {"allow",overwrite.allow()},{"deny",overwrite.deny()},{"type",overwrite_type_to_string(overwrite.type())} };
 	return send_request<rq::edit_channel_permissions>(body.dump(), ch, overwrite);
 }
@@ -1282,7 +1294,7 @@ rq::get_voice_regions shard::get_voice_regions() {
 	return send_request<rq::get_voice_regions>();
 }
 
-rq::create_channel_invite shard::create_channel_invite(const guild_channel& ch, int max_age, int max_uses, bool temporary,	bool unique) {
+rq::create_channel_invite shard::create_channel_invite(const partial_guild_channel& ch, int max_age, int max_uses, bool temporary,	bool unique) {
 	nlohmann::json body;
 	body["max_age"] = max_age;
 	body["max_uses"] = max_uses;

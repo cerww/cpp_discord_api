@@ -22,7 +22,6 @@ namespace discord_ec {
 
 cerwy::task<void> init_shard(const int shard_number, shard& me, boost::asio::io_context& ioc, std::string_view gateway) {
 	try {
-		int i = 0;
 		co_await reconnect_wss_from_url(me.m_socket, gateway, me.resolver(), me.ssl_context());
 
 		auto& m_socket = me.m_socket;
@@ -88,9 +87,9 @@ cerwy::task<void> init_shard(const int shard_number, shard& me, boost::asio::io_
 			auto data = buffer.data();
 			auto json = nlohmann::json::parse(
 				data |
-				ranges::view::transform([](auto a) { return std::string_view((const char*)a.data(), a.size()); }) |
-				ranges::view::join |
-				ranges::to_<std::string>()
+				ranges::views::transform([](auto a) { return std::string_view((const char*)a.data(), a.size()); }) |
+				ranges::views::join |
+				ranges::to<std::string>()
 			);
 			buffer.consume(n);
 			auto op = json["op"].get<int>();
