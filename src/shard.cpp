@@ -350,7 +350,7 @@ void shard::m_sendIdentity()const {
 				"$device":"cerwy"
 			},
 			"compress":false,
-			"large_threshold":51,
+			"large_threshold":250,
 			"shard":[)"s + std::to_string(m_shard_number) + "," + std::to_string(m_parent->num_shards()) + R"(],	
 			"presence":)"s + presence().dump() +
 		"}"s + "}";

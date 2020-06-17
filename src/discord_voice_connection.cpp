@@ -78,16 +78,19 @@ cerwy::task<void> discord_voice_connection_impl::send_voice(const audio_data& da
 		//const std::span<std::byte> data_as_byte_span = std::span((std::byte*)frame.frame_data.data(), frame.frame_data.size_bytes());
 
 		//m_opus_encoder.set_bit_rate(64 * 1024);
-		
+		//std::array<std::byte, 1000> opus_data{};
+			
 		const std::vector<std::byte> opus_data = m_opus_encoder.encode(frame, 1000);
+		//int len = m_opus_encoder.encode_into_buffer(frame, opus_data.data(), opus_data.size());
 		
 		const auto encrypted_voice_data = encrypt_xsalsa20_poly1305(header, opus_data);
 
 		auto [ec, n] = co_await voice_socket.async_send(boost::asio::buffer(encrypted_voice_data), use_task_return_tuple2);
+		//voice_socket.async_send(boost::asio::buffer(encrypted_voice_data), [](auto&&...){});
 
 		m_timestamp += frame.frame_size;
 		boost::asio::steady_timer timer(context());
-		timer.expires_after(15ms);
+		timer.expires_after(19ms);
 		auto ec3 = co_await timer.async_wait(use_task_return_ec);
 
 	}

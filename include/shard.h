@@ -29,7 +29,7 @@ struct client;
 struct voice_connection;
 
 struct shard {
-	static constexpr int large_threshold = 51;
+	static constexpr int large_threshold = 250;
 	//not in here cuz shard.cpp would be too big to compile without /bigobj on vc ;-;
 	friend cerwy::task<void> init_shard(int shardN, shard& t_parent, boost::asio::io_context& ioc, std::string_view gateway);
 
