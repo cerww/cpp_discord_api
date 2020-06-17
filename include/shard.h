@@ -88,6 +88,9 @@ struct shard {
 	template<typename rng> requires is_range_of_v<rng, partial_message>
 	rq::delete_message_bulk delete_message_bulk(const partial_channel&, rng&&);
 
+	template<typename rng> requires is_range_of_v<rng, snowflake>
+	rq::delete_message_bulk delete_message_bulk(const partial_channel&, rng&&);
+
 	rq::delete_message_bulk delete_message_bulk(const partial_channel&, std::vector<snowflake>);
 	rq::leave_guild leave_guild(const Guild&);
 	rq::add_reaction add_reaction(const partial_message&, const partial_emoji&);
@@ -101,15 +104,39 @@ struct shard {
 	rq::edit_channel_permissions edit_channel_permissions(const partial_guild_channel&, const permission_overwrite&);
 	rq::create_dm create_dm(const user&);
 	
-	//TODO: change these to use concepts
-	template<typename range>
-	std::enable_if_t<is_range_of<range, std::string>::value, rq::create_group_dm> create_group_dm(range&& access_tokens, std::unordered_map<snowflake, std::string> nicks = {});
-
-	template<typename rng>
-	std::enable_if_t<std::is_same_v<std::decay_t<range_type<rng>>, snowflake>, rq::add_guild_member> add_guild_member(const Guild&, snowflake, std::string, rng&&, std::string = "", bool = false, bool = false);
-
-	template<typename rng>
-	std::enable_if_t<std::is_same_v<std::decay_t<range_type<rng>>, guild_role>, rq::add_guild_member> add_guild_member(const Guild&, snowflake, std::string, rng&&, std::string = "", bool = false, bool = false);
+	rq::get_guild_integrations get_guild_integrations(const partial_guild& guild);
+	
+	rq::create_guild_integration create_guild_integration(const partial_guild& guild,std::string type, snowflake id);
+	
+	
+	template<typename range> requires is_range_of<range,std::string>
+	rq::create_group_dm create_group_dm(range&& access_tokens, std::unordered_map<snowflake, std::string> nicks = {});
+	
+	/// @brief 
+	/// @tparam rng 
+	/// @param guild 
+	/// @param id 
+	/// @param access_token 
+	/// @param roles 
+	/// @param nick 
+	/// @param deaf 
+	/// @param mute 
+	/// @return 
+	template<typename rng> requires is_range_of<rng,snowflake>
+	rq::add_guild_member add_guild_member(const Guild& guild, snowflake id, std::string access_token, rng&& roles, std::string nick = "", bool deaf = false, bool mute = false);
+	
+	/// @brief 
+	/// @tparam rng 
+	/// @param guild 
+	/// @param id 
+	/// @param access_token 
+	/// @param roles 
+	/// @param nick 
+	/// @param deaf 
+	/// @param mute 
+	/// @return 
+	template<typename rng>requires is_range_of<rng, guild_role>
+	rq::add_guild_member add_guild_member(const Guild& guild, snowflake id, std::string access_token, rng&& roles, std::string nick = "", bool deaf = false, bool mute = false);
 
 	rq::delete_channel delete_channel(const partial_channel&);
 	rq::add_pinned_msg add_pinned_msg(const partial_channel&, const partial_message&);
@@ -343,12 +370,15 @@ private:
 
 	boost::asio::io_context& m_ioc;
 	boost::asio::ssl::context m_ssl_ctx{boost::asio::ssl::context_base::sslv23};
+	
 	boost::asio::ip::tcp::resolver m_resolver;
 	boost::asio::io_context::strand m_strand;
 	boost::beast::websocket::stream<boost::beast::ssl_stream<boost::asio::ip::tcp::socket>> m_socket;
 
+	//events that came before guild recieved all members from guild_member_chunk
 	ska::bytell_hash_map<snowflake, std::vector<std::pair<nlohmann::json, event_name>>> m_backed_up_events;
 	void replay_events_for(snowflake);
+	ska::bytell_hash_map<snowflake, int> m_chunks_left_for_guild;
 
 	//TODO: rename these
 	ska::bytell_hash_map<snowflake, cerwy::promise<nlohmann::json>> m_things_waiting_for_voice_endpoint;
@@ -417,8 +447,19 @@ rq::delete_message_bulk shard::delete_message_bulk(const partial_channel& channe
 	return send_request<rq::delete_message_bulk>(body.dump(), channel);
 }
 
-template<typename rng>
-std::enable_if_t<std::is_same_v<std::decay_t<range_type<rng>>, snowflake>, rq::add_guild_member> shard::add_guild_member(const Guild& guild, snowflake id, std::string access_token, rng&& roles, std::string nick, bool deaf, bool mute) {
+template<typename rng> requires is_range_of_v<rng, snowflake>
+rq::delete_message_bulk shard::delete_message_bulk(const partial_channel& channel, rng&& msgs) {
+	nlohmann::json body;
+	if constexpr (std::is_convertible_v<rng, nlohmann::json>) {
+		body["messages"] = msgs;
+	}else {
+		body["messages"] = msgs | ranges::to<std::vector>;
+	}
+	return send_request<rq::delete_message_bulk>(body.dump(), channel);
+}
+
+template<typename rng> requires is_range_of<rng,snowflake>
+rq::add_guild_member shard::add_guild_member(const Guild& guild, snowflake id, std::string access_token, rng&& roles, std::string nick, bool deaf, bool mute) {
 	nlohmann::json body;
 	body["access_token"] = access_token;
 	body["nick"] = std::move(nick);
@@ -431,6 +472,18 @@ std::enable_if_t<std::is_same_v<std::decay_t<range_type<rng>>, snowflake>, rq::a
 		std::vector<snowflake> stuff = roles | ranges::to<std::vector<snowflake>>();
 		body["roles"] = std::move(stuff);
 	}
+	return send_request<rq::add_guild_member>(body.dump(), guild, id);
+}
+
+template<typename rng> requires is_range_of<rng, guild_role>
+rq::add_guild_member shard::add_guild_member(const Guild& guild, snowflake id, std::string access_token, rng&& roles, std::string nick, bool deaf, bool mute) {
+	nlohmann::json body;
+	body["access_token"] = access_token;
+	body["nick"] = std::move(nick);
+	body["deaf"] = deaf;
+	body["mute"] = mute;	
+	body["roles"] = roles | ranges::views::transform(&guild_role::id) | ranges::to<std::vector>();
+	
 	return send_request<rq::add_guild_member>(body.dump(), guild, id);
 }
 
@@ -466,23 +519,10 @@ rq::modify_role shard::modify_role(const guild_role& g, modify_role_settings<set
 	return send_request<rq::modify_role>(body.dump(), g);
 }
 
-template<typename rng>
-auto shard::add_guild_member(const Guild& guild, snowflake id, std::string access_token, rng&& roles, std::string nick, bool deaf, bool mute)
-->std::enable_if_t<std::is_same_v<std::decay_t<range_type<rng>>, guild_role>, rq::add_guild_member> {
-	nlohmann::json body;
-	body["access_token"] = access_token;
-	body["nick"] = std::move(nick);
-	body["deaf"] = deaf;
-	body["mute"] = mute;
-	body["roles"] =
-			roles |
-			ranges::views::transform(&guild_role::id) |
-			ranges::to<std::vector>();
-	return send_request<rq::add_guild_member>(body.dump(), guild, id);
-}
 
-template<typename range>
-std::enable_if_t<is_range_of<range, std::string>::value, rq::create_group_dm> shard::create_group_dm(range&& access_tokens, std::unordered_map<snowflake, std::string> nicks) {
+
+template<typename range>requires is_range_of<range, std::string>
+rq::create_group_dm shard::create_group_dm(range&& access_tokens, std::unordered_map<snowflake, std::string> nicks) {
 	nlohmann::json body;
 	body["access_tokens"] = std::vector<int>();
 	for (auto&& token : access_tokens) {
@@ -493,7 +533,9 @@ std::enable_if_t<is_range_of<range, std::string>::value, rq::create_group_dm> sh
 }
 
 template<event_name e>
-void shard::procces_event(nlohmann::json&) {}
+void shard::procces_event(nlohmann::json&) {
+	//static_assert(false);
+}
 
 template<typename msg_t, typename channel_t, typename map_t>
 msg_t shard::create_msg(channel_t& ch, const nlohmann::json& stuffs, map_t&& members_in_channel) {

@@ -233,6 +233,9 @@ private:
 
 	cerwy::task<void> send_rq(discord_request&);
 
+	//sorted by order of coming off the queue
+	//not a queue/deque since it's size shuold be small
+	//can be a priority queue?
 	std::vector<std::tuple<size_t, std::chrono::system_clock::time_point, std::vector<discord_request>>> m_rate_limited_requests{};
 };
 

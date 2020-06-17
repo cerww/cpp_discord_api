@@ -6,6 +6,7 @@
 #include "partial_message.h"
 #include <deque>
 #include "item_cache.h"
+#include <span>
 
 struct dm_channel :partial_channel {
 	snowflake last_message_id() const noexcept;
@@ -14,10 +15,14 @@ struct dm_channel :partial_channel {
 		return m_recipients | ranges::views::all;
 	};
 
+	auto recipients_list() const noexcept {
+		return m_recipients | ranges::views::values | ranges::views::all;
+	};
+
 	timestamp last_pin_timestamp() const noexcept;
 
-	auto msg_cache() const noexcept {
-		return m_msg_cache.data() | ranges::views::all;
+	std::span<const dm_message> msg_cache() const noexcept {
+		return m_msg_cache.data();
 	};
 
 private:

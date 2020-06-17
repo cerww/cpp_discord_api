@@ -86,25 +86,25 @@ struct client {//<(^.^)>
 	std::function<void(const user&, const dm_channel&, optional_ref<dm_message>, reaction&, shard&)> on_dm_reaction_remove = nothing;
 	std::function<void(const text_channel&, optional_ref<const guild_text_message>, shard&)> on_guild_reaction_remove_all = nothing;
 	std::function<void(const dm_channel&, optional_ref<const dm_message>, shard&)> on_dm_reaction_remove_all = nothing;
-	std::function<void(const guild_member&, shard&)> on_presence_update = nothing;
+	std::function<void(const guild_member&, shard&)> on_presence_update = nothing;	
 	std::function<void(std::vector<snowflake>, const text_channel&, shard&)> on_message_bulk = nothing;
 	std::function<void(std::vector<snowflake>, const dm_channel&, shard&)> on_dm_message_bulk = nothing;
 
-	void rate_limit_global(const std::chrono::system_clock::time_point);
+
 
 	Status status = Status::online;
 	std::string gameName = "";
 	timed_task_executor heartbeat_sender;
 
-	/*
-	void add_shard(shard* sh) {
-		std::lock_guard a(m_shard_mut);
-		m_shards_vec.push_back(sh);
-	}
-	*/
-
 	void stop();
 
+
+	void rate_limit_global(const std::chrono::system_clock::time_point);
+
+	auto& context() {
+		return m_ioc;
+	}
+	
 private:
 	void m_getGateway();
 	std::chrono::system_clock::time_point m_last_global_rate_limit = std::chrono::system_clock::now();

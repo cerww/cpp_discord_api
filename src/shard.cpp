@@ -73,7 +73,7 @@ cerwy::task<voice_connection> shard::connect_voice(const voice_channel& channel)
 	auto ep_json = co_await endpoint;
 	auto session_id = co_await session_id_task;
 	std::cout << ep_json.dump(1);
-	std::string gateway = "wss://"s +  ep_json["endpoint"].get<std::string>() + "/?v=3"s;
+	std::string gateway = "wss://"s +  ep_json["endpoint"].get<std::string>() + "/?v=4"s;
 	std::cout << gateway << std::endl;
 
 	m_things_waiting_for_voice_endpoint2.erase(channel.guild_id());
@@ -334,6 +334,8 @@ void shard::replay_events_for(snowflake guild_id) {
 		for (auto& event : backed_up_events) {
 			m_opcode0(event.first, event.second, 0);
 		}
+	}else {
+		//???????????
 	}
 }
 
@@ -432,13 +434,19 @@ void shard::procces_event<event_name::GUILD_CREATE>(nlohmann::json& data) {
 	}else {
 		guild.m_presences = std::move(data["presences"]);//save it for later
 	}
-	//auto qaudijhsadff = data.get<std::optional<int>>();
 
 	guild.m_shard = this;	
 }
 
+//TODO
+//New Properties on Guild Members Chunk Event
+//April 24, 2020
+//The Guild Members Chunk gateway event now contains two properties : chunk_index and chunk_count.
+//These values can be used to keep track of how many events you have left to receive in response to a Request Guild Members command.
+
 template<>
 void shard::procces_event<event_name::GUILD_MEMBERS_CHUNK>(nlohmann::json& e) {//really bad ;-;
+	std::cout << e.dump(0) << std::endl;
 	Guild& g = m_guilds[e["guild_id"].get<snowflake>()];
 	for (const auto& i : e["members"]) {
 		auto temp_member = i.get<guild_member>();
@@ -446,8 +454,15 @@ void shard::procces_event<event_name::GUILD_MEMBERS_CHUNK>(nlohmann::json& e) {/
 		temp_member.m_guild = &g;
 		g.m_members[id] = std::move(temp_member);
 	}
-
-	if (g.m_members.size() == g.m_member_count) {// it's done sending stuff 
+	
+	auto& chunks_left = m_chunks_left_for_guild[g.id()];
+	
+	if (chunks_left == 0) {
+		chunks_left = e["chunk_count"].get<int>();
+	}
+	
+	if (--chunks_left == 0){
+		m_chunks_left_for_guild.erase(g.id());
 		g.m_is_ready = true;
 		for (const auto& presence : g.m_presences) {
 			auto& member = g.m_members[presence["user"]["id"].get<snowflake>()];
@@ -460,10 +475,11 @@ void shard::procces_event<event_name::GUILD_MEMBERS_CHUNK>(nlohmann::json& e) {/
 		replay_events_for(g.id());
 		
 		//g.m_presences.clear();
-		g.m_presences = 0;//to deallocate memory, .clear keeps the buffer
+		g.m_presences = 0;//set to int to deallocate memory, .clear keeps the buffer		
 	}
 }
 
+/*
 template<typename T>
 struct always_map{
 	constexpr always_map(T a):m_thing(std::forward<T>(a)){}
@@ -519,6 +535,7 @@ struct always_map{
 private:
 	T m_thing;
 };
+*/
 
 template <>
 void shard::procces_event<event_name::MESSAGE_CREATE>(nlohmann::json& e) {
@@ -526,13 +543,13 @@ void shard::procces_event<event_name::MESSAGE_CREATE>(nlohmann::json& e) {
 	if (auto it = m_text_channel_map.find(channel_id); it != m_text_channel_map.end()) {
 
 		text_channel& ch = it->second;
-		auto msg = [&]()->guild_text_message {//iife
-			if(!e["mentions"].empty())
-				return create_msg<guild_text_message>(ch, e, m_guilds[ch.m_guild_id].m_members);
-
-			auto& member = m_guilds[ch.m_guild_id].m_members[e["author"]["id"].get<snowflake>()];
-			return create_msg<guild_text_message>(ch, e, always_map<guild_member&>(member));
-		}();
+		auto& guild = ch.guild();
+		if(!guild.m_is_ready) {
+			m_backed_up_events[guild.id()].emplace_back(std::move(e), event_name::MESSAGE_CREATE);
+			return;
+		}
+		
+		auto msg = create_msg<guild_text_message>(ch, e, m_guilds[ch.m_guild_id].m_members);	
 		
 		m_parent->on_guild_text_msg(ch.p_add_msg(std::move(msg)), *this);
 	}else {//dm msg		
@@ -728,7 +745,7 @@ void shard::procces_event<event_name::GUILD_EMOJI_UPDATE>(nlohmann::json& e){
 };
 
 template<>
-void shard::procces_event<event_name::GUILD_INTEGRATIONS_UPDATE>(nlohmann::json&){
+void shard::procces_event<event_name::GUILD_INTEGRATIONS_UPDATE>(nlohmann::json& event){
 	//what is this ;-;
 };
 
@@ -787,7 +804,7 @@ void shard::procces_event<event_name::GUILD_ROLE_DELETE>(nlohmann::json& e){
 	const guild_role old_role = std::move(guild.m_roles.extract(role_id).mapped());
 	for (auto& member : guild.mutable_members_list()) {		
 		erase_first_quick(member.m_roles, old_role.id());
-	}
+	}	
 	m_parent->on_role_delete(guild, old_role, *this);
 };
 
@@ -919,7 +936,9 @@ void shard::procces_event<event_name::MESSAGE_REACTION_REMOVE>(nlohmann::json& e
 		auto& channel = it->second;
 		auto& member = channel.m_guild->m_members[e["user_id"].get<snowflake>()];
 		auto msg_it = ranges::find_if(channel.m_msg_cache.data(), id_equal_to(e["message_id"].get<snowflake>()));
+		
 		if (msg_it != channel.msg_cache().end()) {
+			//message is still in msg_cache
 			m_parent->on_guild_reaction_add(
 				member, 
 				channel,
@@ -928,6 +947,7 @@ void shard::procces_event<event_name::MESSAGE_REACTION_REMOVE>(nlohmann::json& e
 				*this
 			);
 		}else {
+			//message has been removed from msg_cache, create temp_reaction, reaction.count is no longer accurate
 			reaction temp;
 			temp.m_count = 0;
 			temp.m_emoji = std::move(emojiy);
@@ -990,15 +1010,16 @@ void shard::procces_event<event_name::PRESENCE_UPDATE>(nlohmann::json& e){
 	auto id_it = guild.m_members.find(id);
 	if (id_it == guild.m_members.end())
 		return;
+	
 	auto& user = id_it->second;
-	if (auto it = e.find("status"); it != e.end())
-		user.m_status = string_to_status(it->get<std::string>());
+	if (const auto status_it = e.find("status"); status_it != e.end())
+		user.m_status = string_to_status(status_it->get<std::string>());
 
 	user.m_roles = e.value("roles", user.m_roles);
-	if (auto it = e.find("game"); it != e.end()) {
-		auto t = e["game"];
-		if (!t.is_null())
-			user.m_game.emplace(t.get<activity>());
+	if (const auto it = e.find("game"); it != e.end()) {
+		const auto game = *it;
+		if (!game.is_null())
+			user.m_game.emplace(game.get<activity>());
 		else
 			user.m_game = std::nullopt;
 	}
@@ -1045,11 +1066,13 @@ void shard::procces_event<event_name::VOICE_STATE_UPDATE>(nlohmann::json& e){
 	const auto it = ranges::find_if(guild.m_voice_states, [&](const auto& a) {return a.user_id() == user_id; });
 	if(it != guild.m_voice_states.end()) {
 		//update the state
-		if(e.count("channel_id")) //wat does this do ;-;
-			*it = e.get<voice_state>();
+		//contains no channel_id => connect to no channel=>disconected
+		if(e.contains("channel_id")) //wat does this do ;-;
+			*it = e.get<voice_state>();//update it
 		else 
 			guild.m_voice_states.erase(it);		
 	}else {
+		//new voice_state
 		guild.m_voice_states.push_back(e.get<voice_state>());
 	}
 };
@@ -1276,6 +1299,17 @@ rq::create_dm shard::create_dm(const user& user) {
 	nlohmann::json body;
 	body["recipient_id"] = user.id();
 	return send_request<rq::create_dm>(body.dump());
+}
+
+rq::get_guild_integrations shard::get_guild_integrations(const partial_guild& g) {
+	return send_request<rq::get_guild_integrations>(g);
+}
+
+rq::create_guild_integration shard::create_guild_integration(const partial_guild& g, std::string type, snowflake id) {
+	nlohmann::json body;
+	body["type"] = type;
+	body["id"] = id;
+	return send_request<rq::create_guild_integration>(body.dump(), g);
 }
 
 rq::delete_channel shard::delete_channel(const partial_channel& ch) {

@@ -4,7 +4,6 @@
 #include <boost/asio.hpp>
 #include <boost/beast.hpp>
 #include "higher_order_functions.h"
-#include <range/v3/all.hpp>
 #include <cctype>
 #include <boost/beast/ssl.hpp>
 

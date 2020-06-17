@@ -93,6 +93,9 @@ cerwy::task<void> init_shard(const int shard_number, shard& me, boost::asio::io_
 			);
 			buffer.consume(n);
 			auto op = json["op"].get<int>();
+			
+			//std::cout << json << std::endl;
+			
 			me.doStuff(std::move(json), op);
 		}
 	} catch (...) {

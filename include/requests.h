@@ -8,6 +8,7 @@
 #include "invite.h"
 #include <boost/asio.hpp>
 #include <range/v3/all.hpp>
+#include "guild_integration.h"
 
 
 // clang-format off
@@ -186,8 +187,8 @@ namespace rq {
 					me->await_suspend(h);
 				}
 
-				void await_resume() {
-					
+				decltype(auto) await_resume() {
+					return me->await_resume();
 				}
 				
 			};
@@ -724,6 +725,34 @@ namespace rq {
 		static std::string target(const std::string_view code) {
 			return "/invites/{}"_format(code);
 		}
+	};
+
+	struct get_guild_integrations:
+		request_base<get_guild_integrations>,
+		get_verb
+	{
+		using request_base::request_base;
+		using return_type = std::vector<guild_integration>;
+
+		static std::string target(const partial_guild& guild) {
+			return "/guilds/{}/integrations"_format(guild.id().val);
+		}
+		
+	};
+
+	struct create_guild_integration:
+		request_base<create_guild_integration>,
+		post_verb,
+		json_content_type {
+
+		using request_base::request_base;
+		using return_type = void;
+		
+		static std::string target(const partial_guild& g) {
+			return "/guilds/{}/integrations"_format(g.id().val);
+		}
+		
+		
 	};
 	
 	//not needed ;-;

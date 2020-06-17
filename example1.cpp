@@ -2,6 +2,7 @@
 #include <fstream>
 #include "async_mutex.h"
 #include "modify_guild_settings.h"
+#include "mp3_audio_source.h"
 
 
 using namespace std::literals;
@@ -11,12 +12,19 @@ std::string getFileContents(const std::string& filePath, decltype(std::ios::in) 
 	std::ifstream file(filePath, mode);
 	file.seekg(0, std::ios::end);
 	int filesize = (int)file.tellg();
-	file.seekg(0, std::ios::beg);
+	file.seekg(0, std::ios::beg);	
 	filesize -= (int)file.tellg();
 	fileContents.resize(filesize);
 	file.read(fileContents.data(), filesize);
 	file.close();
 	return fileContents;
+}
+
+
+cerwy::task<void> do_audio_thingy(cerwy::task<voice_connection> vc_task) {
+	voice_connection channel = co_await vc_task;
+	co_await channel.send(audio_from_mp3("C:/Users/cerw/Downloads/a2.mp3"));
+	
 }
 
 //spam bot
@@ -39,7 +47,7 @@ int main() {
 			for (auto&& a : msg.guild().voice_channel_ids()) {
 				std::cout << a.val << ' ' << std::endl;
 			}
-			connashk = s.connect_voice(msg.guild().voice_channels()[0]);
+			do_audio_thingy(s.connect_voice(msg.guild().voice_channels()[0]));
 		}
 		else if (msg.content() == "watland") {
 			//s.delete_message(msgs.back()).get();

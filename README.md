@@ -17,5 +17,9 @@ Dependancies:
 
 -C++20 Concepts
 
+-minimp3
+
+-libopus
+
 
 https://youtu.be/RrGX7g9xsY0 for working example

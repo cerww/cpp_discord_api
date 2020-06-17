@@ -2,20 +2,20 @@
 #include <boost/asio.hpp>
 #include <boost/beast.hpp>
 #include <boost/beast/websocket.hpp>
-#include "rename_later_5.h"
-#include "timed_task_executor.h"
+//#include "rename_later_5.h"
+//#include "timed_task_executor.h"
 #include "ref_count_ptr.h"
 #include "snowflake.h"
 #include "web_socket_session_impl.h"
-#include <fmt/core.h>
 #include "task_completion_handler.h"
 #include "voice_channel.h"
+#include "opus_encoder.h"
 
 
 struct discord_voice_connection_impl :
 		ref_counted {
 
-	explicit discord_voice_connection_impl(web_socket_session sock);
+	explicit discord_voice_connection_impl(web_socket_session sock, boost::asio::io_context& ioc);
 
 	discord_voice_connection_impl(const discord_voice_connection_impl&) = delete;
 	discord_voice_connection_impl(discord_voice_connection_impl&&) = delete;
@@ -31,15 +31,15 @@ struct discord_voice_connection_impl :
 	snowflake guild_id;
 
 	std::string token;
-	std::string endpoint;
+	std::string web_socket_endpoint;
 	std::string session_id;
 
-	timed_task_executor* heartbeat_sender = nullptr;
+	//timed_task_executor* heartbeat_sender = nullptr;
 
 	web_socket_session socket;
 
 	int heartbeat_interval = 0;
-	int ssrc = 0;
+	uint32_t ssrc = 0;
 
 	union {
 		const voice_channel* channel;
@@ -62,26 +62,12 @@ struct discord_voice_connection_impl :
 		socket.start_reads();
 	}
 
-	decltype(auto) ioc() {
+	decltype(auto) context() {
 		return socket.socket().get_executor();
 	}
 
 
-	cerwy::task<void> control_speaking(bool is_speaking = true) {
-		std::string msg = fmt::format(R"(
-{
-    "op": 5,
-    "d": {
-        "speaking": {},
-        "delay": {},
-        "ssrc": 1
-    }
-}
-)", is_speaking, delay);
-
-		co_await socket.send_thing(std::move(msg));
-
-	}
+	cerwy::task<void> control_speaking(int is_speaking);
 
 	cerwy::task<void> send_silent_frames();
 
@@ -90,15 +76,21 @@ struct discord_voice_connection_impl :
 		socket.close(1000);
 	}
 
-	cerwy::task<void> send_voice();
+	cerwy::task<void> send_voice(const audio_data&);
 
 private:
 	std::string m_ip;
 	int m_port = 0;
 	int m_hb_number = 1;
 	std::vector<std::string> m_modes;
+	opus_encoder m_opus_encoder = opus_encoder(48000, 2, OPUS_APPLICATION_AUDIO);
+	uint32_t m_timestamp = 0;
+	boost::asio::ip::udp::endpoint m_my_endpoint;
 
-	std::vector<int> m_secret_key;
+	std::vector<std::byte> m_secret_key;
+
+	//header is nonce
+	std::vector<std::byte> encrypt_xsalsa20_poly1305(std::array<std::byte,12> header, std::span<const std::byte> audio_data);
 
 	cerwy::task<void> send_heartbeat();
 
@@ -116,6 +108,7 @@ private:
 
 	cerwy::task<void> connect_udp();
 
+	cerwy::task<void> do_ip_discovery();
 };
 
 struct voice_connection {
@@ -130,19 +123,22 @@ struct voice_connection {
 	~voice_connection() {
 		disconnect();
 	};
-
+private:
 	explicit voice_connection(ref_count_ptr<discord_voice_connection_impl> connection):
 		m_connection(std::move(connection)) {}
-
+public:
 	void disconnect() {
-		m_connection->close();
-		m_connection = nullptr;
+		if (m_connection) {
+			m_connection->close();
+			m_connection = nullptr;
+		}
 	}
 
-	cerwy::task<void> send() {
-		return m_connection->send_voice();
+	cerwy::task<void> send(const audio_data& data) {
+		return m_connection->send_voice(data);
 	};
 
 private:
 	ref_count_ptr<discord_voice_connection_impl> m_connection = nullptr;
+	friend cerwy::task<voice_connection> voice_connect_impl(shard& me, const voice_channel& ch, std::string endpoint, std::string token, std::string session_id);
 };

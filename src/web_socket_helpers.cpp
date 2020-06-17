@@ -1,6 +1,7 @@
 #include "web_socket_helpers.h"
 #include "parsing_stuff.h"
 #include <charconv>
+#include <range/v3/all.hpp>
 
 
 namespace rawr {
@@ -94,8 +95,11 @@ cerwy::task<boost::beast::websocket::stream<boost::beast::ssl_stream<boost::asio
 	std::string_view full_uri,
 	boost::asio::ip::tcp::resolver& resolver,
 	boost::asio::ssl::context& ssl_ctx) {
-	auto [service, host, port,path] = rawr::parse_url_better(full_uri);
 
+	constexpr int a = sizeof(boost::asio::ssl::context);
+	
+	auto [service, host, port,path] = rawr::parse_url_better(full_uri);
+	
 	if (service == "wss") {
 		service = "https";
 	}

@@ -346,7 +346,16 @@ namespace cerwy {
 		return r;		
 	}
 
+	inline task<void> make_ready_void_task() {
+		promise<void> p;
+		auto r = p.get_task();
+		p.set_value();
+		return r;
+	}
 
+	const static task<void> completed_action = make_ready_void_task();
+	
+	
 	template<typename T>
 	using awaitable_result_t = decltype(std::declval<T>().await_result());
 

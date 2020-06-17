@@ -3,6 +3,7 @@
 #include <deque>
 #include <array>
 #include <memory>
+#include <span>
 
 //TODO: change these to return std::span<T> when it's here
 template<typename T, size_t size>
@@ -12,9 +13,9 @@ struct stack_item_cache {
 		m_position = m_position % size;
 	}
 
-	std::array<T, size>& data() noexcept { return m_cache; }
+	std::span<T, size> data() noexcept { return m_cache; }
 
-	const std::array<T, size>& data() const noexcept { return m_cache; }
+	std::span<const T, size> data() const noexcept { return m_cache; }
 
 private:
 	std::array<T, size> m_cache{};
@@ -50,8 +51,9 @@ struct dynamic_item_cache {
 		return m_cache_size;
 	}
 
-	std::vector<T>& data() noexcept { return m_cache; }//dangerous?
-	const std::vector<T>& data() const noexcept { return m_cache; }
+	std::span<T> data() noexcept { return m_cache; }//dangerous?
+	
+	std::span<const T> data() const noexcept { return m_cache; }//dangerous?
 
 private:
 	std::vector<T> m_cache;

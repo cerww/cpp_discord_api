@@ -6,6 +6,7 @@
 #include "async_mutex.h"
 
 //TODO, remove this with create_shard when i can
+//things that manages writes to socket
 struct rename_later_5 {
 	explicit rename_later_5(boost::beast::websocket::stream<boost::beast::ssl_stream<boost::asio::ip::tcp::socket>>& sock):
 		m_socket(sock) {

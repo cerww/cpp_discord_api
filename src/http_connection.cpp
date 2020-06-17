@@ -39,7 +39,7 @@ cerwy::task<boost::system::error_code> async_connect_with_no_delay(boost::asio::
 	boost::system::error_code ec;
 	for (auto&& thing : results) {
 		sock.open(thing.endpoint().protocol());
-		sock.set_option(boost::asio::ip::tcp::no_delay(true));;
+		sock.set_option(boost::asio::ip::tcp::no_delay(true));
 		ec = co_await sock.async_connect(thing, use_task_return_ec);
 		if (!ec)
 			break;
@@ -69,7 +69,7 @@ http_connection::http_connection(client* t,boost::asio::io_context& ioc):
 	m_socket(ioc, m_sslCtx),
 	m_client(t)
 {	
-	//i use try_pop_until, idk how to make it work with coroutines
+	
 	
 	
 }
@@ -295,7 +295,7 @@ cerwy::task<boost::beast::error_code> http_connection2::async_connect() {
 }
 
 cerwy::task<void> http_connection2::send_to_discord(discord_request r) {
-	auto lock = co_await m_mut.async_lock();//TODO this uses a stack, not a queue ;-;
+	auto lock = co_await m_mut.async_lock();//TODO is this still needed?
 	const size_t major_param_id = get_major_param_id(std::string_view(r.req.target().data(), r.req.target().size()));
 
 	if (m_global_rate_limited.load()) {
@@ -310,6 +310,7 @@ cerwy::task<void> http_connection2::send_to_discord(discord_request r) {
 		r.state->notify();
 }
 
+//pre-con: request isn't rate-limited already
 cerwy::task<bool> http_connection2::send_to_discord_(discord_request& r) {
 	//std::lock_guard<std::mutex> locky(r.state->ready_mut);	
 	co_await send_rq(r);
@@ -351,7 +352,8 @@ cerwy::task<bool> http_connection2::send_to_discord_(discord_request& r) {
 			co_return false;
 		}
 	}//this shuoldb't be riunning often ;-;
-
+	
+	//only runs when requests left == 0
 	if (auto it = r.state->res.find("X-RateLimit-Remaining"); it != r.state->res.end()) {
 
 		const auto time = std::chrono::system_clock::time_point(std::chrono::seconds([&]() {//iife
@@ -388,7 +390,7 @@ cerwy::task<void> http_connection2::start_sending() {
 	}
 }
 
-void http_connection2::resend_rate_limted_requests_for(size_t) {
+void http_connection2::resend_rate_limted_requests_for(size_t id) {
 	//auto v = *ranges::lower_bound(m_rate_limited_requests, id, std::less(), get_n<1>());;
 	auto stuff = std::move(m_rate_limited_requests.front());
 	m_rate_limited_requests.erase(m_rate_limited_requests.begin());
@@ -413,23 +415,24 @@ cerwy::task<void> http_connection2::reconnect() {
 }
 
 cerwy::task<void> http_connection2::send_rq(discord_request& request) {
+	//TODO remove gotos
+redo:
 	auto [ec, n] = co_await boost::beast::http::async_write(m_socket, request.req, use_task_return_tuple2);
 
-redo:
 	if (ec) {
 		std::cout << "send_rq " << ec << std::endl;
 		if (ec.value() == 100053) {
 			co_await reconnect();
+			goto redo;
 		}
-		goto redo;
 	}
 	auto[ec2,n2] = co_await boost::beast::http::async_read(m_socket, m_buffer, request.state->res, use_task_return_tuple2);
 	if (ec) {
 		std::cout << "send_rq " << ec << std::endl;
 		if (ec.value() == 1) {
 			co_await reconnect();
+			goto redo;
 		}
-		goto redo;
 	}
 	
 }

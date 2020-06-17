@@ -86,6 +86,13 @@ struct modify_guild_settings {
 		};
 	}
 
+	auto voice_region(::voice_region& n) {
+		return modify_guild_settings<Ts..., guild_settings::voice_region>{
+			std::tuple_cat(std::move(stuff),
+				std::tuple(guild_settings::voice_region{ std::string(n.id()) }))
+		};
+	}
+
 	auto verification_level(int n) {
 		return modify_guild_settings<Ts..., guild_settings::verification_level>{
 			std::tuple_cat(std::move(stuff),

@@ -16,14 +16,14 @@ struct guild_member :partial_guild_member {
 	const Guild& guild() const noexcept;;
 
 	auto roles() const {
-		return role_ids() | ranges::views::transform(hof::map_with(parent_roles()));
+		return role_ids() | ranges::views::transform(hof::map_with(id_to_role_map()));
 	}
 
 	Status status() const noexcept;
 private:
 	void set_presence(const partial_presence_update& presence_update);
 
-	discord_obj_map<guild_role> parent_roles() const noexcept;
+	discord_obj_map<guild_role> id_to_role_map() const noexcept;
 
 	Status m_status = Status::online;
 	std::optional<activity> m_game;

@@ -37,6 +37,8 @@ private:
 	mutable int m_ref_count = 0;//so i can have ref_count_ptr<const T>
 };
 
+/// @brief intrusive ptr
+/// @tparam T 
 template<typename T>
 struct ref_count_ptr {
 	ref_count_ptr() = default;
@@ -99,7 +101,8 @@ struct ref_count_ptr {
 	operator ref_count_ptr<const T>() const {
 		return ref_count_ptr<const T>(m_self);
 	}
-
+	/// @brief 
+	/// @return raw pointer 
 	T* get() const noexcept {
 		return m_self;
 	}
