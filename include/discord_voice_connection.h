@@ -10,6 +10,7 @@
 #include "task_completion_handler.h"
 #include "voice_channel.h"
 #include "opus_encoder.h"
+#include "resume_on_strand.h"
 
 
 struct discord_voice_connection_impl :
@@ -34,7 +35,7 @@ struct discord_voice_connection_impl :
 	std::string web_socket_endpoint;
 	std::string session_id;
 
-	//timed_task_executor* heartbeat_sender = nullptr;
+	boost::asio::io_context::strand* strand;
 
 	web_socket_session socket;
 
@@ -76,7 +77,53 @@ struct discord_voice_connection_impl :
 		socket.close(1000);
 	}
 
-	cerwy::task<void> send_voice(const audio_data&);
+	template<typename T>
+	cerwy::task<void> send_voice(const T& data) {
+		//....idk wat to do ;-;	
+		//step 1: turn voice_audio into opus
+		//step 2: encrypt voice_audio with libsodium
+		//step 3: put it all together
+		using namespace std::literals;
+		using std::chrono::duration_cast;
+
+		co_await control_speaking(1);
+
+		uint16_t sqeuence_number = 0;
+		
+		const auto ssrc_big_end = htonl(ssrc);
+		static constexpr auto time_frame = 20ms;
+		for (const audio_frame frame : data.frames(time_frame)) {
+			const auto _20ms_from_now = std::chrono::steady_clock::now() + time_frame;
+			std::array<std::byte, 12> header{ {} };
+
+			(uint8_t&)header[0] = 0x80;
+			(uint8_t&)header[1] = 0x78;
+
+			(uint16_t&)header[2] = htons(sqeuence_number++);
+
+			(uint32_t&)header[4] = htonl(m_timestamp);
+			(uint32_t&)header[8] = ssrc_big_end;
+
+			//m_opus_encoder.set_bit_rate(64 * 1024);
+			std::array<std::byte, 1000> opus_data{};
+
+			//const std::vector<std::byte> opus_data = m_opus_encoder.encode(frame, 1000);
+			int len = m_opus_encoder.encode_into_buffer(frame, opus_data.data(), opus_data.size());
+
+			const auto encrypted_voice_data = encrypt_xsalsa20_poly1305(header, std::span<std::byte>(opus_data.data(),len));
+
+			auto ec = send_voice_data_udp(encrypted_voice_data);
+
+			m_timestamp += frame.frame_size;
+			co_await wait(duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - _20ms_from_now));
+
+		}
+		co_await control_speaking(0);
+
+		co_await resume_on_strand{*strand};
+
+		co_return;
+	};
 
 private:
 	std::string m_ip;
@@ -109,6 +156,11 @@ private:
 	cerwy::task<void> connect_udp();
 
 	cerwy::task<void> do_ip_discovery();
+
+	//TODO remove these once i get modules
+	[[nodiscard]]cerwy::task<boost::system::error_code> send_voice_data_udp(std::span<const std::byte>);
+
+	[[nodiscard]] cerwy::task<boost::system::error_code> wait(std::chrono::milliseconds);
 };
 
 struct voice_connection {
@@ -134,9 +186,11 @@ public:
 		}
 	}
 
-	cerwy::task<void> send(const audio_data& data) {
+	template<typename T>//audio_source
+	cerwy::task<void> send(const T& data) {
 		return m_connection->send_voice(data);
 	};
+	
 
 private:
 	ref_count_ptr<discord_voice_connection_impl> m_connection = nullptr;

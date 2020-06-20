@@ -350,7 +350,7 @@ void shard::m_sendIdentity()const {
 				"$device":"cerwy"
 			},
 			"compress":false,
-			"large_threshold":250,
+			"large_threshold":51,
 			"shard":[)"s + std::to_string(m_shard_number) + "," + std::to_string(m_parent->num_shards()) + R"(],	
 			"presence":)"s + presence().dump() +
 		"}"s + "}";
@@ -376,8 +376,8 @@ template <>
 void shard::procces_event<event_name::GUILD_CREATE>(nlohmann::json& data) {
 	Guild& guild = m_guilds.insert(std::make_pair(data["id"].get<snowflake>(), data.get<Guild>())).first->second; 	
 	if (guild.m_member_count >= large_threshold) {
-		guild.m_is_ready = false;
-		request_guild_members(guild);
+		guild.m_is_ready = false;		
+		request_guild_members(guild);		
 	} else {
 		//add members to guild
 		for (const auto& member_json : data["members"]) {
@@ -457,7 +457,7 @@ void shard::procces_event<event_name::GUILD_MEMBERS_CHUNK>(nlohmann::json& e) {/
 	
 	auto& chunks_left = m_chunks_left_for_guild[g.id()];
 	
-	if (chunks_left == 0) {
+	if (chunks_left == 0) {//chunks_left has just been initialized
 		chunks_left = e["chunk_count"].get<int>();
 	}
 	
@@ -1060,7 +1060,11 @@ void shard::procces_event<event_name::VOICE_STATE_UPDATE>(nlohmann::json& e){
 	const auto user_id = e.value("user_id",self_user().id());
 
 	if(user_id == self_user().id()) {
-		m_things_waiting_for_voice_endpoint2[guild.id()].set_value(e["session_id"].get<std::string>());
+		auto it = m_things_waiting_for_voice_endpoint2.find(guild.id());
+		if (it != m_things_waiting_for_voice_endpoint2.end()) {
+			it->second.set_value(e["session_id"].get<std::string>());
+		}
+		//m_things_waiting_for_voice_endpoint2[guild.id()].set_value(e["session_id"].get<std::string>());
 	}
 
 	const auto it = ranges::find_if(guild.m_voice_states, [&](const auto& a) {return a.user_id() == user_id; });

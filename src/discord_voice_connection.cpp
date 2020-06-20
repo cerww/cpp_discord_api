@@ -47,59 +47,7 @@ cerwy::task<void> discord_voice_connection_impl::send_silent_frames() {
 
 using namespace std::literals;
 
-cerwy::task<void> discord_voice_connection_impl::send_voice(const audio_data& data) {
-	//....idk wat to do ;-;	
-	//step 1: turn voice_audio into opus
-	//step 2: encrypt voice_audio with libsodium
-	//step 3: put it all together
 
-
-	co_await control_speaking(1);
-
-	uint16_t sqeuence_number = 0;
-
-	int a = sodium_init();
-
-	const auto ssrc_big_end = htonl(ssrc);
-
-	for (const audio_frame frame : data.frames(20ms)) {
-		std::array<std::byte, 12> header{{}};
-		//std::fill(header.begin(), header.end(), std::byte(0));
-		
-		(uint8_t&)header[0] = 0x80;
-		(uint8_t&)header[1] = 0x78;
-
-		(uint16_t&)header[2] = htons(sqeuence_number++);
-
-		(uint32_t&)header[4] = htonl(m_timestamp);
-		(uint32_t&)header[8] = ssrc_big_end;
-		
-		//crypto_secretbox_xsalsa20poly1305()
-		//const std::span<std::byte> data_as_byte_span = std::span((std::byte*)frame.frame_data.data(), frame.frame_data.size_bytes());
-
-		//m_opus_encoder.set_bit_rate(64 * 1024);
-		//std::array<std::byte, 1000> opus_data{};
-			
-		const std::vector<std::byte> opus_data = m_opus_encoder.encode(frame, 1000);
-		//int len = m_opus_encoder.encode_into_buffer(frame, opus_data.data(), opus_data.size());
-		
-		const auto encrypted_voice_data = encrypt_xsalsa20_poly1305(header, opus_data);
-
-		auto [ec, n] = co_await voice_socket.async_send(boost::asio::buffer(encrypted_voice_data), use_task_return_tuple2);
-		//voice_socket.async_send(boost::asio::buffer(encrypted_voice_data), [](auto&&...){});
-
-		m_timestamp += frame.frame_size;
-		boost::asio::steady_timer timer(context());
-		timer.expires_after(19ms);
-		auto ec3 = co_await timer.async_wait(use_task_return_ec);
-
-	}
-	co_await control_speaking(0);
-
-	//co_await resume_on_strand{  };
-	
-	co_return;
-}
 
 /*
 TODO: convert these to C++
@@ -141,6 +89,8 @@ std::vector<std::byte> discord_voice_connection_impl::encrypt_xsalsa20_poly1305(
 	std::fill(nonce.begin(), nonce.end(), std::byte(0));
 	
 	std::copy(header.begin(), header.end(), nonce.begin());
+	
+	int abcd = sodium_init();
 	
 	int result = crypto_secretbox_easy(
 		(unsigned char*)return_val.data() + header_size_bytes,
@@ -356,4 +306,16 @@ cerwy::task<void> discord_voice_connection_impl::do_ip_discovery() {
 	);
 	
 	co_return;
+}
+
+cerwy::task<boost::system::error_code> discord_voice_connection_impl::send_voice_data_udp(std::span<const std::byte> data) {
+	auto [ec, n] = co_await voice_socket.async_send(boost::asio::buffer(data.data(),data.size_bytes()), use_task_return_tuple2);
+	co_return ec;
+}
+
+cerwy::task<boost::system::error_code> discord_voice_connection_impl::wait(std::chrono::milliseconds time) {
+	boost::asio::steady_timer timer(context());
+	timer.expires_after(19ms);
+	auto ec3 = co_await timer.async_wait(use_task_return_ec);
+	co_return ec3;
 }

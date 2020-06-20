@@ -22,6 +22,7 @@ cerwy::task<voice_connection> voice_connect_impl(shard& me, const voice_channel&
 	vc->token = std::move(token);
 	vc->web_socket_endpoint = std::move(endpoint);
 	vc->session_id = std::move(session_id);
+	vc->strand = &me.strand();
 	//vc->heartbeat_sender = &me.parent_client().heartbeat_sender;
 
 	cerwy::promise<void> p;

@@ -59,7 +59,7 @@ namespace detail_iterator_facade {
 
 template<typename cursor>
 struct iterator_facade {
-	static constexpr bool is_is_done_iterator = has_done<cursor>::value;
+	static constexpr bool is_is_done_iterator = detail_iterator_facade::has_done<cursor>::value;
 	static_assert(detail_iterator_facade::incrementable<cursor>::value&& detail_iterator_facade::readable<cursor>::value && (detail_iterator_facade::equality_comparable<cursor>::value || is_is_done_iterator));
 
 	constexpr iterator_facade() = default;

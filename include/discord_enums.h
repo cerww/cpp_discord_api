@@ -77,12 +77,12 @@ inline event_name to_event_name(std::string_view name) {
 		}
 		if (name == "EMOJI_UPDATE")return event_name::GUILD_EMOJI_UPDATE;
 		if (name == "INTEGRATIONS_UPDATE")return event_name::GUILD_INTEGRATIONS_UPDATE;
-		if (name.starts_with("MEMBER_")) {
-			name.remove_prefix("MEMBER_"sv.size());
-			if (name == "ADD")return event_name::GUILD_MEMBER_ADD;
-			if (name == "REMOVE")return event_name::GUILD_MEMBER_REMOVE;
-			if (name == "UPDATE")return event_name::GUILD_MEMBER_UPDATE;
-			if (name == "CHUNK")return event_name::GUILD_MEMBERS_CHUNK;
+		if (name.starts_with("MEMBER")) {
+			name.remove_prefix("MEMBER"sv.size());
+			if (name == "_ADD")return event_name::GUILD_MEMBER_ADD;
+			if (name == "_REMOVE")return event_name::GUILD_MEMBER_REMOVE;
+			if (name == "_UPDATE")return event_name::GUILD_MEMBER_UPDATE;
+			if (name == "S_CHUNK")return event_name::GUILD_MEMBERS_CHUNK;
 			return {};
 		}
 		if (name.starts_with("ROLE_")) {
