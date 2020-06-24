@@ -12,7 +12,7 @@ private:
 	partial_emoji m_emoji;
 
 	friend void from_json(const nlohmann::json&, reaction&);
-	friend struct shard;
+	friend struct internal_shard;
 };
 
 void from_json(const nlohmann::json& json, reaction& r);

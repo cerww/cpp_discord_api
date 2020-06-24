@@ -37,7 +37,7 @@ static void mp3dec_skip_id3_aaa(const uint8_t** pbuf, size_t* pbuf_size)
 }
 */
 
-//skips ID3, or sets it back to std::ios::beg, returns number of chars read
+//skips ID3, or sets it back to begining, returns number of chars read
 int skip_id3(std::ifstream& file) {
     std::array<char, 3> id3{};
 
@@ -47,8 +47,8 @@ int skip_id3(std::ifstream& file) {
         std::array<char, 7> meta_meta_data{};
         file.read(meta_meta_data.data(), 7);
 		
-        const int id3v2size = (((id3[6] & 0x7f) << 21) | ((id3[7] & 0x7f) << 14) |
-            ((id3[8] & 0x7f) << 7) | (id3[9] & 0x7f));
+        const int id3v2size = (((meta_meta_data[3] & 0x7f) << 21) | ((meta_meta_data[4] & 0x7f) << 14) |
+            ((meta_meta_data[5] & 0x7f) << 7) | (meta_meta_data[6] & 0x7f));
 
         std::vector<char> id3_rest(id3v2size);
 

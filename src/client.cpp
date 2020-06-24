@@ -1,12 +1,14 @@
 #include "client.h"
-#include "shard.h"
+#include "internal_shard.h"
 #include <boost/asio.hpp>
 #include <boost/asio/ssl.hpp>
 #include "init_shard.h"
 
-client::client(int threads):
+
+client::client(int threads, intents intents):
 	m_ioc(threads),
-	m_threads(std::max(threads-1,0)){
+	m_threads(std::max(threads-1,0)),
+	m_intents(intents){
 	
 }
 
@@ -14,7 +16,7 @@ void client::run() {
 	m_getGateway();
 	for (int i = 0; i < m_num_shards; ++i) {
 		//create_shard(i, this, m_ioc, m_gateway);
-		m_shards.emplace_back(std::make_unique<shard>(i,this,m_ioc,m_gateway));
+		m_shards.emplace_back(std::make_unique<internal_shard>(i,this,m_ioc,m_gateway,m_intents));
 	}
 	//m_th
 

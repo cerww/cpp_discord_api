@@ -1,11 +1,11 @@
 #pragma once
-#include "shard.h"
+#include "internal_shard.h"
 
 
-//gotta move functions outside of shard.cpp, it's too big to compile without /bigobj on vs;-;
+//gotta move functions outside of internal_shard.cpp, it's too big to compile without /bigobj on vs;-;
 cerwy::task<void> init_shard(
 	int shardN,
-	shard& t_parent,
+	internal_shard& t_parent,
 	boost::asio::io_context& ioc, 
 	std::string_view gateway
 );

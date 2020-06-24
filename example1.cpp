@@ -23,7 +23,8 @@ std::string getFileContents(const std::string& filePath, decltype(std::ios::in) 
 
 cerwy::task<void> do_audio_thingy(cerwy::task<voice_connection> vc_task) {
 	voice_connection channel = co_await vc_task;
-	co_await channel.send(audio_from_mp3("C:/Users/cerw/Downloads/a2.mp3"));
+	//co_await channel.send(audio_from_mp3("C:/Users/cerw/Downloads/a2.mp3"));
+	co_await channel.send(mp3_audio_source(from_file{ "C:/Users/cerw/Downloads/a2.mp3" }));
 	
 }
 
@@ -41,9 +42,11 @@ int main() {
 	c.on_guild_text_msg = [&](const guild_text_message& msg, shard& s) {
 		if (msg.content() == "rawrmander") {
 			//int i = 0;
+			/*
 			for (auto&& a : s.voice_channels()) {
 				std::cout << a.first.val << ' ' << a.second.guild_id().val << std::endl;;
 			}
+			*/
 			for (auto&& a : msg.guild().voice_channel_ids()) {
 				std::cout << a.val << ' ' << std::endl;
 			}

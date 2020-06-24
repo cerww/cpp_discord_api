@@ -7,7 +7,7 @@ struct channel_catagory :guild_channel {
 private:
 
 	friend void from_json(const nlohmann::json& json, channel_catagory& c);
-	friend struct shard;
+	friend struct internal_shard;
 	friend struct client;
 };
 

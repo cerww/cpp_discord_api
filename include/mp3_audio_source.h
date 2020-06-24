@@ -26,7 +26,7 @@ struct mp3_audio_source {
 	
 	struct frames_range {
 		static constexpr int max_samples_size_for_stack_storage = 960 * 2;//20ms for 48k hz 2 channels
-		static constexpr int array_size = MINIMP3_MAX_SAMPLES_PER_FRAME +max_samples_size_for_stack_storage;
+		static constexpr int array_size = MINIMP3_MAX_SAMPLES_PER_FRAME + max_samples_size_for_stack_storage;
 		
 		explicit frames_range(const std::span<const std::byte> data, const std::chrono::milliseconds f_milliseconds) :
 			file_data(data),
@@ -44,7 +44,7 @@ struct mp3_audio_source {
 				m_frame_length(f_len),
 				m_pcm_variant(std::in_place_type<std::array<int16_t, array_size>>)/*for init*/ {
 
-				auto& pcm_for_init = std::get<0>(m_pcm_variant);
+				auto& pcm_for_init = std::get<std::array<int16_t,array_size>>(m_pcm_variant);
 
 				//read 1 frame to get sampleing_rate and channels
 				while (m_samples_in_thingy == 0 && !m_file_data.empty()) {
@@ -52,13 +52,16 @@ struct mp3_audio_source {
 					const int samples = mp3dec_decode_frame(m_mp3dec, (uint8_t*)m_file_data.data(), m_file_data.size(), pcm_for_init.data(), &frame_info);
 
 					m_file_data = m_file_data.subspan(frame_info.frame_bytes);
+					
 					m_channels = frame_info.channels;
 					m_sampling_rate = frame_info.hz;
-					m_samples_in_thingy += samples * m_channels;
 					m_current_frame_bitrate = frame_info.bitrate_kbps * 1024;
+					
+					m_samples_in_thingy += samples * m_channels;
 				}
 
 				if (samples_needed() > max_samples_size_for_stack_storage) {
+					//switch to vector if more space is needed
 					std::vector<int16_t> temp(((int)MINIMP3_MAX_SAMPLES_PER_FRAME + samples_needed()));
 					std::copy(pcm_for_init.begin(), pcm_for_init.end(), temp.begin());
 					m_pcm_variant = std::move(temp);
@@ -94,10 +97,12 @@ struct mp3_audio_source {
 			std::span<const std::byte> m_file_data = {};
 			mp3dec_t* m_mp3dec = nullptr;
 			std::chrono::milliseconds m_frame_length = std::chrono::milliseconds(0);
+			
 			std::variant<
 				std::array<int16_t, array_size>,
 				std::vector<int16_t>
 			> m_pcm_variant;
+			
 			int m_samples_in_thingy = 0;
 			int m_sampling_rate = 0;
 			int m_channels = 1;

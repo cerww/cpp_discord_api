@@ -25,7 +25,7 @@ private:
 	guild_text_message& p_add_msg(guild_text_message msg);
 
 	friend void from_json(const nlohmann::json& json, text_channel& channel);
-	friend struct shard;
+	friend struct internal_shard;
 };
 
 void from_json(const nlohmann::json& json, text_channel& channel);

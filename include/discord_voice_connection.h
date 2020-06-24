@@ -26,6 +26,97 @@ struct discord_voice_connection_impl :
 	discord_voice_connection_impl& operator=(const discord_voice_connection_impl&) = delete;
 
 	~discord_voice_connection_impl() = default;
+	
+	void start() {
+		send_identify();
+		socket.start_reads();
+	}
+
+	decltype(auto) context() {
+		return socket.socket().get_executor();
+	}
+
+	cerwy::task<void> control_speaking(int is_speaking);
+
+	cerwy::task<void> send_silent_frames();
+
+	void close() {
+		is_alive = false;
+		socket.close(1000);
+	}
+
+	template<typename T>
+	cerwy::task<void> send_voice(const T& data) {
+		
+		using namespace std::literals;
+		using std::chrono::duration_cast;
+
+		co_await control_speaking(1);
+		is_playing = true;
+
+		uint16_t sqeuence_number = 0;
+		
+		const auto ssrc_big_end = htonl(ssrc);
+		
+		static constexpr auto time_frame = 20ms;
+
+		auto last_time_sent_packet = std::chrono::steady_clock::now();
+		
+		for (const audio_frame frame : data.frames(time_frame)) {
+			if(std::exchange(is_canceled,false)) {
+
+				co_await control_speaking(0);
+
+				is_playing = false;
+
+				co_await resume_on_strand{ *strand };
+
+				cancel_promise.set_value();
+				
+				co_return;
+			}			
+			std::array<std::byte, 12> header{ {} };
+
+			(uint8_t&)header[0] = 0x80;
+			(uint8_t&)header[1] = 0x78;
+
+			(uint16_t&)header[2] = htons(sqeuence_number++);
+
+			(uint32_t&)header[4] = htonl(m_timestamp);
+			(uint32_t&)header[8] = ssrc_big_end;
+
+			//m_opus_encoder.set_bit_rate(64 * 1024);
+			std::array<std::byte, 1000> opus_data{};
+
+			//const std::vector<std::byte> opus_data = m_opus_encoder.encode(frame, 1000);
+			const int len = m_opus_encoder.encode_into_buffer(frame, opus_data.data(), opus_data.size());
+
+			const auto encrypted_voice_data = encrypt_xsalsa20_poly1305(header, std::span<std::byte>(opus_data.data(),len));
+
+			auto ec = send_voice_data_udp(encrypted_voice_data);
+
+			m_timestamp += frame.frame_size;
+			co_await wait(duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - (last_time_sent_packet += time_frame)));
+
+		}
+		co_await control_speaking(0);
+
+		co_await resume_on_strand{*strand};
+		
+		is_playing = false;
+		
+		co_return;
+	};
+	
+	
+	cerwy::task<void> cancel_current_data() {
+		if(!is_playing || is_canceled) {
+			cerwy::make_ready_void_task();
+		}
+		cancel_promise = cerwy::promise<void>();
+
+		return cancel_promise.get_task();		
+	}
 
 	snowflake channel_id;
 	snowflake my_id;
@@ -47,7 +138,7 @@ struct discord_voice_connection_impl :
 
 		//used in setting up vc only
 		cerwy::promise<void>* waiter = nullptr;
-		
+
 		//only 1 of these two^ will be used at any time ;-;
 		//while setting up, the coroutine has access to the channel
 	};
@@ -58,73 +149,10 @@ struct discord_voice_connection_impl :
 
 	boost::asio::ip::udp::socket voice_socket;
 
-	void start() {
-		send_identify();
-		socket.start_reads();
-	}
-
-	decltype(auto) context() {
-		return socket.socket().get_executor();
-	}
-
-
-	cerwy::task<void> control_speaking(int is_speaking);
-
-	cerwy::task<void> send_silent_frames();
-
-	void close() {
-		is_alive = false;
-		socket.close(1000);
-	}
-
-	template<typename T>
-	cerwy::task<void> send_voice(const T& data) {
-		//....idk wat to do ;-;	
-		//step 1: turn voice_audio into opus
-		//step 2: encrypt voice_audio with libsodium
-		//step 3: put it all together
-		using namespace std::literals;
-		using std::chrono::duration_cast;
-
-		co_await control_speaking(1);
-
-		uint16_t sqeuence_number = 0;
-		
-		const auto ssrc_big_end = htonl(ssrc);
-		static constexpr auto time_frame = 20ms;
-		for (const audio_frame frame : data.frames(time_frame)) {
-			const auto _20ms_from_now = std::chrono::steady_clock::now() + time_frame;
-			std::array<std::byte, 12> header{ {} };
-
-			(uint8_t&)header[0] = 0x80;
-			(uint8_t&)header[1] = 0x78;
-
-			(uint16_t&)header[2] = htons(sqeuence_number++);
-
-			(uint32_t&)header[4] = htonl(m_timestamp);
-			(uint32_t&)header[8] = ssrc_big_end;
-
-			//m_opus_encoder.set_bit_rate(64 * 1024);
-			std::array<std::byte, 1000> opus_data{};
-
-			//const std::vector<std::byte> opus_data = m_opus_encoder.encode(frame, 1000);
-			int len = m_opus_encoder.encode_into_buffer(frame, opus_data.data(), opus_data.size());
-
-			const auto encrypted_voice_data = encrypt_xsalsa20_poly1305(header, std::span<std::byte>(opus_data.data(),len));
-
-			auto ec = send_voice_data_udp(encrypted_voice_data);
-
-			m_timestamp += frame.frame_size;
-			co_await wait(duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - _20ms_from_now));
-
-		}
-		co_await control_speaking(0);
-
-		co_await resume_on_strand{*strand};
-
-		co_return;
-	};
-
+	bool is_playing = false;
+	bool is_canceled = false;
+	cerwy::promise<void> cancel_promise;
+	
 private:
 	std::string m_ip;
 	int m_port = 0;
@@ -190,9 +218,14 @@ public:
 	cerwy::task<void> send(const T& data) {
 		return m_connection->send_voice(data);
 	};
+
+	//todo: rename
+	cerwy::task<void> cancel_current_data() {
+		return m_connection->cancel_current_data();
+	}
 	
 
 private:
 	ref_count_ptr<discord_voice_connection_impl> m_connection = nullptr;
-	friend cerwy::task<voice_connection> voice_connect_impl(shard& me, const voice_channel& ch, std::string endpoint, std::string token, std::string session_id);
+	friend cerwy::task<voice_connection> voice_connect_impl(internal_shard& me, const voice_channel& ch, std::string endpoint, std::string token, std::string session_id);
 };

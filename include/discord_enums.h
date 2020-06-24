@@ -7,7 +7,8 @@ enum class Status {
 	online,
 	idle,
 	invisible,
-	offline
+	offline,
+	unknown //not part of discord api
 };
 
 enum class event_name {
@@ -50,7 +51,6 @@ enum class event_name {
 
 using namespace std::literals;
 
-//TODO reorder these to mkae it chek more common ones first. Or use a trie or something
 inline event_name to_event_name(std::string_view name) {
 	if (name == "HELLO") return event_name::HELLO;
 	if (name == "READY")return event_name::READY;
@@ -124,14 +124,14 @@ inline event_name to_event_name(std::string_view name) {
 
 }
 
-template<typename str_t>
+template<typename str_t>//why is this a template
 inline Status string_to_status(str_t&& string) {
 	if (string == "dnd") return Status::dnd;
 	if (string == "online") return Status::online;
 	if (string == "idle") return Status::idle;
 	if (string == "invisible") return Status::invisible;
 	if (string == "offline") return Status::offline;
-	throw std::runtime_error("invalid string");
+	return Status::unknown;
 }
 
 inline std::string enum_to_string(const Status s) {
@@ -140,7 +140,8 @@ inline std::string enum_to_string(const Status s) {
 	case Status::online: return "online";
 	case Status::idle: return "idle";
 	case Status::invisible: return "invisible";
-	case Status::offline: return "offline";
-	default: return "";
+	case Status::offline: return "offline";		
+	case Status::unknown: return "";
 	}
+	return "";
 }

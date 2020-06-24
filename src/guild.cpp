@@ -1,4 +1,4 @@
-#include "shard.h"
+#include "internal_shard.h"
 #include "snowflake.h"
 #include "guild.h"
 

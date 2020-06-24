@@ -13,7 +13,7 @@
 #include "higher_order_functions.h"
 #include "channel_catagory.h"
 
-struct shard;
+struct internal_shard;
 
 struct Guild :partial_guild {
 	timestamp joined_at() const noexcept;
@@ -88,12 +88,12 @@ private:
 	std::vector<voice_state> m_voice_states{};
 
 
-	shard* m_shard = nullptr;
+	internal_shard* m_shard = nullptr;
 
 	bool m_is_ready = true;
 	nlohmann::json m_presences;
 	friend void from_json(const nlohmann::json& json, Guild& guild);
-	friend struct shard;
+	friend struct internal_shard;
 };
 
 void from_json(const nlohmann::json& json, Guild& guild);

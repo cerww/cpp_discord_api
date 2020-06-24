@@ -11,7 +11,7 @@ private:
 	int m_bitrate = 0;
 
 	friend void from_json(const nlohmann::json& json, voice_channel& out);
-	friend struct shard;
+	friend struct internal_shard;
 };
 
 void from_json(const nlohmann::json& json, voice_channel& out);

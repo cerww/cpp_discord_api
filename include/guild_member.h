@@ -29,7 +29,7 @@ private:
 	std::optional<activity> m_game;
 	Guild* m_guild = nullptr;
 	friend void from_json(const nlohmann::json& in, guild_member& out);
-	friend struct shard;
+	friend struct internal_shard;
 };
 
 void from_json(const nlohmann::json& in, guild_member& out);

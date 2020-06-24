@@ -23,7 +23,7 @@ private:
 
 	snowflake m_parent_id;
 	friend void from_json(const nlohmann::json& json, partial_guild_channel& g);
-	friend struct shard;
+	friend struct internal_shard;
 };
 
 

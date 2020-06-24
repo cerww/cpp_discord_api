@@ -20,9 +20,9 @@ private:
 	std::string m_username = "";
 	int m_discriminator = 0;
 	bool m_bot = false;
-	Status m_status = Status::online;
+	Status m_status = Status::unknown;
 	std::string m_game;
-	friend struct shard;
+	friend struct internal_shard;
 	friend void from_json(const nlohmann::json&, user& other);
 };
 

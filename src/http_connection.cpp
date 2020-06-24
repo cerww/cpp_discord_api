@@ -363,10 +363,11 @@ cerwy::task<bool> http_connection2::send_to_discord_(discord_request& r) {
 		}()));
 
 		const auto major_param_id_ = get_major_param_id(std::string_view(r.req.target().data(), r.req.target().size()));
-		m_rate_limited_requests.insert(ranges::upper_bound(m_rate_limited_requests, time, std::less{}, get_n<1>{}),
-			{ major_param_id_,time, empty_vector });
-		
-		//this doesn't work ;-;
+		m_rate_limited_requests.insert(
+			ranges::upper_bound(m_rate_limited_requests, time, std::less{}, get_n<1>{}),
+			{ major_param_id_,time, empty_vector }
+		);
+				
 		
 		auto timer = std::make_unique<boost::asio::system_timer>(m_strand);
 		timer->expires_at(time);
@@ -428,7 +429,7 @@ redo:
 	}
 	auto[ec2,n2] = co_await boost::beast::http::async_read(m_socket, m_buffer, request.state->res, use_task_return_tuple2);
 	if (ec) {
-		std::cout << "send_rq " << ec << std::endl;
+		std::cout << "recieve_rq " << ec << std::endl;
 		if (ec.value() == 1) {
 			co_await reconnect();
 			goto redo;

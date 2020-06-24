@@ -29,7 +29,7 @@ private:
 
 	Guild* m_guild = nullptr;
 
-	friend struct shard;
+	friend struct internal_shard;
 	friend void from_json(const nlohmann::json&, guild_channel& g);
 };
 

@@ -20,9 +20,9 @@ namespace discord_ec {
 	constexpr int sharding_required = 4011;
 }
 
-cerwy::task<void> init_shard(const int shard_number, shard& me, boost::asio::io_context& ioc, std::string_view gateway) {
+cerwy::task<void> init_shard(const int shard_number, internal_shard& me, boost::asio::io_context& ioc, std::string_view gateway) {
 	try {
-		co_await reconnect_wss_from_url(me.m_socket, gateway, me.resolver(), me.ssl_context());
+		co_await reconnect_wss_from_url(me.m_socket, gateway, me.m_resolver, me.ssl_context());
 
 		auto& m_socket = me.m_socket;
 
@@ -40,14 +40,14 @@ cerwy::task<void> init_shard(const int shard_number, shard& me, boost::asio::io_
 			const auto [ec, n] = co_await m_socket.async_read(buffer, cerwy::bind_executor(strand, use_task_return_tuple2));
 
 			if (ec) {
-				std::cout << ec << std::endl;
+				std::cout << "init shard " << ec<<' '<<ec.message() << std::endl;
 				if (ec.value() == discord_ec::unknown_error) {
-					co_await reconnect_wss_from_url(m_socket, gateway, me.resolver(), me.ssl_context());
+					co_await reconnect_wss_from_url(m_socket, gateway, me.m_resolver, me.ssl_context());
 					m_client.maybe_restart();
 					me.on_reconnect();
 				}
 				else if (ec.value() == discord_ec::not_authenticated) {
-					co_await reconnect_wss_from_url(m_socket, gateway, me.resolver(), me.ssl_context());
+					co_await reconnect_wss_from_url(m_socket, gateway, me.m_resolver, me.ssl_context());
 					m_client.maybe_restart();
 					me.on_reconnect();
 				}
@@ -60,7 +60,7 @@ cerwy::task<void> init_shard(const int shard_number, shard& me, boost::asio::io_
 					break;
 				}
 				else if (ec.value() == discord_ec::invalid_seq) {
-					co_await reconnect_wss_from_url(m_socket, gateway, me.resolver(), me.ssl_context());
+					co_await reconnect_wss_from_url(m_socket, gateway, me.m_resolver, me.ssl_context());
 					m_client.maybe_restart();
 					me.on_reconnect();
 				}
@@ -70,7 +70,7 @@ cerwy::task<void> init_shard(const int shard_number, shard& me, boost::asio::io_
 				}
 				else if (ec.value() == discord_ec::timeout) {
 					fmt::print("session timedout, reconnecting");
-					co_await reconnect_wss_from_url(m_socket, gateway, me.resolver(), me.ssl_context());
+					co_await reconnect_wss_from_url(m_socket, gateway, me.m_resolver, me.ssl_context());
 					m_client.maybe_restart();
 					me.on_reconnect();
 				}

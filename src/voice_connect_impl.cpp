@@ -1,5 +1,5 @@
 #include "voice_connect_impl.h"
-#include "shard.h"
+#include "internal_shard.h"
 #include "web_socket_session_impl.h"
 #include "discord_voice_connection.h"
 #include "client.h"
@@ -7,7 +7,7 @@
 
 using namespace boost::asio;
 
-cerwy::task<voice_connection> voice_connect_impl(shard& me, const voice_channel& ch, std::string endpoint, std::string token, std::string session_id) {
+cerwy::task<voice_connection> voice_connect_impl(internal_shard& me, const voice_channel& ch, std::string endpoint, std::string token, std::string session_id) {
 	const auto channel_id = ch.id();
 	const auto guild_id = ch.guild_id();
 	const auto my_id = me.self_user().id();

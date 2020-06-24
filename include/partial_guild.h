@@ -56,7 +56,7 @@ private:
 	std::optional<snowflake> m_widget_channel_id = std::nullopt;
 	snowflake m_system_channel_id;
 	friend void from_json(const nlohmann::json& json, partial_guild& guild);
-	friend struct shard;
+	friend struct internal_shard;
 };
 
 

@@ -5,7 +5,6 @@
 #include <memory>
 #include <span>
 
-//TODO: change these to return std::span<T> when it's here
 template<typename T, size_t size>
 struct stack_item_cache {
 	void add(T item) {
@@ -43,7 +42,7 @@ struct dynamic_item_cache {
 		}
 	}
 
-	void cache_size(size_t t_cache_size) noexcept {
+	void set_cache_size(size_t t_cache_size) noexcept {
 		m_cache_size = t_cache_size;
 	}
 
@@ -58,7 +57,7 @@ struct dynamic_item_cache {
 private:
 	std::vector<T> m_cache;
 	size_t m_cache_size = 10;
-	int64_t m_position = 0;
+	uint64_t m_position = 0;
 };
 
 template<typename T, size_t size>

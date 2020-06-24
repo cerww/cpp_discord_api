@@ -239,7 +239,8 @@ void discord_voice_connection_impl::send_op1_select_protocol() {
 				}}
 			}}
 		}})",
-		m_my_endpoint.address().to_string(), m_my_endpoint.port());
+		m_my_endpoint.address().to_string(), m_my_endpoint.port()
+	);
 	
 	//std::cout << msg << std::endl;
 	

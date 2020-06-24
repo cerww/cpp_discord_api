@@ -1,13 +1,12 @@
 #pragma once
 #include "bytell_hash_map.hpp"
-#include "indirect.h"
 #include <range/v3/utility/common_tuple.hpp>
 #include "arrow_proxy.h"
 
-template<typename K,typename V,typename H = std::hash<K>,typename E = std::equal_to<>,typename A = std::allocator<std::pair<const K,indirect<V>>>>
+template<typename K,typename V,typename H = std::hash<K>,typename E = std::equal_to<>,typename A = std::allocator<std::pair<const K,std::unique_ptr<V>>>>
 struct ref_stable_map {
-	using map_t = ska::bytell_hash_map<K, indirect<V>, H, E, A>;
-	//using map_t = std::unordered_map<K, indirect<V>, H, E, A>;
+	using map_t = ska::bytell_hash_map<K, std::unique_ptr<V>, H, E, A>;
+	//using map_t = std::unordered_map<K, std::unique_ptr<V>, H, E, A>;
 	using value_type = std::pair<const K , V>;
 	using reference = ranges::common_pair<const K&, V&>;//can't use std::pair for some reason
 	using const_reference = ranges::common_pair<const K&,const V&>;
@@ -30,7 +29,7 @@ struct ref_stable_map {
 			templated_iterator(other.m_it) {}
 
 		reference operator*() const{
-			return reference((*m_it).first,(*m_it).second);
+			return reference((*m_it).first,*(*m_it).second);
 		}
 
 		pointer operator->()const {
@@ -81,7 +80,7 @@ struct ref_stable_map {
 		}
 	private:
 		friend struct ref_stable_map;
-		std::pair<K, indirect<V>> m_data;
+		std::pair<K, std::unique_ptr<V>> m_data;
 	};
 
 	using iterator = templated_iterator<reference, typename map_t::iterator>;
@@ -121,7 +120,7 @@ struct ref_stable_map {
 	}
 
 	std::pair<iterator, bool> insert(value_type thing) {
-		indirect<V> key = std::move(thing.second);
+		std::unique_ptr<V> key = std::make_unique<V>(std::move(thing.second));
 		const auto[it, succcess] = m_data.insert(std::make_pair(std::move(thing.first), std::move(key)));
 		return {iterator(it),succcess};
 	}
@@ -145,7 +144,12 @@ struct ref_stable_map {
 	}
 
 	V& operator[](const K& key) {
-		return *m_data[key];
+		auto& ret = m_data[key];
+		if(!ret) {
+			ret = std::make_unique<V>();
+		}
+		return *ret;
+		//return *m_data[key];
 	}
 
 	V& at(const K& key) {

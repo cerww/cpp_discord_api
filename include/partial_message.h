@@ -41,7 +41,7 @@ private:
 	std::vector<reaction> m_reactions;
 
 	friend struct client;
-	friend struct shard;
+	friend struct internal_shard;
 	friend void from_json(const nlohmann::json& json, partial_message& msg);
 	friend struct msg_update_access;
 };
@@ -70,7 +70,7 @@ private:
 	std::vector<const guild_role*> m_mention_roles;
 	guild_member* m_author = nullptr;
 	text_channel* m_channel = nullptr;
-	friend struct shard;
+	friend struct internal_shard;
 	friend struct msg_update_access;
 };
 
@@ -86,7 +86,7 @@ private:
 	user* m_author = nullptr;
 	std::vector<user*> m_mentions;
 	dm_channel* m_channel = nullptr;
-	friend struct shard;
+	friend struct internal_shard;
 	friend struct msg_update_access;
 };
 
@@ -108,7 +108,7 @@ private:
 
 	std::vector<attachment> m_attachments;
 	std::vector<reaction> m_reactions;
-	friend struct shard;
+	friend struct internal_shard;
 	friend void from_json(const nlohmann::json& json, msg_update& msg);
 };
 
@@ -135,7 +135,7 @@ private:
 	std::vector<const guild_member*> m_mentions;
 	std::vector<const guild_role*> m_mention_roles;
 	text_channel* m_channel = nullptr;
-	friend struct shard;
+	friend struct internal_shard;
 };
 
 struct dm_msg_update :msg_update {
@@ -150,7 +150,7 @@ private:
 	user* m_author = nullptr;
 	std::vector<const user*> m_mentions;
 	dm_channel* m_channel = nullptr;
-	friend struct shard;
+	friend struct internal_shard;
 };
 
 void from_json(const nlohmann::json& json, msg_update& msg);

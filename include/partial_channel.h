@@ -3,7 +3,7 @@
 #include <nlohmann/json.hpp>
 #include "permision_overwrite.h"
 
-struct shard;
+struct internal_shard;
 
 struct partial_channel {
 	snowflake id() const { return m_id; }
@@ -14,7 +14,7 @@ private:
 	snowflake m_id;
 	std::string m_name;
 
-	friend struct shard;
+	friend struct internal_shard;
 	friend void from_json(const nlohmann::json& json, partial_channel& channel);
 };
 

@@ -26,7 +26,7 @@ private:
 	bool m_mute = false;
 
 	friend void from_json(const nlohmann::json&, partial_guild_member&);
-	friend struct shard;
+	friend struct internal_shard;
 };
 
 
