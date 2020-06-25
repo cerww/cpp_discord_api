@@ -37,7 +37,7 @@ struct empty_function_t{
 static inline constexpr empty_function_t empty_function;
 */
 struct client {//<(^.^)>
-	explicit client(int = 1, intents = intents::ALL);
+	explicit client(int = 1, intents = intent::ALL);
 	client(client&&) = delete;
 	client(const client&) = delete;
 	client& operator=(client&&) = delete;
@@ -53,8 +53,8 @@ struct client {//<(^.^)>
 
 	size_t num_shards() const noexcept { return m_num_shards; }
 
-	std::function<void(const guild_text_message&, shard&)> on_guild_text_msg = nothing;
-	std::function<void(const dm_message&, shard&)> on_dm_msg = nothing;
+	std::function<void(guild_text_message, shard&)> on_guild_text_msg = nothing;
+	std::function<void(dm_message, shard&)> on_dm_msg = nothing;
 	std::function<void(const text_channel&, shard&)> on_guild_text_channel_create = nothing;
 	std::function<void(const channel_catagory&, shard&)> on_guild_channel_catagory_create = nothing;
 	std::function<void(const voice_channel&, shard&)> on_guild_voice_channel_create = nothing;
@@ -81,8 +81,10 @@ struct client {//<(^.^)>
 	std::function<void(std::optional<guild_text_message>, snowflake, shard&)> on_guild_msg_delete = nothing;
 	std::function<void(const guild_member&, const text_channel&, shard&)> on_guild_typing_start = nothing;
 	std::function<void(const user&, const dm_channel&, shard&)> on_dm_typing_start = nothing;
-	std::function<void(const text_channel&, shard&)> on_text_channel_delete = nothing;
-	std::function<void(const dm_channel&, shard&)> on_dm_channel_delete = nothing;
+	
+	std::function<void(text_channel, shard&)> on_text_channel_delete = nothing;
+	std::function<void(dm_channel, shard&)> on_dm_channel_delete = nothing;
+	
 	std::function<void(const guild_member&, const text_channel&, optional_ref<guild_text_message>, const reaction&, shard&)> on_guild_reaction_add = nothing;
 	std::function<void(const user&, const dm_channel&, optional_ref<dm_message>, const reaction&, shard&)> on_dm_reaction_add = nothing;
 	std::function<void(const guild_member&, const text_channel&, optional_ref<guild_text_message>, const reaction&, shard&)> on_guild_reaction_remove = nothing;

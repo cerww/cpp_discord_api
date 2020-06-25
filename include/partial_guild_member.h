@@ -3,12 +3,13 @@
 #include "timestamp.h"
 #include "guild_role.h"
 #include <range/v3/view/all.hpp>
+#include <span>
 
 struct partial_guild_member :user {
 	std::string_view nick() const noexcept;
 
-	auto role_ids() const noexcept {
-		return m_roles | ranges::views::all;
+	std::span<const snowflake> role_ids() const noexcept {
+		return m_roles;
 	}
 
 	timestamp joined_at() const noexcept;

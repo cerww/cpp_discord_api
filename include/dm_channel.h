@@ -11,8 +11,8 @@
 struct dm_channel :partial_channel {
 	snowflake last_message_id() const noexcept;
 
-	auto recipients() const noexcept {
-		return m_recipients | ranges::views::all;
+	const auto& recipients() const noexcept {
+		return m_recipients;
 	};
 
 	auto recipients_list() const noexcept {

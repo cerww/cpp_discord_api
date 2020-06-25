@@ -39,7 +39,7 @@ int main() {
 
 	cerwy::task<voice_connection> connashk;
 	std::vector<partial_message> msgs;
-	c.on_guild_text_msg = [&](const guild_text_message& msg, shard& s) {
+	c.on_guild_text_msg = [&](guild_text_message msg, shard& s) {
 		if (msg.content() == "rawrmander") {
 			//int i = 0;
 			/*

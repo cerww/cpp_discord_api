@@ -1,6 +1,6 @@
 #pragma once
 #include <vector>
-#include "user.h"
+#include "User.h"
 #include "guild_role.h"
 #include <nlohmann/json.hpp>
 #include "timestamp.h"

@@ -6,6 +6,7 @@
 #include "reaction.h"
 #include <optional>
 #include <range/v3/all.hpp>
+#include <span>
 
 struct dm_channel;
 struct text_channel;
@@ -19,12 +20,12 @@ struct partial_message {
 	bool tts() const noexcept;
 	bool mention_everyone() const noexcept;
 
-	auto reactions() const noexcept {
-		return m_reactions | ranges::views::all;
+	std::span<const reaction> reactions() const noexcept {
+		return m_reactions;
 	};
 
-	auto attachments() const noexcept {
-		return m_attachments | ranges::views::all;
+	std::span<const attachment> attachments() const noexcept {
+		return m_attachments;
 	};
 
 private:
@@ -52,8 +53,8 @@ struct guild_text_message :partial_message {
 	const Guild& guild() const noexcept;
 	const guild_member& author() const noexcept;
 
-	auto mention_roles_ids() const noexcept {
-		return m_mention_roles_ids | ranges::views::all;
+	std::span<const snowflake> mention_roles_ids() const noexcept {
+		return m_mention_roles_ids;
 	};
 
 	auto mentions() const noexcept {
@@ -73,6 +74,8 @@ private:
 	friend struct internal_shard;
 	friend struct msg_update_access;
 };
+
+static constexpr int rawradsjksdfhksldjf = sizeof(guild_text_message);
 
 struct dm_message :partial_message {
 	const user& author() const noexcept;
@@ -115,8 +118,8 @@ private:
 struct guild_msg_update :msg_update {
 	const guild_member& author() const noexcept;
 
-	auto mention_role_ids() const noexcept {
-		return m_mention_role_ids | ranges::views::all;
+	std::span<const snowflake> mention_role_ids() const noexcept {
+		return m_mention_role_ids;
 	};
 
 	auto mentions() const noexcept {

@@ -76,8 +76,8 @@ DIRECT_MESSAGE_TYPING (1 << 14)
 */
 
 
-
-enum class intents:uint32_t{
+/*
+enum class intents :uint32_t {
 	GUILDS = (1 << 0),
 	GUILD_MEMBERS=(1 << 1),
 	GUILD_BANS=(1 << 2),
@@ -96,7 +96,71 @@ enum class intents:uint32_t{
 	ALL = (GUILDS | GUILD_MEMBERS | GUILD_BANS | GUILD_EMOJIS | GUILD_INTEGRATIONS | GUILD_WEBHOOKS | GUILD_INVITES
 		| GUILD_VOICE_STATES | GUILD_PRESENCES | GUILD_MESSAGES | GUILD_MESSAGE_REACTIONS
 		| GUILD_MESSAGE_TYPING | DIRECT_MESSAGES | DIRECT_MESSAGE_REACTIONS | DIRECT_MESSAGE_TYPING),
-	ALL_BUT_PRESSENCE_MEMBERS = ~(~ALL | GUILD_MEMBERS | GUILD_PRESENCES) 
+	ALL_BUT_PRESSENCE_MEMBERS = ~(~ALL | GUILD_MEMBERS | GUILD_PRESENCES)
+};
+*/
+
+//not an enum so i can have functions 
+struct intents {
+	constexpr intents() = default;
+
+	constexpr explicit intents(uint32_t value) :
+		m_value(value) { }
+
+	constexpr bool has_intents(intents other) const noexcept {
+		return (m_value & other.m_value) == other.m_value;
+	}
+
+	constexpr friend intents operator|(intents me, intents other) {
+		return intents(me.m_value | other.m_value);
+	}
+
+	constexpr friend intents operator+(intents me, intents other) {
+		return intents(me.m_value | other.m_value);
+	}
+
+	constexpr intents removed(intents other) const noexcept {
+		return intents(~(~m_value | other.m_value));
+	}
+
+	constexpr friend intents operator-(intents me, intents other) {
+		return me.removed(other);
+	}
+
+	uint32_t int_value()const noexcept {
+		return m_value;
+	}	
+
+private:
+	uint32_t m_value = 0;
 };
 
+template<typename ...intents_v>
+constexpr intents combine_intents(intents_v ... intents) {
+	return (intents | ...);
+}
 
+
+namespace intent {
+	static constexpr intents GUILDS = intents(1 << 0);
+	static constexpr intents GUILD_MEMBERS = intents(1 << 1);
+	static constexpr intents GUILD_BANS = intents(1 << 2);
+	static constexpr intents GUILD_EMOJIS = intents(1 << 3);
+	static constexpr intents GUILD_INTEGRATIONS = intents(1 << 4);
+	static constexpr intents GUILD_WEBHOOKS = intents(1 << 5);
+	static constexpr intents GUILD_INVITES = intents(1 << 6);
+	static constexpr intents GUILD_VOICE_STATES = intents(1 << 7);
+	static constexpr intents GUILD_PRESENCES = intents(1 << 8);
+	static constexpr intents GUILD_MESSAGES = intents(1 << 9);
+	static constexpr intents GUILD_MESSAGE_REACTIONS = intents(1 << 10);
+	static constexpr intents GUILD_MESSAGE_TYPING = intents(1 << 11);
+	static constexpr intents DIRECT_MESSAGES = intents(1 << 12);
+	static constexpr intents DIRECT_MESSAGE_REACTIONS = intents(1 << 13);
+	static constexpr intents DIRECT_MESSAGE_TYPING = intents(1 << 14);
+	static constexpr intents ALL = (GUILDS | GUILD_MEMBERS | GUILD_BANS | GUILD_EMOJIS | GUILD_INTEGRATIONS | GUILD_WEBHOOKS | GUILD_INVITES
+		| GUILD_VOICE_STATES | GUILD_PRESENCES | GUILD_MESSAGES | GUILD_MESSAGE_REACTIONS
+		| GUILD_MESSAGE_TYPING | DIRECT_MESSAGES | DIRECT_MESSAGE_REACTIONS | DIRECT_MESSAGE_TYPING);
+
+	static constexpr intents ALL_BUT_PRESSENCE_MEMBERS = ALL - GUILD_MEMBERS - GUILD_PRESENCES;;
+	static constexpr intents ALL_BUT_TYPING = ALL - GUILD_MESSAGE_TYPING - DIRECT_MESSAGE_TYPING;
+}

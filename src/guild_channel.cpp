@@ -14,7 +14,7 @@ void from_json(const nlohmann::json& json, guild_channel& g) {
 	
 }
 
-ranges::views::all_t<const std::vector<permission_overwrite>&> guild_channel::parent_overwrites() const noexcept {
+std::span<const permission_overwrite> guild_channel::parent_overwrites() const noexcept {
 	return m_parent->permission_overwrites();
 }
 

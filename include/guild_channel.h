@@ -3,6 +3,7 @@
 #include "range-like-stuffs.h"
 #include "partial_guild_channel.h"
 #include <range/v3/all.hpp>
+#include <span>
 
 struct channel_catagory;
 
@@ -12,7 +13,7 @@ struct guild_channel :partial_guild_channel {
 	
 	const Guild& guild() const noexcept;
 
-	ranges::views::all_t<const std::vector<permission_overwrite>&> parent_overwrites() const noexcept;
+	std::span<const permission_overwrite> parent_overwrites() const noexcept;
 	const channel_catagory& parent() const noexcept;
 	bool has_parent() const noexcept;
 

@@ -63,7 +63,7 @@ struct modify_role_settings {
 	auto mentionable(bool n) {
 		return modify_role_settings<Ts..., role_settings::mentionable>{
 			std::tuple_cat(std::move(stuff),
-				std::tuple(role_settings::mentionable{ std::move(n) }))
+				std::tuple(role_settings::mentionable{n}))
 		};
 	}
 	

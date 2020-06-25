@@ -22,8 +22,8 @@ struct Guild :partial_guild {
 	int member_count() const noexcept;
 	const text_channel& system_channel() const noexcept;
 
-	auto members() const noexcept {
-		return m_members | ranges::views::all;
+	const auto& members() const noexcept {
+		return m_members;
 	};
 
 	auto members_list() const noexcept {
@@ -33,33 +33,33 @@ struct Guild :partial_guild {
 	const guild_member& owner() const noexcept;
 
 	auto text_channels() const noexcept {
-		return m_text_channels | ranges::views::transform(hof::map_with(all_text_channels()));
+		return m_text_channel_ids | ranges::views::transform(hof::map_with(all_text_channels()));
 	}
 
 	auto voice_channels() const noexcept {
-		return m_voice_channels | ranges::views::transform(hof::map_with(all_voice_channels()));
+		return m_voice_channel_ids | ranges::views::transform(hof::map_with(all_voice_channels()));
 	}
 
 	auto channel_catagories() const noexcept {
-		return m_channel_catagories | ranges::views::transform(hof::map_with(all_channel_catagories()));
+		return m_channel_catagorie_ids | ranges::views::transform(hof::map_with(all_channel_catagories()));
 	}
 
-	auto text_channel_ids() const noexcept {
-		return m_text_channels | ranges::views::all;
+	std::span<const snowflake> text_channel_ids() const noexcept {
+		return m_text_channel_ids;
 	};
 
-	auto channel_catagories_ids() const noexcept {
-		return m_channel_catagories | ranges::views::all;
+	std::span<const snowflake> channel_catagories_ids() const noexcept {
+		return m_channel_catagorie_ids;
 	};
 
-	auto voice_channel_ids() const noexcept {
-		return m_voice_channels | ranges::views::all;
+	std::span<const snowflake> voice_channel_ids() const noexcept {
+		return m_voice_channel_ids;
 	};
 
 	optional_ref<const voice_channel> afk_channel() const noexcept;
 
-	auto voice_states() const noexcept {
-		return m_voice_states | ranges::views::all;
+	std::span<const voice_state> voice_states() const noexcept {
+		return m_voice_states;
 	};
 
 private:
@@ -82,9 +82,9 @@ private:
 		return m_members | ranges::views::values;
 	}
 
-	std::vector<snowflake> m_text_channels{};
-	std::vector<snowflake> m_voice_channels{};
-	std::vector<snowflake> m_channel_catagories{};
+	std::vector<snowflake> m_text_channel_ids{};
+	std::vector<snowflake> m_voice_channel_ids{};
+	std::vector<snowflake> m_channel_catagorie_ids{};
 	std::vector<voice_state> m_voice_states{};
 
 

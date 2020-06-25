@@ -2,6 +2,7 @@
 #include <nlohmann/json.hpp>
 #include "snowflake.h"
 #include <range/v3/core.hpp>
+#include <span>
 
 struct partial_emoji {
 	snowflake id() const noexcept;
@@ -15,8 +16,8 @@ private:
 struct emoji :partial_emoji {
 	snowflake user_id() const noexcept { return m_user_id; }
 
-	auto roles() const noexcept {
-		return m_roles | ranges::views::all;
+	std::span<const snowflake> role_ids() const noexcept {
+		return m_roles;
 	}
 
 private:

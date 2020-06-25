@@ -11,8 +11,8 @@ struct partial_guild_channel :partial_channel {
 
 	snowflake catagory_id() const noexcept { return m_parent_id; }
 	
-	auto permission_overwrites() const noexcept {
-		return m_permission_overwrites | ranges::views::all;
+	std::span<const permission_overwrite> permission_overwrites() const noexcept {
+		return m_permission_overwrites;
 	};
 	
 private:
