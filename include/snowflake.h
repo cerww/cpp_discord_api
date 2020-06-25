@@ -292,3 +292,5 @@ std::pair<snowflake, T> get_then_return_id(const nlohmann::json& json) {
 static inline const auto id_comp = [](auto&& a, snowflake b) { return a.id() < b; };
 
 static inline constexpr auto get_id = [](auto&& a) { return a.id(); };
+
+

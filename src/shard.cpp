@@ -11,6 +11,7 @@ shard::shard(int shard_number, client* t_parent, boost::asio::io_context& ioc) :
 
 cerwy::task<voice_connection> shard::connect_voice(const voice_channel& ch) {
 	//;-;
+	//TODO: change this
 	auto& me = (internal_shard&)*this;
 	return me.connect_voice(ch);
 }

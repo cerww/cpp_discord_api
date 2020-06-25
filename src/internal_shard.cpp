@@ -571,11 +571,11 @@ void internal_shard::procces_event<event_name::MESSAGE_CREATE>(nlohmann::json& e
 		
 		auto msg = create_msg<guild_text_message>(ch, e, m_guilds[ch.m_guild_id].m_members);	
 		
-		m_parent->on_guild_text_msg(ch.p_add_msg(std::move(msg)), *this);
+		m_parent->on_guild_text_msg(std::move(msg), *this);
 	}else {//dm msg		
 		dm_channel& ch = m_dm_channels[channel_id];
 		auto msg = create_msg<dm_message>(ch, e, ch.m_recipients);
-		m_parent->on_dm_msg(ch.m_add_msg(std::move(msg)), *this);
+		m_parent->on_dm_msg(std::move(msg), *this);
 	}
 }
 
@@ -840,20 +840,22 @@ void internal_shard::procces_event<event_name::MESSAGE_UPDATE>(nlohmann::json& e
 		}
 
 		auto msg = createMsgUpdate<guild_msg_update>(ch, e, guild.m_members);
-		auto it2 = ranges::find_if(ch.m_msg_cache.data(), id_equal_to(msg.id()));
+		//auto it2 = ranges::find_if(ch.m_msg_cache.data(), id_equal_to(msg.id()));
 
+		/*
 		if (it2 != ch.msg_cache().end()) {
 			guild_text_message old_msg = *it2;
 			it2->m_content = e.value("content", it2->m_content);
 			it2->m_reactions = e.value("reaction", it2->m_reactions);
 			m_parent->on_guild_msg_update(msg, old_msg, *this);
 		}else {
-			m_parent->on_guild_msg_update(msg, std::nullopt, *this);
 		}
+		*/
+			m_parent->on_guild_msg_update(std::move(msg), std::nullopt, *this);
 	}else {//dm msg
 		dm_channel& ch = m_dm_channels[channel_id];
 		auto msg = createMsgUpdate<dm_msg_update>(ch, e, ch.m_recipients);
-		auto it2 = ranges::find_if(ch.m_msg_cache.data(), id_equal_to(msg.id()));
+		/*auto it2 = ranges::find_if(ch.m_msg_cache.data(), id_equal_to(msg.id()));
 
 		if (it2 != ch.msg_cache().end()) {
 			dm_message old_msg = *it2;
@@ -861,8 +863,8 @@ void internal_shard::procces_event<event_name::MESSAGE_UPDATE>(nlohmann::json& e
 			it2->m_reactions = e.value("reaction", it2->m_reactions);
 			m_parent->on_dm_msg_update(msg, old_msg, *this);
 		}else {
-			m_parent->on_dm_msg_update(msg, std::nullopt, *this);
-		}
+		}*/
+		m_parent->on_dm_msg_update(std::move(msg), std::nullopt, *this);
 	}
 }
 
@@ -871,20 +873,20 @@ template<>	void internal_shard::procces_event<event_name::MESSAGE_DELETE>(nlohma
 	const auto msg_id = e["id"].get<snowflake>();
 	if (auto it = m_text_channel_map.find(channel_id); it != m_text_channel_map.end()) {//guild text msg
 		text_channel& ch = it->second;
-		auto it2 = ranges::find_if(ch.m_msg_cache.data(), id_equal_to(msg_id));
+		/*auto it2 = ranges::find_if(ch.m_msg_cache.data(), id_equal_to(msg_id));
 		if (it2 != ch.msg_cache().end()) {
 			m_parent->on_guild_msg_delete(std::move(*it2), channel_id, *this);
 		}else {
-			m_parent->on_guild_msg_delete(std::nullopt, channel_id, *this);
-		}
+		}*/
+		m_parent->on_guild_msg_delete(std::nullopt, channel_id, *this);
 	}else {//dm msg
 		dm_channel& ch = m_dm_channels[channel_id];
-		auto it2 = ranges::find_if(ch.m_msg_cache.data(), id_equal_to(msg_id));
+		/*auto it2 = ranges::find_if(ch.m_msg_cache.data(), id_equal_to(msg_id));
 		if (it2 != ch.msg_cache().end()) {
 			m_parent->on_dm_msg_delete(std::move(*it2), channel_id, *this);
 		}else {
-			m_parent->on_dm_msg_delete(std::nullopt, channel_id, *this);
-		}
+		}*/
+		m_parent->on_dm_msg_delete(std::nullopt, channel_id, *this);
 	}
 };
 
@@ -906,7 +908,7 @@ void internal_shard::procces_event<event_name::MESSAGE_REACTION_ADD>(nlohmann::j
 	if (it != m_text_channel_map.end()) {
 		auto& channel = it->second;
 		auto& member = channel.m_guild->m_members[e["user_id"].get<snowflake>()];
-		auto msg_it = ranges::find_if(channel.m_msg_cache.data(), id_equal_to(e["message_id"].get<snowflake>()));
+		/*auto msg_it = ranges::find_if(channel.m_msg_cache.data(), id_equal_to(e["message_id"].get<snowflake>()));
 		if (msg_it != channel.msg_cache().end()) {
 			m_parent->on_guild_reaction_add(
 				member, 
@@ -917,16 +919,16 @@ void internal_shard::procces_event<event_name::MESSAGE_REACTION_ADD>(nlohmann::j
 			);
 		}else {
 			//create fake reaction
+		}*/
 			reaction temp;
 			temp.m_count = 1;
 			temp.m_emoji = std::move(emojiy);
 			temp.m_me = e["user_id"].get<snowflake>() == self_user().id();
 			m_parent->on_guild_reaction_add(member, channel, std::nullopt, temp, *this);
-		}
 	}else {
 		auto& channel = m_dm_channels[channel_id];
 		auto& person = channel.m_recipients[e["user_id"].get<snowflake>()];
-		auto msg_it = ranges::find_if(channel.m_msg_cache.data(), id_equal_to(e["message_id"].get<snowflake>()));
+		/*auto msg_it = ranges::find_if(channel.m_msg_cache.data(), id_equal_to(e["message_id"].get<snowflake>()));
 		if(msg_it != channel.msg_cache().end()) {
 			m_parent->on_dm_reaction_add(
 				person, 
@@ -937,12 +939,12 @@ void internal_shard::procces_event<event_name::MESSAGE_REACTION_ADD>(nlohmann::j
 			);
 		}
 		else {
+		}*/
 			reaction temp;
 			temp.m_count = 1;
 			temp.m_emoji = std::move(emojiy);
 			temp.m_me = e["user_id"].get<snowflake>() == self_user().id();
 			m_parent->on_dm_reaction_add(person, channel, std::nullopt, temp, *this);
-		}
 
 	}
 };
@@ -955,7 +957,7 @@ void internal_shard::procces_event<event_name::MESSAGE_REACTION_REMOVE>(nlohmann
 	if (it != m_text_channel_map.end()) {
 		auto& channel = it->second;
 		auto& member = channel.m_guild->m_members[e["user_id"].get<snowflake>()];
-		auto msg_it = ranges::find_if(channel.m_msg_cache.data(), id_equal_to(e["message_id"].get<snowflake>()));
+		/*auto msg_it = ranges::find_if(channel.m_msg_cache.data(), id_equal_to(e["message_id"].get<snowflake>()));
 		
 		if (msg_it != channel.msg_cache().end()) {
 			//message is still in msg_cache
@@ -968,26 +970,28 @@ void internal_shard::procces_event<event_name::MESSAGE_REACTION_REMOVE>(nlohmann
 			);
 		}else {
 			//message has been removed from msg_cache, create temp_reaction, reaction.count is no longer accurate
+		}*/
 			reaction temp;
 			temp.m_count = 0;
 			temp.m_emoji = std::move(emojiy);
 			temp.m_me = false;
 			m_parent->on_guild_reaction_add(member, channel, std::nullopt, temp, *this);
-		}
 	}else {
 		auto& channel = m_dm_channels[channel_id];
 		auto& person = channel.m_recipients[e["user_id"].get<snowflake>()];
-		auto msg_it = ranges::find_if(channel.m_msg_cache.data(), id_equal_to(e["message_id"].get<snowflake>()));
+		
+		/*auto msg_it = ranges::find_if(channel.m_msg_cache.data(), id_equal_to(e["message_id"].get<snowflake>()));
 
 		if (msg_it != channel.msg_cache().end()) {
 			m_parent->on_dm_reaction_add(person, channel, *msg_it, remove_reaction(msg_it->m_reactions, emojiy, e["user_id"].get<snowflake>(), self_user().id()), *this);
 		}else {
-			reaction temp;
-			temp.m_count = 0;
-			temp.m_emoji = std::move(emojiy);
-			temp.m_me = false;
-			m_parent->on_dm_reaction_add(person, channel, std::nullopt, temp, *this);
-		}
+			
+		}*/
+		reaction temp;
+		temp.m_count = 0;
+		temp.m_emoji = std::move(emojiy);
+		temp.m_me = false;
+		m_parent->on_dm_reaction_add(person, channel, std::nullopt, temp, *this);
 	}
 
 };
@@ -997,23 +1001,23 @@ void internal_shard::procces_event<event_name::MESSAGE_REACTION_REMOVE_ALL>(nloh
 	auto it = m_text_channel_map.find(e["channel_id"].get<snowflake>());
 	if(it == m_text_channel_map.end()) {
 		auto& channel = it->second;
-		auto msg_it = ranges::find_if(channel.m_msg_cache.data(), id_equal_to(e["message_id"].get<snowflake>()));
+		/*auto msg_it = ranges::find_if(channel.m_msg_cache.data(), id_equal_to(e["message_id"].get<snowflake>()));
 		if(msg_it == channel.msg_cache().end()) {
-			m_parent->on_guild_reaction_remove_all(channel, std::nullopt, *this);
 		}else {
 			msg_it->m_reactions.clear();
 			m_parent->on_guild_reaction_remove_all(channel, *msg_it, *this);
-		}
+		}*/
+		m_parent->on_guild_reaction_remove_all(channel, std::nullopt, *this);
 
 	}else {
 		auto& channel = m_dm_channels[e["channel_id"].get<snowflake>()];
-		auto msg_it = ranges::find_if(channel.m_msg_cache.data(), id_equal_to(e["message_id"].get<snowflake>()));
+		/*auto msg_it = ranges::find_if(channel.m_msg_cache.data(), id_equal_to(e["message_id"].get<snowflake>()));
 		if (msg_it == channel.msg_cache().end()) {
-			m_parent->on_dm_reaction_remove_all(channel, std::nullopt, *this);
 		}else {
 			msg_it->m_reactions.clear();
 			m_parent->on_dm_reaction_remove_all(channel, *msg_it, *this);
-		}
+		}*/
+		m_parent->on_dm_reaction_remove_all(channel, std::nullopt, *this);
 	}
 
 };

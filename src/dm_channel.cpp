@@ -6,9 +6,11 @@ snowflake dm_channel::last_message_id() const noexcept { return m_last_message_i
 timestamp dm_channel::last_pin_timestamp() const noexcept { return m_last_pin_timestamp; }
 
 
+/*
 dm_message& dm_channel::m_add_msg(dm_message msg) {
 	return m_msg_cache.add(std::move(msg));
 }
+*/
 
 void to_json(nlohmann::json& json, const dm_channel& channel) {
 	to_json(json, static_cast<const partial_channel&>(channel));
@@ -24,6 +26,11 @@ void from_json(const nlohmann::json& json, dm_channel& channel) {
 		const auto id = member.id();
 		channel.m_recipients.insert(std::make_pair(id, std::move(member)));
 	}
+
+	//channel.m_recipients = json["recipients"] | ranges::views::transform(&get_then_return_id<user>) | ranges::to<ref_stable_map<snowflake, user>>();
+
+	std::unordered_map<snowflake,user> a = json["recipients"] | ranges::views::transform(&get_then_return_id<user>) | ranges::to<std::unordered_map<snowflake, user>>();
+	
 	channel.m_last_message_id = json["last_message_id"].get<snowflake>();
 	//channel.m_last_pin_timestamp = json["last_pin_timestamp"];
 }

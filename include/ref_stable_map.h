@@ -1,6 +1,7 @@
 #pragma once
 #include "bytell_hash_map.hpp"
 #include <range/v3/utility/common_tuple.hpp>
+#include <range/v3/core.hpp>
 #include "arrow_proxy.h"
 
 template<typename K,typename V,typename H = std::hash<K>,typename E = std::equal_to<>,typename A = std::allocator<std::pair<const K,std::unique_ptr<V>>>>
@@ -10,7 +11,23 @@ struct ref_stable_map {
 	using value_type = std::pair<const K , V>;
 	using reference = ranges::common_pair<const K&, V&>;//can't use std::pair for some reason
 	using const_reference = ranges::common_pair<const K&,const V&>;
-		
+
+	ref_stable_map() = default;
+	
+	//TODO conceptfy this when i can
+	template<typename it,typename sentinal_t>
+	explicit ref_stable_map(it i, sentinal_t sentinal){
+		if constexpr(ranges::sized_iterator_range<it,sentinal_t>::value){
+			m_data.reserve(ranges::iter_size(i,sentinal));
+		}
+		for(; i!=sentinal;++i) {
+			auto&& [k, v] = *i;
+			auto value = std::make_pair(std::move(k),std::make_unique<V>(std::move(v)));
+			m_data.insert(std::move(value));
+		}
+	}
+
+	
 	template<typename reference_type_t,typename iterator_t>
 	struct templated_iterator{
 		using iterator_category = std::forward_iterator_tag;

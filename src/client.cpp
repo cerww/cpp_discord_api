@@ -15,7 +15,6 @@ client::client(int threads, intents intents):
 void client::run() {
 	m_getGateway();
 	for (int i = 0; i < m_num_shards; ++i) {
-		//create_shard(i, this, m_ioc, m_gateway);
 		m_shards.emplace_back(std::make_unique<internal_shard>(i,this,m_ioc,m_gateway,m_intents));
 	}
 	//m_th
