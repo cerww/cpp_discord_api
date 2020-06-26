@@ -30,7 +30,11 @@ struct client;
 
 struct voice_connection;
 
+<<<<<<< HEAD
+struct internal_shard :shard {
+=======
 struct internal_shard: shard {
+>>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 	static constexpr int large_threshold = 51;
 
 	
@@ -49,6 +53,9 @@ struct internal_shard: shard {
 		m_client->close(4000);
 	}
 
+<<<<<<< HEAD
+
+=======
 	const ref_stable_map<snowflake, text_channel>& text_channels() const noexcept { return m_text_channel_map; }
 
 	const ref_stable_map<snowflake, dm_channel>& dm_channels() const noexcept { return m_dm_channels; }
@@ -58,13 +65,18 @@ struct internal_shard: shard {
 	const ref_stable_map<snowflake, channel_catagory>& channel_catagories() const noexcept { return m_channel_catagory_map; }
 
 	
+>>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 	bool is_disconnected() const noexcept {
 		return m_is_disconnected;
 	}
 
 	void update_presence(Status, std::string);
 
+<<<<<<< HEAD
+
+=======
 	
+>>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 	std::string_view session_id() const noexcept {
 		return m_session_id;
 	}
@@ -73,7 +85,10 @@ struct internal_shard: shard {
 
 	cerwy::task<voice_connection> connect_voice(const voice_channel&);
 
+<<<<<<< HEAD
+=======
 	
+>>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 
 	auto& resolver() {
 		return m_resolver;
@@ -109,11 +124,17 @@ private:
 	void send_heartbeat();
 	void send_resume() const;
 
+<<<<<<< HEAD
+
+	bool m_is_disconnected = false;
+
+=======
 	
 
 	bool m_is_disconnected = false;
 
 	
+>>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 
 	void request_guild_members(Guild& g) const;
 
@@ -221,6 +242,12 @@ private:
 	static reaction& add_reaction(std::vector<reaction>&, partial_emoji&, snowflake, snowflake);
 	static reaction& remove_reaction(std::vector<reaction>&, partial_emoji&, snowflake, snowflake);
 
+<<<<<<< HEAD
+	guild_member make_member_from_msg(const nlohmann::json& user_json, const nlohmann::json& member_json);
+
+
+=======
+>>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 	template<typename msg_t, typename channel_t, typename map_t>
 	msg_t create_msg(channel_t&, const nlohmann::json&, map_t&&);
 
@@ -237,6 +264,9 @@ private:
 
 	//discord object stuffs
 
+<<<<<<< HEAD
+
+=======
 	ref_stable_map<snowflake, Guild> m_guilds;
 	ref_stable_map<snowflake, text_channel> m_text_channel_map;
 	ref_stable_map<snowflake, voice_channel> m_voice_channel_map;
@@ -244,6 +274,7 @@ private:
 	ref_stable_map<snowflake, dm_channel> m_dm_channels;
 
 	
+>>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 	Status m_status = Status::online;
 	std::string m_game_name;
 
@@ -253,10 +284,16 @@ private:
 	std::atomic<bool> m_done = false;
 
 
+<<<<<<< HEAD
+	boost::asio::io_context& m_ioc;
+	boost::asio::ssl::context m_ssl_ctx{boost::asio::ssl::context_base::sslv23};
+
+=======
 
 	boost::asio::io_context& m_ioc;
 	boost::asio::ssl::context m_ssl_ctx{boost::asio::ssl::context_base::sslv23};
 	
+>>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 	boost::asio::ip::tcp::resolver m_resolver;
 	boost::beast::websocket::stream<boost::beast::ssl_stream<boost::asio::ip::tcp::socket>> m_socket;
 
@@ -270,24 +307,58 @@ private:
 	ska::bytell_hash_map<snowflake, cerwy::promise<std::string>> m_things_waiting_for_voice_endpoint2;
 
 	intents m_intents = {};
+<<<<<<< HEAD
+
+=======
 	
+>>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 	friend struct client;
 };
 
 
+<<<<<<< HEAD
+=======
 
+>>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 template<event_name e>
 void internal_shard::procces_event(nlohmann::json&) {
 	//static_assert(false);
 }
 
+<<<<<<< HEAD
+inline guild_member internal_shard::make_member_from_msg(const nlohmann::json& user_json, const nlohmann::json& member_json) {
+	guild_member ret;
+	from_json(user_json, (user&)ret);
+	const auto it = member_json.find("nick");
+	if (it != member_json.end())
+		ret.m_nick = member_json["nick"].is_null() ? "" : member_json["nick"].get<std::string>();
+	//out.m_roles = in["roles"].get<std::vector<snowflake>>();
+
+	ret.m_roles = member_json["roles"] | ranges::views::transform(&nlohmann::json::get<snowflake>) | ranges::to<boost::container::small_vector<snowflake, 5>>();
+
+	//out.m_joined_at = in["joined_at"].get<timestamp>();
+
+	ret.m_deaf = member_json["deaf"].get<bool>();
+	ret.m_mute = member_json["mute"].get<bool>();
+
+	return ret;
+}
+
+=======
+>>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 template<typename msg_t, typename channel_t, typename map_t>
 msg_t internal_shard::create_msg(channel_t& ch, const nlohmann::json& stuffs, map_t&& members_in_channel) {
 	msg_t retVal;
 	from_json(stuffs, static_cast<partial_message&>(retVal));
 	retVal.m_channel = &ch;
+<<<<<<< HEAD
+	//retVal.m_author = &members_in_channel[retVal.author_id()];
+	//retVal.m_mentions.reserve(stuffs["mentions"].size());
+	/*
+=======
 	retVal.m_author = &members_in_channel[retVal.author_id()];
 	retVal.m_mentions.reserve(stuffs["mentions"].size());
+>>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 	for (const auto& mention : stuffs["mentions"]) {
 		const auto it = members_in_channel.find(mention["id"].get<snowflake>());
 		//idk why this would happen
@@ -295,6 +366,30 @@ msg_t internal_shard::create_msg(channel_t& ch, const nlohmann::json& stuffs, ma
 			continue;
 		retVal.m_mentions.push_back(&(it->second));
 	}
+<<<<<<< HEAD
+	*/
+	constexpr bool is_guild_msg = std::is_same_v<msg_t, guild_text_message>;
+
+	if constexpr (is_guild_msg) {
+		retVal.m_author = make_member_from_msg(stuffs["author"], stuffs["member"]);
+		retVal.m_author.m_guild = ch.m_guild;
+	} else {
+		retVal.m_author = stuffs["author"].get<user>();
+	}
+
+
+	if constexpr (is_guild_msg) {
+		retVal.m_mentions.reserve(stuffs["mentions"].size());
+		for (const auto& mention : stuffs["mentions"]) {
+			auto& member = retVal.m_mentions.emplace_back(make_member_from_msg(mention, mention["member"]));
+			member.m_guild = ch.m_guild;
+		}
+	}else {
+		retVal.m_mentions = stuffs["mentions"].get<std::vector<user>>();
+	}
+
+=======
+>>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 
 	if constexpr (std::is_same_v<msg_t, guild_text_message>) {
 		retVal.m_mention_roles_ids = stuffs["mention_roles"].get<std::vector<snowflake>>();
@@ -303,6 +398,12 @@ msg_t internal_shard::create_msg(channel_t& ch, const nlohmann::json& stuffs, ma
 		for (const auto& role_id : retVal.m_mention_roles_ids)
 			retVal.m_mention_roles.push_back(&guild.m_roles.at(role_id));
 	}
+<<<<<<< HEAD
+
+	
+	
+=======
+>>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 	return retVal;
 }
 
@@ -353,8 +454,12 @@ reaction& internal_shard::update_reactions(
 		temp.m_emoji = std::move(emoji);
 		temp.m_me = user_id == my_id;
 		return reactions.emplace_back(std::move(temp));
+<<<<<<< HEAD
+	} else {
+=======
 	}
 	else {
+>>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 		reaction& r = *it;
 		r.m_count += n;
 

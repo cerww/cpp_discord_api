@@ -382,6 +382,10 @@ void internal_shard::procces_event<event_name::READY>(nlohmann::json& event) {
 	m_trace2 = event["_trace"];
 	m_self_user = event["user"].get<user>();
 	m_session_id = event["session_id"].get<std::string>();
+<<<<<<< HEAD
+	
+=======
+>>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 	//ignore unavailable guilds, only need size
 	m_guilds.reserve(event["guilds"].size());
 
@@ -389,6 +393,12 @@ void internal_shard::procces_event<event_name::READY>(nlohmann::json& event) {
 	m_dm_channels.reserve(private_channels.size());
 	for (const auto& c : private_channels)
 		insert_proj_as_key(m_dm_channels, c.get<dm_channel>(),get_id);
+<<<<<<< HEAD
+	
+	m_parent->on_ready(*this);
+	
+=======
+>>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 }
 
 template <>
@@ -456,7 +466,14 @@ void internal_shard::procces_event<event_name::GUILD_CREATE>(nlohmann::json& dat
 		guild.m_presences = std::move(data["presences"]);//save it for later
 	}
 
+<<<<<<< HEAD
+	guild.m_shard = this;
+	if(guild.m_is_ready) {
+		m_parent->on_guild_ready(guild, *this);
+	}
+=======
 	guild.m_shard = this;	
+>>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 }
 
 //TODO
@@ -493,6 +510,12 @@ void internal_shard::procces_event<event_name::GUILD_MEMBERS_CHUNK>(nlohmann::js
 				member.m_game.emplace(game.get<activity>());
 		}
 
+<<<<<<< HEAD
+
+		m_parent->on_guild_ready(g, *this);
+		
+=======
+>>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 		replay_events_for(g.id());
 		
 		//g.m_presences.clear();
@@ -807,7 +830,12 @@ void internal_shard::procces_event<event_name::GUILD_MEMBER_UPDATE>(nlohmann::js
 	if (it == guild.m_members.end()) {//;-; create guild_member and add it to m_members
 		guild_member member;
 		from_json(user_, static_cast<user&>(member));
+<<<<<<< HEAD
+		//member.m_roles = e["roles"].get<std::vector<snowflake>>();
+		member.m_roles = e["roles"] | ranges::views::transform(&nlohmann::json::get<snowflake>) | ranges::to<boost::container::small_vector<snowflake, 5>>();
+=======
 		member.m_roles = e["roles"].get<std::vector<snowflake>>();		
+>>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 		if(const auto it2 = e.find("nick"); it2 != e.end())
 			member.m_nick = e["nick"].is_null() ? "" : e["nick"].get<std::string>();
 		member.m_guild = &guild;
@@ -817,7 +845,12 @@ void internal_shard::procces_event<event_name::GUILD_MEMBER_UPDATE>(nlohmann::js
 	}else{
 		auto& member = (*it).second;
 		from_json(user_, static_cast<user&>(member));
+<<<<<<< HEAD
+		//member.m_roles = e["roles"].get<std::vector<snowflake>>();
+		member.m_roles = e["roles"] | ranges::views::transform(&nlohmann::json::get<snowflake>) | ranges::to<boost::container::small_vector<snowflake, 5>>();
+=======
 		member.m_roles = e["roles"].get<std::vector<snowflake>>();
+>>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 		if(const auto it2 = e.find("nick"); it2 != e.end())
 			member.m_nick = e["nick"].is_null()? member.m_nick : e["nick"].get<std::string>();
 		m_parent->on_guild_member_update(member, *this);

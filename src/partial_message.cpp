@@ -17,10 +17,17 @@ bool partial_message::tts() const noexcept { return m_tts; }
 bool partial_message::mention_everyone() const noexcept { return m_mention_everyone; }
 
 const text_channel& guild_text_message::channel() const noexcept { return *m_channel; }
+<<<<<<< HEAD
+
+const guild_member& guild_text_message::author() const noexcept { return m_author; }
+
+const user& dm_message::author() const noexcept { return m_author; }
+=======
 
 const guild_member& guild_text_message::author() const noexcept { return *m_author; }
 
 const user& dm_message::author() const noexcept { return *m_author; }
+>>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 
 const dm_channel& dm_message::channel() const noexcept { return *m_channel; }
 

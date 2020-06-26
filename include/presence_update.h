@@ -14,11 +14,13 @@ struct activity{
 	activity_type type() const noexcept;
 	const std::optional<std::string>& url() const noexcept;
 private:
-	std::string m_name;
 	activity_type m_type = activity_type::game;
+	std::string m_name;
 	std::optional<std::string> m_url;
 	friend void from_json(const nlohmann::json& json, activity& thing);
 };
+
+
 
 void from_json(const nlohmann::json& json, activity& thing);
 

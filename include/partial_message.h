@@ -7,6 +7,10 @@
 #include <optional>
 #include <range/v3/all.hpp>
 #include <span>
+<<<<<<< HEAD
+#include "embed.h"
+=======
+>>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 
 struct dm_channel;
 struct text_channel;
@@ -38,6 +42,10 @@ private:
 	bool m_tts = false;
 	bool m_mention_everyone = false;
 
+<<<<<<< HEAD
+	std::vector<embed> m_embeds;
+=======
+>>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 	std::vector<attachment> m_attachments;
 	std::vector<reaction> m_reactions;
 
@@ -57,8 +65,13 @@ struct guild_text_message :partial_message {
 		return m_mention_roles_ids;
 	};
 
+<<<<<<< HEAD
+	std::span<const guild_member> mentions() const noexcept {
+		return m_mentions;
+=======
 	auto mentions() const noexcept {
 		return m_mentions | ranges::views::indirect;
+>>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 	};
 
 	auto mention_roles() const noexcept {
@@ -67,14 +80,23 @@ struct guild_text_message :partial_message {
 
 private:
 	std::vector<snowflake> m_mention_roles_ids;
-	std::vector<const guild_member*> m_mentions;
+	std::vector<guild_member> m_mentions;
 	std::vector<const guild_role*> m_mention_roles;
-	guild_member* m_author = nullptr;
+	guild_member m_author;
 	text_channel* m_channel = nullptr;
 	friend struct internal_shard;
 	friend struct msg_update_access;
 };
+static constexpr int rawradsjksdfhksldjfa = sizeof(guild_member);
+static constexpr int rawradsjksdfhksldjf = sizeof(guild_text_message);
 
+<<<<<<< HEAD
+struct dm_message :partial_message {
+	const user& author() const noexcept;
+
+	std::span<const user> mentions() const noexcept {
+		return m_mentions;
+=======
 static constexpr int rawradsjksdfhksldjf = sizeof(guild_text_message);
 
 struct dm_message :partial_message {
@@ -82,12 +104,18 @@ struct dm_message :partial_message {
 
 	auto mentions() const noexcept {
 		return m_mentions | ranges::views::indirect;
+>>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 	};
 
 	const dm_channel& channel() const noexcept;
 private:
+<<<<<<< HEAD
+	user m_author;
+	std::vector<user> m_mentions;
+=======
 	user* m_author = nullptr;
 	std::vector<user*> m_mentions;
+>>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 	dm_channel* m_channel = nullptr;
 	friend struct internal_shard;
 	friend struct msg_update_access;
@@ -159,7 +187,11 @@ private:
 void from_json(const nlohmann::json& json, msg_update& msg);
 
 struct msg_update_access {
+<<<<<<< HEAD
+	//TODO, maybe
+=======
 	//TODO
+>>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 	static void update_msg(guild_text_message& msg, guild_msg_update& update) { }
 
 	static void update_msg(dm_message&, dm_msg_update&) { }

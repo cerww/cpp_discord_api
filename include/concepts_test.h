@@ -1,6 +1,6 @@
 #pragma once
 #include <range/v3/all.hpp>
-#include "Guild.h"
+#include "guild.h"
 #include <memory_resource>
 #include "allocatey.h"
 #include <unordered_map>
@@ -15,6 +15,7 @@ CONCEPT_ASSERT(ranges::SizedSentinel<discord_obj_list<guild_member, std::vector<
 CONCEPT_ASSERT(ranges::TotallyOrdered<discord_obj_list<guild_member, std::vector<snowflake>&>::iterator>());
 CONCEPT_ASSERT(ranges::RandomAccessIterator<discord_obj_list<guild_member, std::vector<snowflake>&>::iterator>());
 CONCEPT_ASSERT(ranges::ForwardRange<discord_obj_map<guild_member>>());
+CONCEPT_ASSERT(ranges::ForwardRange<ref_stable_map<snowflake,guild_member>>());
 
 inline void test_rand_itness_of_discord_obj_list(discord_obj_list<guild_member,std::vector<snowflake>&>& t) {
 	auto it = t.begin();

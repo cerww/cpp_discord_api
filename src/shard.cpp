@@ -14,11 +14,22 @@ cerwy::task<voice_connection> shard::connect_voice(const voice_channel& ch) {
 	//TODO: change this
 	auto& me = (internal_shard&)*this;
 	return me.connect_voice(ch);
+<<<<<<< HEAD
+}
+
+bool shard::will_have_guild(snowflake guild_id) const noexcept{
+	return (guild_id.val >> 22) % m_parent->num_shards() == m_shard_number;
+=======
+>>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 }
 
 cerwy::task<boost::beast::error_code> shard::connect_http_connection() {
 	auto ec = co_await m_http_connection.async_connect();
 	int tries = 1;
+<<<<<<< HEAD
+	//TODO: change this
+=======
+>>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 	while (ec && tries < 10) {
 		ec = co_await m_http_connection.async_connect();
 		++tries;

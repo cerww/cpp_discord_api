@@ -21,15 +21,20 @@ void to_json(nlohmann::json& json, const dm_channel& channel) {
 void from_json(const nlohmann::json& json, dm_channel& channel) {
 	from_json(json, static_cast<partial_channel&>(channel));
 	//channel.m_recipients = json["recipients"].get<std::vector<user>>();
-	for (auto& t : json["recipients"]) {
+	/*for (auto& t : json["recipients"]) {
 		auto member = t.get<user>();
 		const auto id = member.id();
 		channel.m_recipients.insert(std::make_pair(id, std::move(member)));
-	}
+	}*/
 
-	//channel.m_recipients = json["recipients"] | ranges::views::transform(&get_then_return_id<user>) | ranges::to<ref_stable_map<snowflake, user>>();
+	channel.m_recipients = json["recipients"] | ranges::views::transform(&get_then_return_id<user>) | ranges::to<ref_stable_map<snowflake, user>>();
 
-	std::unordered_map<snowflake,user> a = json["recipients"] | ranges::views::transform(&get_then_return_id<user>) | ranges::to<std::unordered_map<snowflake, user>>();
+	/*ska::bytell_hash_map<snowflake, std::unique_ptr<int>> abc;
+
+	ska::bytell_hash_map<snowflake, std::unique_ptr<int>> b = std::move(abc);
+	
+	ska::bytell_hash_map<snowflake,user> a = json["recipients"] | ranges::views::transform(&get_then_return_id<user>) | ranges::to<ska::bytell_hash_map<snowflake, user>>();
+	*/
 	
 	channel.m_last_message_id = json["last_message_id"].get<snowflake>();
 	//channel.m_last_pin_timestamp = json["last_pin_timestamp"];

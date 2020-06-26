@@ -76,6 +76,8 @@ DIRECT_MESSAGE_TYPING (1 << 14)
 */
 
 
+<<<<<<< HEAD
+=======
 /*
 enum class intents :uint32_t {
 	GUILDS = (1 << 0),
@@ -99,6 +101,7 @@ enum class intents :uint32_t {
 	ALL_BUT_PRESSENCE_MEMBERS = ~(~ALL | GUILD_MEMBERS | GUILD_PRESENCES)
 };
 */
+>>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 
 //not an enum so i can have functions 
 struct intents {
@@ -161,6 +164,14 @@ namespace intent {
 		| GUILD_VOICE_STATES | GUILD_PRESENCES | GUILD_MESSAGES | GUILD_MESSAGE_REACTIONS
 		| GUILD_MESSAGE_TYPING | DIRECT_MESSAGES | DIRECT_MESSAGE_REACTIONS | DIRECT_MESSAGE_TYPING);
 
+<<<<<<< HEAD
+	static constexpr intents ALL_NON_PRIVILEGED = ALL - GUILD_MEMBERS - GUILD_PRESENCES;;
+	static constexpr intents ALL_BUT_TYPING = ALL - GUILD_MESSAGE_TYPING - DIRECT_MESSAGE_TYPING;
+}
+
+
+=======
 	static constexpr intents ALL_BUT_PRESSENCE_MEMBERS = ALL - GUILD_MEMBERS - GUILD_PRESENCES;;
 	static constexpr intents ALL_BUT_TYPING = ALL - GUILD_MESSAGE_TYPING - DIRECT_MESSAGE_TYPING;
 }
+>>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de

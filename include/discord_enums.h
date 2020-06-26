@@ -2,7 +2,7 @@
 #include <string>
 #include <string_view>
 
-enum class Status {
+enum class Status:uint8_t {
 	dnd,
 	online,
 	idle,

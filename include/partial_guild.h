@@ -7,10 +7,12 @@
 #include "voice_channel.h"
 #include <range/v3/all.hpp>
 #include <optional>
+#include "optional_ref.h"
 
 struct partial_guild {
 	snowflake id() const noexcept;
 	discord_obj_map<guild_role> roles() const noexcept;
+	
 	std::string_view name() const noexcept;
 	std::string_view icon() const noexcept;
 	snowflake owner_id() const noexcept;
@@ -30,8 +32,27 @@ struct partial_guild {
 
 	std::span<const std::string> features() const noexcept {
 		return m_features;
+<<<<<<< HEAD
+	}	
+
+	auto roles_list() const noexcept {
+		return m_roles | ranges::views::values;
+	};
+
+	optional_ref<const guild_role> role_by_name(std::string_view name)const noexcept {
+		auto it = ranges::find(roles_list(), name, &guild_role::name);
+		
+		if(it == roles_list().end()) {
+			return std::nullopt;
+		}else {
+			return optional_ref(*it);
+		}		
+	}
+	
+=======
 	}
 
+>>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 private:
 	snowflake m_id;
 	std::string m_name;
@@ -55,6 +76,8 @@ private:
 	bool m_widget_enabled = false;
 	std::optional<snowflake> m_widget_channel_id = std::nullopt;
 	snowflake m_system_channel_id;
+
+	
 	friend void from_json(const nlohmann::json& json, partial_guild& guild);
 	friend struct internal_shard;
 };

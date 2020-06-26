@@ -1,6 +1,10 @@
 #pragma once
 #include "snowflake.h"
 #include "partial_channel.h"
+<<<<<<< HEAD
+#include <span>
+=======
+>>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 
 struct partial_guild_channel :partial_channel {
 	snowflake guild_id() const noexcept { return m_guild_id; }

@@ -92,10 +92,19 @@ struct client {//<(^.^)>
 	std::function<void(const text_channel&, optional_ref<const guild_text_message>, shard&)> on_guild_reaction_remove_all = nothing;
 	std::function<void(const dm_channel&, optional_ref<const dm_message>, shard&)> on_dm_reaction_remove_all = nothing;
 	std::function<void(const guild_member&, shard&)> on_presence_update = nothing;
+<<<<<<< HEAD
+
+	std::function<void(const Guild&, shard&)> on_guild_ready = nothing;
+	
+	std::function<void(std::vector<snowflake>, const text_channel&, shard&)> on_message_bulk = nothing;
+	std::function<void(std::vector<snowflake>, const dm_channel&, shard&)> on_dm_message_bulk = nothing;
+	std::function<void(shard&)> on_ready = nothing;
+=======
 	
 	std::function<void(std::vector<snowflake>, const text_channel&, shard&)> on_message_bulk = nothing;
 	std::function<void(std::vector<snowflake>, const dm_channel&, shard&)> on_dm_message_bulk = nothing;
 
+>>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 
 
 	Status status = Status::online;

@@ -1,4 +1,4 @@
-#include "user.h"
+#include "User.h"
 
 snowflake user::id() const noexcept { return m_id; }
 
@@ -25,5 +25,5 @@ void from_json(const nlohmann::json& json, user& other) {
 	other.m_id = json["id"].get<snowflake>();
 	other.m_username = json["username"].get<std::string>();
 	other.m_bot = json.value("bot", false);
-	other.m_discriminator = std::stoi(json["discriminator"].get<std::string>());
+	other.m_discriminator = std::stoi(json.value("discriminator", "-1"));
 }
