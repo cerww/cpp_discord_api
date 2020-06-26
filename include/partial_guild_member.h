@@ -2,24 +2,15 @@
 #include "User.h"
 #include "timestamp.h"
 #include "guild_role.h"
-<<<<<<< HEAD
 #include <range/v3/all.hpp>
 #include <span>
 #include <boost/container/small_vector.hpp>
-=======
-#include <range/v3/view/all.hpp>
-#include <span>
->>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 
 struct partial_guild_member :user {
 	std::string_view nick() const noexcept;
 
 	std::span<const snowflake> role_ids() const noexcept {
-<<<<<<< HEAD
 		return std::span(m_roles.data(),m_roles.size());
-=======
-		return m_roles;
->>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 	}
 
 	timestamp joined_at() const noexcept;

@@ -32,7 +32,6 @@ struct partial_guild {
 
 	std::span<const std::string> features() const noexcept {
 		return m_features;
-<<<<<<< HEAD
 	}	
 
 	auto roles_list() const noexcept {
@@ -49,10 +48,6 @@ struct partial_guild {
 		}		
 	}
 	
-=======
-	}
-
->>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 private:
 	snowflake m_id;
 	std::string m_name;

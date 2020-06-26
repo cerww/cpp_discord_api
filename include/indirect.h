@@ -4,17 +4,10 @@
 
 struct defer_construction {};
 
-<<<<<<< HEAD
 //std::unique_ptr but supports copy
 template<typename T>
 struct indirect {
-=======
 
-template<typename T, typename Allocator = std::allocator<T>>
-struct indirect {
-	indirect():
-		m_data(new(m_allocator.allocate(1)) T()) {};
->>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 
 	indirect():
 		m_data(std::make_unique<T>()) {};
@@ -22,7 +15,6 @@ struct indirect {
 	indirect(T stuff) :
 		m_data(std::make_unique<T>(std::move(stuff))) {}
 
-<<<<<<< HEAD
 	template<typename... Ts, std::enable_if_t<std::is_constructible_v<T, Ts...>, int>  = 0>
 	explicit indirect(Ts&&... args):
 		m_data(std::make_unique<T>(std::forward<Ts>(args)...)) {}
@@ -31,44 +23,6 @@ struct indirect {
 	template<typename U>
 	indirect(std::initializer_list<U> li):
 		m_data(std::make_unique<T>(li)) {}
-=======
-	template<typename allo, std::enable_if_t<std::is_constructible_v<Allocator, allo>, int>  = 0>
-	explicit indirect(allo&& alloc, T thing = T()): // NOLINT
-		m_allocator(std::forward<allo>(alloc)),
-		m_data(new(m_allocator.allocate(1)) T(std::move(thing))) {}
-
-	template<
-		typename... Ts,
-		std::enable_if_t<
-			std::is_constructible_v<Allocator, Ts...> &&
-			!std::is_constructible_v<T, Ts...>,
-			int>  = 0>
-	explicit indirect(Ts&&... args):
-		m_allocator(std::forward<Ts>(args)...),
-		m_data(new(m_allocator.allocate(1)) T()) {}
-
-	template<
-		typename... Ts,
-		std::enable_if_t<
-			std::is_constructible_v<Allocator, Ts...> &&
-			!std::is_constructible_v<T, Ts...>,
-			int>  = 0>
-	explicit indirect(defer_construction, Ts&&... args) :
-		m_allocator(std::forward<Ts>(args)...) {}
-
-	template<typename... Ts, std::enable_if_t<std::is_constructible_v<T, Ts...>, int>  = 0>
-	explicit indirect(Ts&&... args):
-		m_data(new(m_allocator.allocate(1)) T(std::forward<Ts>(args)...)) {}
-
-	template<typename ...Ts1, typename ...Ts2>
-	explicit indirect(std::tuple<Ts1...> alloc_args, std::tuple<Ts2...> T_args):
-		m_allocator(std::make_from_tuple<Allocator>(std::move(alloc_args))),
-		m_data(new(m_allocator.allocate(1)) T(std::make_from_tuple<T>(std::move(T_args)))) {}
-
-	template<typename U>
-	indirect(std::initializer_list<U> li):
-		m_data(new(m_allocator.allocate(1)) T(li)) {}
->>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 
 	template<typename U>
 	indirect& operator=(std::initializer_list<U> li) {
@@ -77,7 +31,6 @@ struct indirect {
 	}
 
 	indirect(const indirect& other):
-<<<<<<< HEAD
 		m_data(std::make_unique<T>(*other.m_data)) {}
 
 	indirect(indirect&& other) noexcept:
@@ -90,22 +43,6 @@ struct indirect {
 	template<typename U>
 	indirect(indirect<U>&& other):
 		m_data(std::make_unique<T>(std::move(*other.m_data))) {}
-=======
-		m_allocator(other.m_allocator),
-		m_data(new(m_allocator.allocate(1)) T(*other.m_data)) {}
-
-	indirect(indirect&& other) noexcept:
-		m_allocator(std::move(other.m_allocator)),
-		m_data(std::exchange(other.m_data, nullptr)) {}
-
-	template<typename U, typename A, std::enable_if_t<!std::is_same_v<A, Allocator>, int>  = 0>
-	indirect(const indirect<U, A>& other) :
-		m_data(new(m_allocator.allocate(1)) T(*other.m_data)) {}
-
-	template<typename U, typename A, std::enable_if_t<!std::is_same_v<A, Allocator>, int>  = 0>
-	indirect(indirect<U, A>&& other):
-		m_data(new(m_allocator.allocate(1)) T(std::move(*other.m_data))) {}
->>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 
 	indirect& operator=(const indirect& other) {
 		*m_data = *other.m_data;
@@ -114,15 +51,10 @@ struct indirect {
 
 	indirect& operator=(indirect&& other) noexcept {
 		indirect new_me(std::move(other));
-<<<<<<< HEAD
-=======
-		std::swap(m_allocator, new_me.m_allocator);
->>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 		std::swap(m_data, new_me.m_data);
 		return *this;
 	}
 
-<<<<<<< HEAD
 	template<typename U>
 	indirect& operator=(const indirect<U>& other) {
 		if(!other.m_data) {
@@ -137,40 +69,31 @@ struct indirect {
 		return *this;
 	}
 
-	template<typename U>
+	template<typename U,std::enable_if_t<!std::is_same_v<T,U>,int> = 0>
 	indirect& operator=(indirect<U>&& other) {
-		if (!m_data)
-			m_data = std::make_unique<T>(std::move(*other.m_data));
-=======
-	template<typename U, typename A, std::enable_if_t<std::is_convertible_v<U, T> && !std::is_same_v<A, Allocator>, int>  = 0>
-	indirect& operator=(const indirect<U, A>& other) {
-		*m_data = *other.m_data;
+		if (!other.m_data) {
+			m_data = nullptr;
+			return;
+		}
+		if (m_data) {
+			*m_data = *other.m_data;
+		}
+		else {
+			m_data = std::make_unique<T>(*other.m_data);
+		}
 		return *this;
 	}
 
-	template<typename U, typename A, std::enable_if_t<std::is_convertible_v<U, T> && !std::is_same_v<A, Allocator>, int>  = 0>
-	indirect& operator=(indirect<U, A>&& other) {
-		if (!m_data)
-			m_data = new(m_allocator.allocate(1)) T(std::move(*other.m_data));
->>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
-		else
-			*m_data = std::move(*other.m_data);
-		return *this;
-	}
+
 
 	indirect& operator=(T other) {
 		if (!m_data)
-<<<<<<< HEAD
 			m_data = std::make_unique<T>(std::move(other));
-=======
-			m_data = new(m_allocator.allocate(1)) T(std::move(other));
->>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 		else
 			*m_data = std::move(other);
 		return *this;
 	}
 
-<<<<<<< HEAD
 	~indirect() = default;
 
 	T& value() noexcept { return *m_data; }
@@ -181,23 +104,7 @@ struct indirect {
 
 	const T* get() const noexcept { return m_data; }
 
-=======
-	~indirect() {
-		if (m_data) {
-			std::allocator_traits<Allocator>::destroy(m_allocator, m_data);
-			m_allocator.deallocate(m_data, 1);
-		}
-	}
 
-	T& value() noexcept { return *m_data; }
-
-	const T& value() const noexcept { return *m_data; }
-
-	T* get() noexcept { return m_data; }
-
-	const T* get() const noexcept { return m_data; }
-
->>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 	operator T&() {
 		return *m_data;
 	}
@@ -243,31 +150,10 @@ struct indirect {
 	bool operator<=(U&& other) const {
 		return !std::less<>()(other, *m_data);
 	}
-<<<<<<< HEAD
 
 private:
 	std::unique_ptr<T> m_data = nullptr;
 	template<typename>
-=======
-
-	Allocator& allocator() {
-		return m_allocator;
-	}
-
-	const Allocator& allocator() const {
-		return m_allocator;
-	}
-
-	template<typename ...args>
-	void construct(args&&... Args) {
-		m_data = new(m_allocator.allocate(1)) T(std::forward<args>(Args)...);
-	}
-
-private:
-	Allocator m_allocator{};
-	T* m_data = nullptr;
-	template<typename, typename>
->>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 	friend struct indirect;
 };
 
@@ -340,7 +226,6 @@ inline void qwettrsffdh() {
 	std::cout << d << std::endl;
 }
 */
-<<<<<<< HEAD
 
 
 /*
@@ -530,5 +415,3 @@ private:
 };
 
  */
-=======
->>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de

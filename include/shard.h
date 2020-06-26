@@ -56,19 +56,12 @@ struct shard {
 	template<typename rng>
 	requires is_range_of_v<rng, partial_message>
 	rq::delete_message_bulk delete_message_bulk(const partial_channel&, rng&&);
-<<<<<<< HEAD
 
 	template<typename rng>
 	requires is_range_of_v<rng, snowflake>
 	rq::delete_message_bulk delete_message_bulk(const partial_channel&, rng&&);
 
-=======
 
-	template<typename rng>
-	requires is_range_of_v<rng, snowflake>
-	rq::delete_message_bulk delete_message_bulk(const partial_channel&, rng&&);
-
->>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 	rq::delete_message_bulk delete_message_bulk(const partial_channel&, std::vector<snowflake>);
 	rq::leave_guild leave_guild(const Guild&);
 	rq::add_reaction add_reaction(const partial_message&, const partial_emoji&);
@@ -83,15 +76,11 @@ struct shard {
 	rq::create_dm create_dm(const user&);
 
 	rq::get_guild_integrations get_guild_integrations(const partial_guild& guild);
-<<<<<<< HEAD
 
 	rq::create_guild_integration create_guild_integration(const partial_guild& guild, std::string type, snowflake id);
 
-=======
 
-	rq::create_guild_integration create_guild_integration(const partial_guild& guild, std::string type, snowflake id);
 
->>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 
 	template<typename range>
 	requires is_range_of<range, std::string>
@@ -136,7 +125,6 @@ struct shard {
 
 	template<typename ...settings>
 	rq::modify_guild modify_guild(const partial_guild&, settings&&...);
-<<<<<<< HEAD
 
 	template<typename ...settings>
 	rq::modify_guild modify_guild(const partial_guild&, modify_guild_settings<settings...>);
@@ -147,37 +135,6 @@ struct shard {
 	template<typename... settings>
 	rq::modify_role modify_role(const guild_role&, modify_role_settings<settings...>);
 
-	const user& self_user() const noexcept {
-		return m_self_user;
-	}
-
-	cerwy::task<voice_connection> connect_voice(const voice_channel&);
-=======
-
-	template<typename ...settings>
-	rq::modify_guild modify_guild(const partial_guild&, modify_guild_settings<settings...>);
-
-	template<typename... settings>
-	rq::modify_role modify_role(const guild_role&, settings&&...);
->>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
-
-	template<typename... settings>
-	rq::modify_role modify_role(const guild_role&, modify_role_settings<settings...>);
-
-<<<<<<< HEAD
-	discord_obj_map<Guild> guilds()const noexcept { return m_guilds; }
-	
-	discord_obj_map<text_channel> text_channels() const noexcept { return m_text_channel_map; }
-
-	discord_obj_map<dm_channel> dm_channels() const noexcept { return m_dm_channels; }
-
-	discord_obj_map<voice_channel> voice_channels() const noexcept { return m_voice_channel_map; }
-
-	discord_obj_map<channel_catagory> channel_catagories() const noexcept { return m_channel_catagory_map; }
-
-	bool will_have_guild(snowflake guild_id)const noexcept;
-
-=======
 	const user& self_user() const noexcept {
 		return m_self_user;
 	}
@@ -187,7 +144,17 @@ struct shard {
 	boost::asio::io_context::strand& strand() {
 		return m_strand;
 	}
->>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
+
+	discord_obj_map<Guild> guilds()const noexcept { return m_guilds; }
+
+	discord_obj_map<text_channel> text_channels() const noexcept { return m_text_channel_map; }
+
+	discord_obj_map<dm_channel> dm_channels() const noexcept { return m_dm_channels; }
+
+	discord_obj_map<voice_channel> voice_channels() const noexcept { return m_voice_channel_map; }
+
+	discord_obj_map<channel_catagory> channel_catagories() const noexcept { return m_channel_catagory_map; }
+	
 private:
 	using wsClient = rename_later_5;
 
@@ -204,6 +171,8 @@ private:
 
 	int m_shard_number = 0;
 
+	user m_self_user;
+
 
 	http_connection2 m_http_connection;
 	std::unique_ptr<wsClient> m_client = nullptr;
@@ -211,9 +180,7 @@ private:
 	boost::asio::io_context::strand m_strand;
 
 	client* m_parent = nullptr;
-<<<<<<< HEAD
 
-	user m_self_user;
 
 	ref_stable_map<snowflake, Guild> m_guilds;
 	ref_stable_map<snowflake, text_channel> m_text_channel_map;
@@ -221,21 +188,13 @@ private:
 	ref_stable_map<snowflake, channel_catagory> m_channel_catagory_map;
 	ref_stable_map<snowflake, dm_channel> m_dm_channels;
 
-=======
-
-	user m_self_user;
-
-
->>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
+	bool will_have_guild(snowflake guild_id) const noexcept;
 	
 	explicit shard(int shard_number, client* t_parent, boost::asio::io_context& ioc);
 	
 	friend cerwy::task<void> init_shard(int shardN, internal_shard& t_parent, boost::asio::io_context& ioc, std::string_view gateway);
 	friend struct internal_shard;
-<<<<<<< HEAD
 	friend struct client;
-=======
->>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 };
 
 namespace rawrland {//rename later ;-;
@@ -296,9 +255,7 @@ rq::modify_channel_positions shard::modify_channel_positions(const Guild& g, rng
 
 template<typename rng>
 requires is_range_of_v<rng, partial_message>
-
 rq::delete_message_bulk shard::delete_message_bulk(const partial_channel& channel, rng&& msgs) {
-<<<<<<< HEAD
 	nlohmann::json body;
 	body["messages"] = msgs | ranges::views::transform(&partial_message::id) | ranges::to<std::vector>;
 	return send_request<rq::delete_message_bulk>(body.dump(), channel);
@@ -313,29 +270,12 @@ rq::delete_message_bulk shard::delete_message_bulk(const partial_channel& channe
 	} else {
 		body["messages"] = msgs | ranges::to<std::vector>;
 	}
-=======
 	nlohmann::json body;
 	body["messages"] = msgs | ranges::views::transform(&partial_message::id) | ranges::to<std::vector>;
->>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 	return send_request<rq::delete_message_bulk>(body.dump(), channel);
 }
 
 template<typename rng>
-<<<<<<< HEAD
-=======
-requires is_range_of_v<rng, snowflake>
-rq::delete_message_bulk shard::delete_message_bulk(const partial_channel& channel, rng&& msgs) {
-	nlohmann::json body;
-	if constexpr (std::is_convertible_v<rng, nlohmann::json>) {
-		body["messages"] = msgs;
-	} else {
-		body["messages"] = msgs | ranges::to<std::vector>;
-	}
-	return send_request<rq::delete_message_bulk>(body.dump(), channel);
-}
-
-template<typename rng>
->>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 requires is_range_of<rng, snowflake>
 rq::add_guild_member shard::add_guild_member(const Guild& guild, snowflake id, std::string access_token, rng&& roles, std::string nick, bool deaf, bool mute) {
 	nlohmann::json body;

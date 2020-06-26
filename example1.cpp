@@ -28,7 +28,6 @@ cerwy::task<void> do_audio_thingy(cerwy::task<voice_connection> vc_task) {
 	
 }
 
-<<<<<<< HEAD
 cerwy::task<void> thingy(const Guild& g,shard& s) {
 	while(true) {
 		boost::asio::steady_timer timer(s.strand());
@@ -39,8 +38,6 @@ cerwy::task<void> thingy(const Guild& g,shard& s) {
 	}
 }
 
-=======
->>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 //spam bot
 int main() {
 	//thingy_to_debugy();
@@ -49,7 +46,6 @@ int main() {
 	//std::cin.get();
 	//try {
 	client c;
-<<<<<<< HEAD
 	
 	boost::asio::io_context::strand* shard_of_guild = nullptr;
 
@@ -68,18 +64,12 @@ int main() {
 
 	//c.on_guild_ready = &thingy;
 	
-=======
-
-	cerwy::task<voice_connection> connashk;
-	std::vector<partial_message> msgs;
->>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 	c.on_guild_text_msg = [&](guild_text_message msg, shard& s) {
 		if (msg.content() == "rawrmander") {
 			//int i = 0;
 			/*
 			for (auto&& a : s.voice_channels()) {
 				std::cout << a.first.val << ' ' << a.second.guild_id().val << std::endl;;
-<<<<<<< HEAD
 			}
 			*/
 			for (auto&& a : msg.guild().voice_channel_ids()) {
@@ -116,39 +106,7 @@ int main() {
 		}
 		//s.change_nick(wat.author(), wat.content());
 
-=======
-			}
-			*/
-			for (auto&& a : msg.guild().voice_channel_ids()) {
-				std::cout << a.val << ' ' << std::endl;
-			}
-			do_audio_thingy(s.connect_voice(msg.guild().voice_channels()[0]));
-		}
-		else if (msg.content() == "watland") {
-			//s.delete_message(msgs.back()).get();
-			//msgs.pop_back();
-		}
-		else if (msg.content() == "make new channel") {
-			auto ch = s.create_text_channel(msg.guild(), "blargylandy").get();
-		}
-		else if (msg.content() == "rolesy") {
-			std::string stuff =
-					msg.author().roles() |
-					ranges::views::transform(&guild_role::name) |
-					ranges::views::join(" "sv) |
-					ranges::to<std::string>();
 
-			s.send_message(msg.channel(), stuff);
-		}
-		else if (msg.content() == "invite") {
-			s.create_channel_invite(msg.channel()).wait();
-		}
-		else if (msg.content() == "namey") {
-			s.send_message(msg.channel(), std::string(msg.author().nick()));
-		}
-		//s.change_nick(wat.author(), wat.content());
-
->>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 		for (const auto& i : msg.mentions()) {
 			s.change_nick(i, std::string(msg.content()));
 		}

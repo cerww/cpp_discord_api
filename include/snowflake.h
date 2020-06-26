@@ -16,36 +16,23 @@ struct snowflake {
 	~snowflake() = default;
 
 	constexpr snowflake& operator=(snowflake&& other) noexcept {
-<<<<<<< HEAD
 		std::swap(val,other.val);
-=======
 		//std::swap isn't constexpr
 		auto t = other.val;
 		other.val = val;
 		val = t;
->>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
 		return *this;
 	}
 
 	constexpr snowflake& operator=(const snowflake& other) = default;
 
 	constexpr snowflake(snowflake&& other) noexcept :
-<<<<<<< HEAD
 		val(std::exchange(other.val, 0)) {}
 
 	constexpr snowflake(const snowflake& other) = default;
 	//TODO: remove me after im done debugging
-	constexpr explicit snowflake(size_t a):
-=======
-		val(other.val) {
-		//std::exchange isn't constexpr ;-;
-		other.val = 0;
-	}
-
-	constexpr snowflake(const snowflake& other) = default;
-	//TODO: remove me after im done debugging
-	constexpr snowflake(size_t a):
->>>>>>> 9648113a4d7aa9623d8a04cb8224e805b3cf95de
+	
+	constexpr explicit snowflake(const size_t a):	
 		val(a) {}
 
 	size_t val = 0;
