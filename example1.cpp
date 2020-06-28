@@ -65,6 +65,7 @@ int main() {
 	//c.on_guild_ready = &thingy;
 	
 	c.on_guild_text_msg = [&](guild_text_message msg, shard& s) {
+		std::cout << "awujosjeyhdasujkhda" << std::endl;
 		if (msg.content() == "rawrmander") {
 			//int i = 0;
 			/*

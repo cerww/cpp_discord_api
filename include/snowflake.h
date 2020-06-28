@@ -17,10 +17,6 @@ struct snowflake {
 
 	constexpr snowflake& operator=(snowflake&& other) noexcept {
 		std::swap(val,other.val);
-		//std::swap isn't constexpr
-		auto t = other.val;
-		other.val = val;
-		val = t;
 		return *this;
 	}
 
@@ -35,7 +31,7 @@ struct snowflake {
 	constexpr explicit snowflake(const size_t a):	
 		val(a) {}
 
-	size_t val = 0;
+	size_t val = 0;//no reason to be private?
 };
 
 constexpr bool operator!=(const snowflake& a, const snowflake& b) {

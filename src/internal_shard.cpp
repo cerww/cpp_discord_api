@@ -253,6 +253,7 @@ void internal_shard::m_opcode8_guild_member_chunk(snowflake id) const {
 	s["d"]["guild_id"] = std::to_string(id.val);
 	s["d"]["query"] = "";
 	s["d"]["limit"] = 0;
+	std::cout << s << std::endl;
 	m_client->send_thing(s.dump());	
 }
 
@@ -396,7 +397,8 @@ void internal_shard::procces_event<event_name::READY>(nlohmann::json& event) {
 
 template <>
 void internal_shard::procces_event<event_name::GUILD_CREATE>(nlohmann::json& data) {
-	Guild& guild = m_guilds.insert(std::make_pair(data["id"].get<snowflake>(), data.get<Guild>())).first->second; 	
+	std::cout << data["id"] << std::endl;
+	Guild& guild = m_guilds.insert(std::make_pair(data["id"].get<snowflake>(), data.get<Guild>())).first->second;
 	if ( m_intents.has_intents(intent::GUILD_MEMBERS) && guild.m_member_count >= large_threshold) {
 		guild.m_is_ready = false;		
 		request_guild_members(guild);		
