@@ -23,6 +23,8 @@ struct shard {
 
 	rq::send_message send_message(const text_channel& channel, std::string content);
 	rq::send_message send_message(const dm_channel& channel, std::string content);
+	
+	rq::send_message send_message(const partial_channel& channel, std::string content, const embed& embed);
 
 	rq::add_role add_role(const partial_guild&, const guild_member&, const guild_role&);
 	rq::remove_role remove_role(const partial_guild&, const guild_member&, const guild_role&);
@@ -134,6 +136,8 @@ struct shard {
 
 	template<typename... settings>
 	rq::modify_role modify_role(const guild_role&, modify_role_settings<settings...>);
+
+	
 
 	const user& self_user() const noexcept {
 		return m_self_user;

@@ -104,7 +104,7 @@ namespace rq {
 	};
 
 	struct patch_verb {
-		static constexpr auto verb = boost::beast::http::verb::post;
+		static constexpr auto verb = boost::beast::http::verb::patch;
 	};
 
 	template<typename reqeust>
@@ -213,6 +213,19 @@ namespace rq {
 
 	struct send_message:
 		request_base<send_message>,
+		json_content_type,
+		post_verb
+	{
+		using request_base::request_base;
+		using return_type = partial_message;
+
+		static std::string target(const partial_channel& channel) {
+			return "/channels/{}/messages"_format(channel.id().val);
+		}
+	};
+
+	struct send_message_with_file:
+		request_base<send_message_with_file>,
 		json_content_type,
 		post_verb
 	{

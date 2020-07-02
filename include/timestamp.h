@@ -33,3 +33,8 @@ private:
 inline void from_json(const nlohmann::json&, timestamp& t) {
 	
 }
+
+inline void to_json(nlohmann::json&, const timestamp& t) {
+
+}
+

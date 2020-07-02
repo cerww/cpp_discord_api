@@ -211,6 +211,8 @@ private:
 	static reaction& add_reaction(std::vector<reaction>&, partial_emoji&, snowflake, snowflake);
 	static reaction& remove_reaction(std::vector<reaction>&, partial_emoji&, snowflake, snowflake);
 
+
+	
 	guild_member make_member_from_msg(const nlohmann::json& user_json, const nlohmann::json& member_json);
 
 
@@ -288,19 +290,7 @@ msg_t internal_shard::create_msg(channel_t& ch, const nlohmann::json& stuffs, ma
 	msg_t retVal;
 	from_json(stuffs, static_cast<partial_message&>(retVal));
 	retVal.m_channel = &ch;
-	//retVal.m_author = &members_in_channel[retVal.author_id()];
-	//retVal.m_mentions.reserve(stuffs["mentions"].size());
-	/*
-	retVal.m_author = &members_in_channel[retVal.author_id()];
-	retVal.m_mentions.reserve(stuffs["mentions"].size());
-	for (const auto& mention : stuffs["mentions"]) {
-		const auto it = members_in_channel.find(mention["id"].get<snowflake>());
-		//idk why this would happen
-		if (it == members_in_channel.end())
-			continue;
-		retVal.m_mentions.push_back(&(it->second));
-	}
-	*/
+	
 	constexpr bool is_guild_msg = std::is_same_v<msg_t, guild_text_message>;
 
 	if constexpr (is_guild_msg) {
@@ -337,21 +327,63 @@ msg_t internal_shard::createMsgUpdate(channel_t& ch, const nlohmann::json& stuff
 	msg_t retVal;
 	from_json(stuffs, static_cast<msg_update&>(retVal));
 	retVal.m_channel = &ch;
-	//retVal.m_author = members[stuffs["author"]["id"]];
-	if (retVal.m_author_id.val) {
-		retVal.m_author = &members[retVal.m_author_id];
+
+	static constexpr bool is_guild_msg = std::is_same_v<msg_t,guild_msg_update>;
+
+	if constexpr(is_guild_msg){
+		retVal.m_guild = ch.m_guild;
 	}
-	auto it_to_mentions = stuffs.find("mentions");
-	if (it_to_mentions != stuffs.end()) {
-		for (const auto& mention : *it_to_mentions)/* *it is list of users*/ {
-			auto& t = members[mention["id"].get<snowflake>()];
-			retVal.m_mentions.push_back(&t);
+	
+	if constexpr (is_guild_msg) {
+		const auto has_author_it = stuffs.find("author");
+		const auto has_member_it = stuffs.find("member");
+		if (has_author_it != stuffs.end() &&
+			has_member_it != stuffs.end()) {
+			
+			retVal.m_author = make_member_from_msg(*has_author_it,*has_member_it);
+		}
+	}else {
+		retVal.m_author = stuffs.value("author",std::optional<user>());
+	}
+
+	if constexpr(is_guild_msg){
+		const auto has_mentions_it = stuffs.find("mentions");		
+		if(has_mentions_it != stuffs.end()) {
+			auto& mentions = *has_mentions_it;
+			(retVal.m_mentions = std::vector<guild_member>())->reserve(mentions.size());//xd
+			for(auto& mention:mentions) {
+				auto& member = retVal.m_mentions->emplace_back(make_member_from_msg(mention, mention["member"]));
+				member.m_guild = retVal.m_guild;
+			}			
+		}		
+	}else {
+		//retVal.m_mentions = stuffs.value("mentions", std::optional<std::vector<user>>());
+		//^ doesn't work rn
+		
+		const auto has_mentions_it = stuffs.find("mentions");
+		if(has_mentions_it != stuffs.end()) {
+			retVal.m_mentions = has_mentions_it->get<std::vector<user>>();
 		}
 	}
+		//stuffs.value("mention_roles", std::optional<std::vector<snowflake>>());
+	
+	
 
-	if constexpr (std::is_same_v<msg_t, guild_text_message>)
-		retVal.m_mention_roles_ids = stuffs.value("mention_roles", std::vector<snowflake>());
+	if constexpr (is_guild_msg) {
+		//retVal.m_mention_role_ids = stuffs.value("mention_roles",std::optional<std::vector<snowflake>>());
+		//.value<std::optional<std::vector<T>> is broken rn
 
+		const auto has_mention_roles_it = stuffs.find("mentions_roles");
+		if(has_mention_roles_it != stuffs.end()) {
+			retVal.m_mention_role_ids = has_mention_roles_it->get<std::vector<snowflake>>();
+			retVal.m_mention_roles = std::vector<const guild_role*>();
+			const Guild& guild = *ch.m_guild;
+			retVal.m_mention_roles->reserve(retVal.m_mention_role_ids->size());
+			for (const auto& role_id : *retVal.m_mention_role_ids)
+				retVal.m_mention_roles->push_back(&guild.m_roles.at(role_id));
+		}
+	}
+	
 	return retVal;
 }
 

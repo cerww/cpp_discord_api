@@ -16,7 +16,7 @@ struct user {
 	std::string_view game_name() const noexcept { return m_game; }
 
 	std::string to_mentionable_string() const {
-		return "<@&" + std::to_string(m_id.val) + ">";
+		return "<@" + std::to_string(m_id.val) + ">";
 	}
 	
 private:

@@ -402,7 +402,7 @@ void internal_shard::procces_event<event_name::GUILD_CREATE>(nlohmann::json& dat
 	if ( m_intents.has_intents(intent::GUILD_MEMBERS) && guild.m_member_count >= large_threshold) {
 		guild.m_is_ready = false;		
 		request_guild_members(guild);		
-	} else {
+	} else if(m_intents.has_intents(intent::GUILD_MEMBERS)){
 		//add members to guild
 		for (const auto& member_json : data["members"]) {
 			auto member = member_json.get<guild_member>();
@@ -434,7 +434,7 @@ void internal_shard::procces_event<event_name::GUILD_CREATE>(nlohmann::json& dat
 			channel.m_guild = &guild;
 		}
 
-		//type == 3 is missing since it's DM channel, dm channels don't exist in guild channels
+		//type == 1,3 is missing since it's DM channel, dm channels don't exist in guild channels
 	}
 
 	for (auto& channel:	guild.m_text_channel_ids |
@@ -877,31 +877,11 @@ void internal_shard::procces_event<event_name::MESSAGE_UPDATE>(nlohmann::json& e
 		}
 
 		auto msg = createMsgUpdate<guild_msg_update>(ch, e, guild.m_members);
-		//auto it2 = ranges::find_if(ch.m_msg_cache.data(), id_equal_to(msg.id()));
-
-		/*
-		if (it2 != ch.msg_cache().end()) {
-			guild_text_message old_msg = *it2;
-			it2->m_content = e.value("content", it2->m_content);
-			it2->m_reactions = e.value("reaction", it2->m_reactions);
-			m_parent->on_guild_msg_update(msg, old_msg, *this);
-		}else {
-		}
-		*/
-			m_parent->on_guild_msg_update(std::move(msg), std::nullopt, *this);
+		m_parent->on_guild_msg_update(std::move(msg), *this);
 	}else {//dm msg
 		dm_channel& ch = m_dm_channels[channel_id];
 		auto msg = createMsgUpdate<dm_msg_update>(ch, e, ch.m_recipients);
-		/*auto it2 = ranges::find_if(ch.m_msg_cache.data(), id_equal_to(msg.id()));
-
-		if (it2 != ch.msg_cache().end()) {
-			dm_message old_msg = *it2;
-			it2->m_content = e.value("content", it2->m_content);
-			it2->m_reactions = e.value("reaction", it2->m_reactions);
-			m_parent->on_dm_msg_update(msg, old_msg, *this);
-		}else {
-		}*/
-		m_parent->on_dm_msg_update(std::move(msg), std::nullopt, *this);
+		m_parent->on_dm_msg_update(std::move(msg), *this);
 	}
 }
 

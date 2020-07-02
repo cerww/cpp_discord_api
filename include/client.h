@@ -75,8 +75,8 @@ struct client {//<(^.^)>
 	std::function<void(const Guild&, const guild_role&, shard&)> on_role_create = nothing;
 	std::function<void(const Guild&, const guild_role&, const guild_role&, shard&)> on_role_update = nothing;
 	std::function<void(const Guild&, const guild_role&, shard&)> on_role_delete = nothing;
-	std::function<void(const dm_msg_update&, optional_ref<const dm_message>, shard&)> on_dm_msg_update = nothing;
-	std::function<void(const guild_msg_update&, optional_ref<const guild_text_message>, shard&)> on_guild_msg_update = nothing;
+	std::function<void(dm_msg_update,  shard&)> on_dm_msg_update = nothing;
+	std::function<void(guild_msg_update, shard&)> on_guild_msg_update = nothing;
 	std::function<void(std::optional<dm_message>, snowflake, shard&)> on_dm_msg_delete = nothing;
 	std::function<void(std::optional<guild_text_message>, snowflake, shard&)> on_guild_msg_delete = nothing;
 	std::function<void(const guild_member&, const text_channel&, shard&)> on_guild_typing_start = nothing;

@@ -102,7 +102,12 @@ void from_json(const nlohmann::json& json, partial_message& msg);
 struct msg_update {
 	snowflake id() const noexcept;
 	snowflake channel_id() const noexcept;
-	std::string_view content() const noexcept;
+	std::optional<std::string_view> content() const noexcept;
+	
+	std::optional<bool> mention_everyone()const noexcept {
+		return m_mention_everyone;
+	}
+	
 private:
 	snowflake m_author_id;
 	snowflake m_id;
@@ -111,7 +116,7 @@ private:
 	timestamp m_timestamp;
 	std::optional<timestamp> m_edited_timestamp;
 	bool m_tts = false;
-	bool m_mention_everyone = false;
+	std::optional<bool> m_mention_everyone = false;
 
 	std::vector<attachment> m_attachments;
 	std::vector<reaction> m_reactions;
@@ -120,42 +125,55 @@ private:
 };
 
 struct guild_msg_update :msg_update {
-	const guild_member& author() const noexcept;
+	const std::optional<guild_member>& author() const noexcept;
 
-	std::span<const snowflake> mention_role_ids() const noexcept {
+	std::optional<std::span<const snowflake>> mention_role_ids() const noexcept {
 		return m_mention_role_ids;
 	};
 
-	auto mentions() const noexcept {
-		return m_mentions | ranges::views::indirect;
+	std::optional<std::span<const guild_member>> mentions() const noexcept {
+		return m_mentions;
 	};
 
-	auto mention_roles() const noexcept {
-		return m_mention_roles | ranges::views::indirect;
+	auto mention_roles() const noexcept
+			
+	{
+		//these could've been done with monanadic interface
+		using return_type = decltype(std::optional(m_mention_roles.value() | ranges::views::indirect));
+		if(m_mention_roles.has_value()) {
+			return std::optional(m_mention_roles.value() | ranges::views::indirect);
+		}else {
+			return return_type(std::nullopt);
+		}
 	};
 
 	const text_channel& channel() const noexcept;
 
+	const Guild& guild()const noexcept {
+		return *m_guild;
+	}
+	
 private:
-	guild_member* m_author = nullptr;
-	std::vector<snowflake> m_mention_role_ids;
-	std::vector<const guild_member*> m_mentions;
-	std::vector<const guild_role*> m_mention_roles;
+	std::optional<guild_member> m_author;
+	std::optional<std::vector<snowflake>> m_mention_role_ids;
+	std::optional<std::vector<guild_member>> m_mentions;
+	std::optional<std::vector<const guild_role*>> m_mention_roles;
 	text_channel* m_channel = nullptr;
+	Guild* m_guild = nullptr;
 	friend struct internal_shard;
 };
 
 struct dm_msg_update :msg_update {
-	const user& author() const;
+	const std::optional<user>& author() const;
 
-	auto mentions() const noexcept {
-		return m_mentions | ranges::views::indirect;
+	std::optional<std::span<const user>> mentions() const noexcept {		
+		return m_mentions;
 	};
 
 	const dm_channel& channel() const noexcept;
 private:
-	user* m_author = nullptr;
-	std::vector<const user*> m_mentions;
+	std::optional<user> m_author;
+	std::optional<std::vector<user>> m_mentions;
 	dm_channel* m_channel = nullptr;
 	friend struct internal_shard;
 };

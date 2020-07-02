@@ -47,6 +47,13 @@ rq::send_message shard::send_message(const dm_channel& channel, std::string cont
 	return send_request<rq::send_message>(body.dump(), channel);
 }
 
+rq::send_message shard::send_message(const partial_channel& channel, std::string content, const embed& embed) {
+	nlohmann::json body;
+	body["content"] = std::move(content);
+	body["embed"] = embed;
+	return send_request<rq::send_message>(body.dump(), channel);
+}
+
 rq::add_role shard::add_role(const partial_guild& guild, const guild_member& member, const guild_role& role) {
 	return send_request<rq::add_role>(guild, member, role);
 }

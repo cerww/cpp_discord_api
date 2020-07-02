@@ -366,8 +366,7 @@ cerwy::task<bool> http_connection2::send_to_discord_(discord_request& r) {
 		m_rate_limited_requests.insert(
 			ranges::upper_bound(m_rate_limited_requests, time, std::less{}, get_n<1>{}),
 			{ major_param_id_,time, empty_vector }
-		);
-				
+		);				
 		
 		auto timer = std::make_unique<boost::asio::system_timer>(m_strand);
 		timer->expires_at(time);
@@ -410,7 +409,7 @@ cerwy::task<void> http_connection2::reconnect() {
 	if (m_socket.next_layer().is_open()) {
 		co_await m_socket.async_shutdown(use_task);
 	}
-	const auto results = co_await m_resolver.async_resolve("discordapp.com", "https",use_task);
+	const auto [ec,results] = co_await m_resolver.async_resolve("discordapp.com", "https",use_task_return_tuple2);
 	co_await async_connect_with_no_delay(m_socket.next_layer(), results);
 	co_await m_socket.async_handshake(boost::asio::ssl::stream_base::client, use_task);
 }
@@ -422,7 +421,7 @@ redo:
 
 	if (ec) {
 		std::cout << "send_rq " << ec << std::endl;
-		if (ec.value() == 100053) {
+		if (ec.value() == 10053) {
 			co_await reconnect();
 			goto redo;
 		}

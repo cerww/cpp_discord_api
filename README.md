@@ -2,6 +2,7 @@ cpp discord api
 ===============
 
 discord api for c++
+-supports voice
 
 Dependancies:
 

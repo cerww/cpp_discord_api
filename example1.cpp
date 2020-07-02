@@ -58,14 +58,11 @@ int main() {
 			shard_of_guild = &s.strand();
 			//thingy(g, s);
 		}
-
-		
 	};
 
 	//c.on_guild_ready = &thingy;
 	
 	c.on_guild_text_msg = [&](guild_text_message msg, shard& s) {
-		std::cout << "awujosjeyhdasujkhda" << std::endl;
 		if (msg.content() == "rawrmander") {
 			//int i = 0;
 			/*
@@ -104,6 +101,20 @@ int main() {
 			if (role.has_value()) {
 				s.send_message(msg.channel(), role->to_mentionable_string());
 			}
+		}else if(msg.content() == "potatoland_world") {
+			s.send_message(msg.channel(), "rawr",
+				embed()
+				.set_author(embed_author().set_name("cerwtato"))
+				.set_footer(embed_footer().set_text("azumarill"))
+				.set_color(0x99a520)
+				.set_description("wat")
+				.add_fields(
+					embed_field().set_name("abc").set_value("a+b=c"),
+					embed_field()
+						.set_is_inline(true).set_name("better field").set_value("awesome"),
+					embed_field().set_name("more awesome").set_value("best field")
+				)
+			);
 		}
 		//s.change_nick(wat.author(), wat.content());
 
@@ -136,6 +147,13 @@ int main() {
 		s.send_message(member.guild().system_channel(), "rawr");
 		//s.modify_guild(member.guild(), guild_settings::default_message_notifications{1});
 		//auto t = modify_guild_settings().name("aaa");
+	};
+
+	c.on_guild_msg_update = [](guild_msg_update g,shard& s) {
+		if(g.content().has_value()) {
+			const auto new_thing = g.content().value();
+			std::cout << new_thing << std::endl;;
+		}
 	};
 
 	c.setToken(getFileContents("token.txt"), token_type::BOT);
