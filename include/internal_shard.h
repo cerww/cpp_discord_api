@@ -294,8 +294,14 @@ msg_t internal_shard::create_msg(channel_t& ch, const nlohmann::json& stuffs, ma
 	constexpr bool is_guild_msg = std::is_same_v<msg_t, guild_text_message>;
 
 	if constexpr (is_guild_msg) {
-		retVal.m_author = make_member_from_msg(stuffs["author"], stuffs["member"]);
-		retVal.m_author.m_guild = ch.m_guild;
+		if (stuffs.contains("webhook_id")) {
+			from_json(stuffs["author"], static_cast<user&>(retVal.m_author));
+			retVal.m_author.m_guild = ch.m_guild;
+		}
+		else {
+			retVal.m_author = make_member_from_msg(stuffs["author"], stuffs["member"]);
+			retVal.m_author.m_guild = ch.m_guild;
+		}
 	} else {
 		retVal.m_author = stuffs["author"].get<user>();
 	}

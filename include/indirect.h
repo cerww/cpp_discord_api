@@ -8,9 +8,6 @@ struct defer_construction {};
 template<typename T>
 struct indirect {
 
-
-	indirect():
-		m_data(std::make_unique<T>()) {};
 		
 	indirect(T stuff) :
 		m_data(std::make_unique<T>(std::move(stuff))) {}
@@ -152,7 +149,7 @@ struct indirect {
 	}
 
 private:
-	std::unique_ptr<T> m_data = nullptr;
+	std::unique_ptr<T> m_data = std::make_unique<T>();
 	template<typename>
 	friend struct indirect;
 };

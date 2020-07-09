@@ -7,6 +7,12 @@
 #include "guild_channel.h"
 #include "item_cache.h"
 
+enum class text_channel_type {
+	normal,
+	store,
+	news
+};
+
 struct text_channel :guild_channel {
 	
 	/*auto msg_cache() const noexcept {
@@ -14,13 +20,15 @@ struct text_channel :guild_channel {
 	};
 	*/
 
-	std::string_view topic() const noexcept;
-	snowflake last_message_id() const noexcept;
+	std::string_view topic() const noexcept { return m_topic; };
+	//snowflake last_message_id() const noexcept { return m_last_message_id; };
 private:
 	std::string m_topic;
 	snowflake m_last_message_id;
 
 	timestamp m_last_pin_timestamp;
+	
+	text_channel_type m_channel_type = text_channel_type::normal;
 
 	//dynamic_item_cache<guild_text_message> m_msg_cache = dynamic_item_cache<guild_text_message>(10ull, false);
 

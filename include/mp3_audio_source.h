@@ -49,7 +49,7 @@ struct mp3_audio_source {
 				//read 1 frame to get sampleing_rate and channels
 				while (m_samples_in_thingy == 0 && !m_file_data.empty()) {
 					mp3dec_frame_info_t frame_info;
-					const int samples = mp3dec_decode_frame(m_mp3dec, (uint8_t*)m_file_data.data(), m_file_data.size(), pcm_for_init.data(), &frame_info);
+					const int samples = mp3dec_decode_frame(m_mp3dec, (uint8_t*)m_file_data.data(),(int) m_file_data.size(), pcm_for_init.data(), &frame_info);
 
 					m_file_data = m_file_data.subspan(frame_info.frame_bytes);
 					
@@ -130,7 +130,7 @@ struct mp3_audio_source {
 					const int samples = mp3dec_decode_frame(
 						m_mp3dec, 
 						(uint8_t*)m_file_data.data(), 
-						m_file_data.size(), 
+						(int)m_file_data.size(), 
 						pcm().data() + m_samples_in_thingy, 
 						&frame_info
 					);

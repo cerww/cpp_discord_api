@@ -212,30 +212,38 @@ private:
 
 	boost::asio::io_context& m_ioc;
 	boost::asio::ip::tcp::resolver m_resolver;
-	boost::asio::io_context::strand m_strand;
 	async_mutex m_mut;
 
 	boost::asio::ssl::context m_sslCtx{ boost::asio::ssl::context::tlsv12_client };
 	boost::asio::ssl::stream<boost::asio::ip::tcp::socket> m_socket{ m_ioc, m_sslCtx };
+
+	
 	boost::beast::flat_buffer m_buffer{};
-	concurrent_async_queue<discord_request> m_request_queue = {};
+	mpsc_concurrent_async_queue<discord_request> m_request_queue = {};
 	client* m_client = nullptr;
 
 	cerwy::task<void> send_to_discord(discord_request);
+	cerwy::task<void> send_to_discord(discord_request,size_t major_param_id_);
+	
 	cerwy::task<bool> send_to_discord_(discord_request&);
 
 	cerwy::task<void> start_sending();
 	
 	void resend_rate_limted_requests_for(size_t);
+	void rate_limit_id(size_t major_param_id_, std::chrono::system_clock::time_point, std::optional<discord_request>);
+	bool check_rate_limit(size_t id, discord_request& rq);
 	
 	void connect();
 	cerwy::task<void> reconnect();
 
 	cerwy::task<void> send_rq(discord_request&);
 
+	
 	//sorted by order of coming off the queue
 	//not a queue/deque since it's size shuold be small
 	//can be a priority queue?
+	//can't be priority queue since i need to look at things inside
 	std::vector<std::tuple<size_t, std::chrono::system_clock::time_point, std::vector<discord_request>>> m_rate_limited_requests{};
+	std::mutex m_rate_limit_mut;
 };
 

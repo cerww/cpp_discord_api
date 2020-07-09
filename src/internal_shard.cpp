@@ -417,11 +417,18 @@ void internal_shard::procces_event<event_name::GUILD_CREATE>(nlohmann::json& dat
 	guild.m_voice_channel_ids.reserve(std::max(3ull, channels.size() / 10));//random numbers
 
 	for (const auto& channel_json : channels) {
-		if (const auto type = channel_json["type"].get<int>(); type == 0) {//text
+		if (const auto type = channel_json["type"].get<int>(); type == 0 || type == 5 || type == 6) {//text
 			auto& channel = m_text_channel_map.insert(std::make_pair(channel_json["id"].get<snowflake>(), channel_json.get<text_channel>())).first->second;
 			channel.m_guild_id = guild.id();
 			guild.m_text_channel_ids.push_back(channel.id());
 			channel.m_guild = &guild;
+			if (type == 5) {
+				channel.m_channel_type = text_channel_type::news;
+			}
+
+			if (type == 6) {
+				channel.m_channel_type = text_channel_type::store;
+			}
 		} else if (type == 2) {//voice
 			auto& channel = m_voice_channel_map.insert(std::make_pair(channel_json["id"].get<snowflake>(), channel_json.get<voice_channel>())).first->second;
 			channel.m_guild_id = guild.id();
@@ -432,6 +439,8 @@ void internal_shard::procces_event<event_name::GUILD_CREATE>(nlohmann::json& dat
 			channel.m_guild_id = guild.id();
 			guild.m_channel_catagorie_ids.push_back(channel.id());
 			channel.m_guild = &guild;
+		}else {
+			//unimplemented channel
 		}
 
 		//type == 1,3 is missing since it's DM channel, dm channels don't exist in guild channels
@@ -449,18 +458,20 @@ void internal_shard::procces_event<event_name::GUILD_CREATE>(nlohmann::json& dat
 			channel.m_parent = &m_channel_catagory_map[channel.m_parent_id];
 	}
 
-	if (guild.m_is_ready) {
-		for (const auto& presence : data["presences"]) {
-			auto& member = guild.m_members[presence["user"]["id"].get<snowflake>()];
-			member.m_status = string_to_status(presence["status"].get_ref<const nlohmann::json::string_t&>());
-			const auto temp = presence["game"];
-			if (!temp.is_null())
-				member.m_game.emplace(temp.get<activity>());
+	if (m_intents.has_intents(intent::GUILD_PRESENCES)) {
+		if (guild.m_is_ready) {
+			for (const auto& presence : data["presences"]) {
+				auto& member = guild.m_members[presence["user"]["id"].get<snowflake>()];
+				member.m_status = string_to_status(presence["status"].get_ref<const nlohmann::json::string_t&>());
+				const auto temp = presence["game"];
+				if (!temp.is_null())
+					member.m_game.emplace(temp.get<activity>());
+			}
 		}
-	}else {
-		guild.m_presences = std::move(data["presences"]);//save it for later
+		else {
+			guild.m_presences = std::move(data["presences"]);//save it for later
+		}
 	}
-
 	guild.m_shard = this;
 	if(guild.m_is_ready) {
 		m_parent->on_guild_ready(guild, *this);
@@ -600,12 +611,20 @@ void internal_shard::procces_event<event_name::CHANNEL_CREATE>(nlohmann::json& c
 		m_backed_up_events[guild_id].emplace_back(std::move(channel_json),  event_name::CHANNEL_CREATE);
 		return;
 	}
-	if (type == 0) {//text
+	if (type == 0 ||type == 5 || type == 6) {//text
 		auto& channel = m_text_channel_map.insert(std::make_pair(id, channel_json.get<text_channel>())).first->second;
 		m_guilds[channel.m_guild_id].m_text_channel_ids.push_back(id);
 		channel.m_guild = &m_guilds[channel.m_guild_id];
 
 		channel.m_parent = ptr_or_null(m_channel_catagory_map, channel.m_parent_id);
+		if(type == 5) {
+			channel.m_channel_type = text_channel_type::news;
+		}
+
+		if (type == 6) {
+			channel.m_channel_type = text_channel_type::store;
+		}
+		
 		m_parent->on_guild_text_channel_create(channel,*this);
 	}else if (type == 1 || type == 3) {//DM
 		auto& channel = m_dm_channels.insert(std::make_pair(id, channel_json.get<dm_channel>())).first->second;
@@ -655,7 +674,7 @@ void internal_shard::procces_event<event_name::CHANNEL_DELETE>(nlohmann::json& e
 
 			//m_parent->on_text_channel_delete(std::move(channel), *this);
 		}else {
-			//wat
+			//unimplemented channel
 		}
 		
 	}

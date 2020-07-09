@@ -20,6 +20,8 @@ struct empty_vector_t{
 	}
 };
 
+static constexpr empty_vector_t empty_vector;
+
 template<typename results_t>
 boost::system::error_code connect_with_no_delay(boost::asio::ip::tcp::socket& sock, results_t&& results) {
 	boost::system::error_code ec;
@@ -47,8 +49,6 @@ cerwy::task<boost::system::error_code> async_connect_with_no_delay(boost::asio::
 	}
 	co_return ec;
 }
-
-static constexpr empty_vector_t empty_vector;
 
 size_t get_major_param_id(std::string_view s) {
 	s.remove_prefix(7);//strlen("/api/v6") == 7;
@@ -148,7 +148,7 @@ cerwy::task<boost::beast::error_code> http_connection::async_connect() {
 	if(ec2) {
 		co_return ec2;
 	}
-	auto ec3 = co_await m_socket.async_handshake(boost::asio::ssl::stream_base::client, use_task_return_ec);
+	const auto ec3 = co_await m_socket.async_handshake(boost::asio::ssl::stream_base::client, use_task_return_ec);
 	if(!ec3) {
 		m_thread = std::thread([this]() {
 			while (!m_done.load()) {
@@ -263,7 +263,6 @@ std::future<void> http_conn(d::subscriber_thingy_async<std::variant<discord_requ
 http_connection2::http_connection2(client* t, boost::asio::io_context& ioc) :
 	m_ioc(ioc),
 	m_resolver(ioc),
-	m_strand(m_ioc),
 	m_socket(ioc, m_sslCtx),
 	m_client(t)
 {
@@ -272,9 +271,6 @@ http_connection2::http_connection2(client* t, boost::asio::io_context& ioc) :
 }
 
 void http_connection2::send(discord_request&& d) {
-	// boost::asio::post(m_strand,[this,a = std::move(d)]() {
-	// 	send_to_discord(std::move(a));
-	// });
 	m_request_queue.push(std::move(d));
 }
 
@@ -288,32 +284,43 @@ cerwy::task<boost::beast::error_code> http_connection2::async_connect() {
 	if (ec2) {
 		co_return ec2;
 	}
-	auto ec3 = co_await m_socket.async_handshake(boost::asio::ssl::stream_base::client, use_task_return_ec);
+	const auto ec3 = co_await m_socket.async_handshake(boost::asio::ssl::stream_base::client, use_task_return_ec);
 	if(!ec3)
 		start_sending();
 	co_return ec3;
 }
 
 cerwy::task<void> http_connection2::send_to_discord(discord_request r) {
-	auto lock = co_await m_mut.async_lock();//TODO is this still needed?
-	const size_t major_param_id = get_major_param_id(std::string_view(r.req.target().data(), r.req.target().size()));
+	return send_to_discord(r, get_major_param_id(std::string_view(r.req.target().data(), r.req.target().size())));
+}
+
+cerwy::task<void> http_connection2::send_to_discord(discord_request r, size_t major_param_id_) {
+	auto lock = co_await m_mut.async_lock();
 
 	if (m_global_rate_limited.load()) {
-		//std::this_thread::sleep_until(m_rate_limted_until);
-		boost::asio::system_timer timer(m_ioc);
-		timer.expires_at(m_rate_limted_until);
-		co_await timer.async_wait(use_task);
+		if (m_rate_limted_until > std::chrono::system_clock::now()) {
+			boost::asio::system_timer timer(m_ioc);
+			timer.expires_at(m_rate_limted_until);
+			co_await timer.async_wait(use_task);
+		}
 		m_global_rate_limited.store(false);
 	}
+
+
+	if(check_rate_limit(major_param_id_,r)) {
+		co_return;
+	}
+
 	std::lock_guard<std::mutex> locky(r.state->ready_mut);
 	if (co_await send_to_discord_(r))
 		r.state->notify();
 }
 
 //pre-con: request isn't rate-limited already
+//false => rate limited
 cerwy::task<bool> http_connection2::send_to_discord_(discord_request& r) {
 	//std::lock_guard<std::mutex> locky(r.state->ready_mut);	
-	co_await send_rq(r);
+	co_await send_rq(r);	
 	//this is "while" loop not "if" because of global rate limits
 	//it shuld keep trying to send the same request if it's global rate limited
 	//cuz if i doin't do this, the request will go into the queue, then it'll sleep, then it'll prolyl send the request(it might sned a different request),
@@ -323,11 +330,13 @@ cerwy::task<bool> http_connection2::send_to_discord_(discord_request& r) {
 		auto json_body = nlohmann::json::parse(r.state->res.body());
 		const auto tp = std::chrono::system_clock::now() + std::chrono::milliseconds(json_body["retry_after"].get<size_t>());
 		if (json_body["global"].get<bool>()) {
+			
 			m_client->rate_limit_global(tp);
-			//std::this_thread::sleep_until(tp);
-			boost::asio::system_timer timer(m_strand);
+			
+			boost::asio::system_timer timer(m_ioc);
 			timer.expires_at(tp);
 			co_await timer.async_wait(use_task);
+			
 			r.state->res.clear();
 			r.state->res.body().clear();
 			co_await send_rq(r);
@@ -335,46 +344,28 @@ cerwy::task<bool> http_connection2::send_to_discord_(discord_request& r) {
 		else {
 			r.state->res.clear();
 			r.state->res.body().clear();
-			//add the request to the right queue in sorted order, by time
-			const auto major_param_id_ = get_major_param_id(std::string_view(r.req.target().data(), r.req.target().size()));
-			auto it = m_rate_limited_requests.insert(ranges::upper_bound(m_rate_limited_requests, tp, std::less{}, get_n<1>{}),
-				{ major_param_id_,tp,empty_vector });
-			
-			std::get<2>(*it).push_back(std::move(r));
-			//this should be a function, not a class ;-;
-			auto timer = std::make_unique<boost::asio::system_timer>(m_strand);
-			timer->expires_at(tp);
-			timer->async_wait([this,major_param_id_,t = std::move(timer)](auto ec) {
-				if(!ec)
-					resend_rate_limted_requests_for(major_param_id_);
-			});
+
+			const auto major_param_id_ = get_major_param_id(std::string_view(r.req.target().data(), r.req.target().size()));			
+			rate_limit_id(major_param_id_, tp, std::move(r));
 			
 			co_return false;
 		}
 	}//this shuoldb't be riunning often ;-;
 	
 	//only runs when requests left == 0
-	if (auto it = r.state->res.find("X-RateLimit-Remaining"); it != r.state->res.end()) {
-
+	//wat^
+	
+	if (auto it = r.state->res.find("X-RateLimit-Remaining"); it != r.state->res.end() && it->value() == "0") {
+		
 		const auto time = std::chrono::system_clock::time_point(std::chrono::seconds([&]() {//iife
 			int64_t seconds = 0;
 			std::from_chars(it->value().begin(), it->value().end(), seconds);
 			return seconds;
 		}()));
 
+		
 		const auto major_param_id_ = get_major_param_id(std::string_view(r.req.target().data(), r.req.target().size()));
-		m_rate_limited_requests.insert(
-			ranges::upper_bound(m_rate_limited_requests, time, std::less{}, get_n<1>{}),
-			{ major_param_id_,time, empty_vector }
-		);				
-		
-		auto timer = std::make_unique<boost::asio::system_timer>(m_strand);
-		timer->expires_at(time);
-		timer->async_wait([this, major_param_id_,t = std::move(timer)](auto ec)mutable {
-			if(!ec)
-				resend_rate_limted_requests_for(major_param_id_);
-		});
-		
+		rate_limit_id(major_param_id_,time,std::nullopt);
 	}
 
 	std::cout << r.req << std::endl;
@@ -392,10 +383,53 @@ cerwy::task<void> http_connection2::start_sending() {
 
 void http_connection2::resend_rate_limted_requests_for(size_t id) {
 	//auto v = *ranges::lower_bound(m_rate_limited_requests, id, std::less(), get_n<1>());;
-	auto stuff = std::move(m_rate_limited_requests.front());
-	m_rate_limited_requests.erase(m_rate_limited_requests.begin());
-	for(auto& rq: std::get<2>(stuff)) {
-		send(std::move(rq));
+
+	auto requests = [&]() {//iife
+		std::lock_guard lock(m_rate_limit_mut);
+		auto ret = std::move(m_rate_limited_requests.front());
+		m_rate_limited_requests.erase(m_rate_limited_requests.begin());
+		return std::move(ret);
+	}();
+	
+	for(auto& r: std::get<2>(requests)) {
+		send(std::move(r));
+	}	
+}
+
+void http_connection2::rate_limit_id(size_t major_param_id_, std::chrono::system_clock::time_point tp, std::optional<discord_request> rq) {
+	if(rq.has_value()) {
+		std::lock_guard lock(m_rate_limit_mut);
+		m_rate_limited_requests.insert(
+			ranges::upper_bound(m_rate_limited_requests, tp, std::less{}, get_n<1>{}),
+			{ major_param_id_,tp, std::vector{std::move(rq.value())} }
+		);
+	}else {
+		std::lock_guard lock(m_rate_limit_mut);
+		m_rate_limited_requests.insert(
+			ranges::upper_bound(m_rate_limited_requests, tp, std::less{}, get_n<1>{}),
+			{ major_param_id_,tp, empty_vector }
+		);
+	}
+
+	auto timer = std::make_unique<boost::asio::system_timer>(m_ioc);
+	timer->expires_at(tp);
+	timer->async_wait([this, major_param_id_, t = std::move(timer)](auto ec)mutable {
+		if (!ec)
+			resend_rate_limted_requests_for(major_param_id_);
+	});
+}
+
+//returns weather or not it was rate_limited
+bool http_connection2::check_rate_limit(size_t id, discord_request& rq) {
+	std::lock_guard lock(m_rate_limit_mut);
+	
+	const auto it = ranges::find(m_rate_limited_requests, id, get_n<0>());
+	if (it != m_rate_limited_requests.end()) {
+		auto& vec = std::get<2>(*it);
+		vec.push_back(std::move(rq));
+		return true;
+	}else {
+		return false;
 	}
 }
 
@@ -406,12 +440,24 @@ void http_connection2::connect() {
 }
 
 cerwy::task<void> http_connection2::reconnect() {
-	if (m_socket.next_layer().is_open()) {
-		co_await m_socket.async_shutdown(use_task);
+	while (true) {
+		if (m_socket.next_layer().is_open()) {
+			co_await m_socket.async_shutdown(use_task);
+		}
+		const auto [ec, results] = co_await m_resolver.async_resolve("discordapp.com", "https", use_task_return_tuple2);
+		if(ec) {
+			continue;
+		}
+		auto ec1 = co_await async_connect_with_no_delay(m_socket.next_layer(), results);
+		if(ec1) {
+			continue;
+		}
+		auto [ec2] = co_await m_socket.async_handshake(boost::asio::ssl::stream_base::client, use_task_return_tuple2);
+		if(ec2) {
+			continue;
+		}
+		break;
 	}
-	const auto [ec,results] = co_await m_resolver.async_resolve("discordapp.com", "https",use_task_return_tuple2);
-	co_await async_connect_with_no_delay(m_socket.next_layer(), results);
-	co_await m_socket.async_handshake(boost::asio::ssl::stream_base::client, use_task);
 }
 
 cerwy::task<void> http_connection2::send_rq(discord_request& request) {
@@ -427,12 +473,13 @@ redo:
 		}
 	}
 	auto[ec2,n2] = co_await boost::beast::http::async_read(m_socket, m_buffer, request.state->res, use_task_return_tuple2);
-	if (ec) {
+	if (ec2) {
 		std::cout << "recieve_rq " << ec << std::endl;
 		if (ec.value() == 1) {
 			co_await reconnect();
 			goto redo;
 		}
 	}
+	//doesn't run on strand
 	
 }

@@ -2,40 +2,43 @@
 #include "internal_shard.h"
 #include <boost/asio.hpp>
 #include <boost/asio/ssl.hpp>
-#include "init_shard.h"
 
 
 client::client(int threads, intents intents):
-	m_ioc(threads),
+	m_ioc(std::in_place_type<boost::asio::io_context>,threads),
 	m_threads(std::max(threads-1,0)),
 	m_intents(intents){
 	
 }
 
+client::client(boost::asio::io_context& ioc, intents intents):
+m_ioc(std::in_place_type<boost::asio::io_context*>,&ioc),
+m_intents(intents){
+	
+}
+
 void client::run() {
-	m_getGateway();
-	for (int i = 0; i < m_num_shards; ++i) {
-		m_shards.emplace_back(std::make_unique<internal_shard>(i,this,m_ioc,m_gateway,m_intents));
-	}
+
+	do_gateway_stuff();
 	//m_th
 
-	boost::asio::executor_work_guard work_guard(m_ioc.get_executor());
+	boost::asio::executor_work_guard work_guard(context().get_executor());
 	ranges::generate(m_threads, [&]() {
 		return std::thread([&]() {
-			m_ioc.run();
+			context().run();
 		});
 	});
 
 
-	m_ioc.run();
+	context().run();
 	int u = 0;
 }
 
 void client::stop() {
-	m_ioc.stop();
+	context().stop();
 }
 
-void client::setToken(std::string token, const token_type type = token_type::BOT) {
+void client::set_token(std::string token, const token_type type = token_type::BOT) {
 	m_token = token;
 	switch (type) {
 	case token_type::BOT: m_authToken = "Bot " + std::move(token);
@@ -71,6 +74,13 @@ void client::rate_limit_global(const std::chrono::system_clock::time_point tp) {
 	}	
 }
 
+void client::do_gateway_stuff() {
+	m_getGateway();
+	for (int i = 0; i < m_num_shards; ++i) {
+		m_shards.emplace_back(std::make_unique<internal_shard>(i, this, context(), m_gateway, m_intents));
+	}
+}
+
 void client::m_getGateway() {
 	boost::asio::io_context ioc;//m_ioc.run is called after this finishes, so need a different ioc
 	boost::asio::ip::tcp::resolver resolver{ ioc };
@@ -101,7 +111,7 @@ void client::m_getGateway() {
 
 	boost::beast::http::read(ssl_socket, buffer, response);
 	if(response.result_int() == 401) {
-		throw std::runtime_error("unauthorized");
+		throw std::runtime_error("unauthorized. bad token?");
 	}
 	nlohmann::json yay = nlohmann::json::parse(response.body());
 	
@@ -110,7 +120,7 @@ void client::m_getGateway() {
 	//m_num_shards = 2;
 	//std::cout << m_gateway << std::endl;
 	fmt::print(m_gateway);
-	fmt::print("\n");	
+	fmt::print("\n");
 }
 
 /*

@@ -38,6 +38,9 @@ static inline constexpr empty_function_t empty_function;
 */
 struct client {//<(^.^)>
 	explicit client(int = 1, intents = intent::ALL);
+	
+	explicit client(boost::asio::io_context&, intents = intent::ALL);
+	
 	client(client&&) = delete;
 	client(const client&) = delete;
 	client& operator=(client&&) = delete;
@@ -45,7 +48,7 @@ struct client {//<(^.^)>
 	~client() = default;
 	void run();
 
-	void setToken(std::string token, token_type type);
+	void set_token(std::string token, token_type type);
 
 	void set_up_request(boost::beast::http::request<boost::beast::http::string_body>& req) const;
 
@@ -110,8 +113,12 @@ struct client {//<(^.^)>
 
 	void rate_limit_global(const std::chrono::system_clock::time_point);
 
-	auto& context() {
-		return m_ioc;
+	boost::asio::io_context& context() {
+		if(std::holds_alternative<boost::asio::io_context>(m_ioc)) {
+			return std::get<boost::asio::io_context>(m_ioc);
+		}else {
+			return *std::get<boost::asio::io_context*>(m_ioc);
+		}
 	}
 	
 	std::chrono::steady_clock::time_point get_time_point_for_identifying() {
@@ -122,6 +129,8 @@ struct client {//<(^.^)>
 		m_last_identify = std::max(std::chrono::steady_clock::now(),m_last_identify + std::chrono::milliseconds(5100));
 		return m_last_identify;
 	}	
+
+	void do_gateway_stuff();
 	
 private:
 	void m_getGateway();
@@ -146,5 +155,8 @@ private:
 	//std::vector<shard*> m_shards_vec;
 	std::vector<std::unique_ptr<internal_shard>> m_shards;
 	std::vector<std::thread> m_threads;
-	boost::asio::io_context m_ioc{};
+
+	std::variant<boost::asio::io_context, boost::asio::io_context*> m_ioc{};
+
+	
 };

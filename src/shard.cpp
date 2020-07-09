@@ -295,3 +295,32 @@ rq::get_invite shard::get_invite(std::string s, int n) {
 rq::delete_invite shard::delete_invite(std::string s) {
 	return send_request<rq::delete_invite>(s);
 }
+
+rq::create_webhook shard::create_webhook(const partial_channel& channel, std::string name) {
+	nlohmann::json json;
+	json["name"] = std::move(name);
+	json["avatar"] = nlohmann::json();//null
+	return send_request<rq::create_webhook>(json.dump(), channel);
+}
+
+rq::get_guild_webhooks shard::get_guild_webhooks(const partial_guild& g) {
+	return send_request<rq::get_guild_webhooks>(g);
+}
+
+rq::get_channel_webhooks shard::get_channel_webhooks(const partial_channel& channel) {
+	return send_request<rq::get_channel_webhooks>(channel);
+}
+
+rq::get_webhook shard::get_webhook(snowflake id, std::string token) {
+	return send_request<rq::get_webhook>(id, token);
+}
+
+rq::get_webhook shard::get_webhook(const webhook& wh) {
+	return send_request<rq::get_webhook>(wh.id());
+}
+
+rq::execute_webhook shard::send_with_webhook(const webhook& wh, std::string s) {
+	nlohmann::json json;
+	json["content"] = std::move(s);
+	return send_request<rq::execute_webhook>(json.dump(),wh);
+}

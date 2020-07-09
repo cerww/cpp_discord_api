@@ -9,6 +9,7 @@
 #include <boost/asio.hpp>
 #include <range/v3/all.hpp>
 #include "guild_integration.h"
+#include "webhook.h"
 
 
 // clang-format off
@@ -53,13 +54,13 @@ namespace rq {
 
 	struct shared_state:ref_counted{
 		//rename some of these.
-		std::condition_variable ready_cv{};
-		std::mutex ready_mut{};
 		std::atomic<bool> done = false;
-		boost::beast::http::response<boost::beast::http::string_body> res = {};
-		std::vector<std::experimental::coroutine_handle<>> waiters{};
-		std::mutex waiter_mut{};
 		boost::asio::io_context::strand* strand = nullptr;
+		std::vector<std::experimental::coroutine_handle<>> waiters{};
+		std::mutex ready_mut{};
+		std::mutex waiter_mut{};
+		std::condition_variable ready_cv{};
+		boost::beast::http::response<boost::beast::http::string_body> res = {};
 
 		void notify() {
 			ready_cv.notify_all();
@@ -71,9 +72,11 @@ namespace rq {
 				boost::asio::post(*strand, f);
 			};
 		
-			ranges::for_each(waiters, execute_on_strand);			
+			ranges::for_each(all_waiters, execute_on_strand);
 		}
 	};
+
+	constexpr static int ajkdhas = sizeof(std::condition_variable);
 	
 	template<typename U, typename = void>
 	struct has_overload_value :std::false_type {};
@@ -106,11 +109,26 @@ namespace rq {
 	struct patch_verb {
 		static constexpr auto verb = boost::beast::http::verb::patch;
 	};
+	
+	template<typename T>
+	struct with_exception {
+		T exception;
+	};
 
 	template<typename reqeust>
 	struct request_base:private crtp<reqeust> {
 		request_base() = default;
+		
 		explicit request_base(ref_count_ptr<shared_state> t_state):state(std::move(t_state)){}
+
+		template<typename T>
+		explicit request_base(with_exception<T> e,boost::asio::io_context::strand* strand):request_base(make_ref_count_ptr<shared_state>()) {
+			state->strand = strand;
+			state->done = true;
+
+			
+			
+		}
 
 		template<typename ...Ts>
 		static auto request(Ts&&... t) {
@@ -768,10 +786,88 @@ namespace rq {
 		
 	};
 	
+	
+
+	struct get_webhook:
+		request_base<get_webhook>,
+		get_verb
+	{
+
+		using request_base::request_base;
+		using return_type = webhook;
+
+		static std::string target(snowflake id) {
+			return "/webhooks/{}"_format(id.val);
+		}
+
+		static std::string target(snowflake id,std::string_view token) {
+			return "/webhooks/{}/{}"_format(id.val,token);
+		}		
+	};
+
+	struct get_channel_webhooks:
+		request_base<get_channel_webhooks>,
+		get_verb
+	{
+
+		using request_base::request_base;
+		using return_type = std::vector<webhook>;
+
+		static std::string target(const partial_channel& channel) {
+			return "/channels/{}/webhooks"_format(channel.id().val);
+		}
+		
+	};
+	
+	struct get_guild_webhooks :
+		request_base<get_guild_webhooks>,
+		get_verb
+	{
+
+		using request_base::request_base;
+		using return_type = std::vector<webhook>;
+
+		static std::string target(const partial_guild& guild) {
+			return "/channels/{}/webhooks"_format(guild.id().val);
+		}
+
+	};
+
+	struct create_webhook :
+		request_base<create_webhook>,
+		post_verb,
+		json_content_type
+	{
+
+		using request_base::request_base;
+		using return_type = webhook;
+
+		static std::string target(const partial_channel& ch) {
+			return "/channels/{}/webhooks"_format(ch.id().val);
+		}
+		
+		
+	};
+
+	struct execute_webhook :
+		request_base<execute_webhook>,
+		post_verb,
+		json_content_type
+	{
+
+		using request_base::request_base;
+		using return_type = partial_message;
+
+		static std::string target(const webhook& wh) {
+			return "/webhooks/{}/{}"_format(wh.id().val, wh.token().value());
+		}
+
+	};
+
 	//not needed ;-;
 	struct get_guild_channels :
 		request_base<get_guild_channels>,
-		get_verb 
+		get_verb
 	{
 		using request_base::request_base;
 		using return_type = std::vector<snowflake>;
@@ -780,6 +876,7 @@ namespace rq {
 			return "/guilds/{}/channels"_format(g.id().val);
 		}
 	};
+	
 	//
 	template<typename T,typename = void>
 	struct has_content_type:std::false_type{};

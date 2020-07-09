@@ -82,36 +82,15 @@ struct shard {
 	rq::create_guild_integration create_guild_integration(const partial_guild& guild, std::string type, snowflake id);
 
 
-
-
 	template<typename range>
 	requires is_range_of<range, std::string>
 	rq::create_group_dm create_group_dm(range&& access_tokens, std::unordered_map<snowflake, std::string> nicks = {});
 
-	/// @brief 
-	/// @tparam rng 
-	/// @param guild 
-	/// @param id 
-	/// @param access_token 
-	/// @param roles 
-	/// @param nick 
-	/// @param deaf 
-	/// @param mute 
-	/// @return 
 	template<typename rng>
 	requires is_range_of<rng, snowflake>
 	rq::add_guild_member add_guild_member(const Guild& guild, snowflake id, std::string access_token, rng&& roles, std::string nick = "", bool deaf = false, bool mute = false);
 
-	/// @brief 
-	/// @tparam rng 
-	/// @param guild 
-	/// @param id 
-	/// @param access_token 
-	/// @param roles 
-	/// @param nick 
-	/// @param deaf 
-	/// @param mute 
-	/// @return 
+	
 	template<typename rng>
 	requires is_range_of<rng, guild_role>
 	rq::add_guild_member add_guild_member(const Guild& guild, snowflake id, std::string access_token, rng&& roles, std::string nick = "", bool deaf = false, bool mute = false);
@@ -137,7 +116,17 @@ struct shard {
 	template<typename... settings>
 	rq::modify_role modify_role(const guild_role&, modify_role_settings<settings...>);
 
+	rq::create_webhook create_webhook(const partial_channel& channel, std::string name);
+
+	rq::get_guild_webhooks get_guild_webhooks(const partial_guild&);
+
+	rq::get_channel_webhooks get_channel_webhooks(const partial_channel&);
+
+	rq::get_webhook get_webhook(snowflake,std::string token);
 	
+	rq::get_webhook get_webhook(const webhook&);
+
+	rq::execute_webhook send_with_webhook(const webhook&, std::string s);
 
 	const user& self_user() const noexcept {
 		return m_self_user;

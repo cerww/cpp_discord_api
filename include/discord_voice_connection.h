@@ -89,7 +89,7 @@ struct discord_voice_connection_impl :
 			std::array<std::byte, 1000> opus_data{};
 
 			//const std::vector<std::byte> opus_data = m_opus_encoder.encode(frame, 1000);
-			const int len = m_opus_encoder.encode_into_buffer(frame, opus_data.data(), opus_data.size());
+			const int len = m_opus_encoder.encode_into_buffer(frame, opus_data.data(), (int)opus_data.size());
 
 			const auto encrypted_voice_data = encrypt_xsalsa20_poly1305(header, std::span<std::byte>(opus_data.data(),len));
 
