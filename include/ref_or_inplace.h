@@ -10,8 +10,11 @@
 //maybe rename
 template<typename T>
 struct ref_or_inplace {
-	
-	/*implicit*/
+
+	//requires default_constructible<T>
+	ref_or_inplace():m_data(std::in_place_type<T>){}
+	 
+	//shuold i remove these?
 	ref_or_inplace(std::nullopt_t) {}
 
 	ref_or_inplace(std::monostate) {}

@@ -856,13 +856,37 @@ namespace rq {
 	{
 
 		using request_base::request_base;
-		using return_type = partial_message;
+		using return_type = void;
 
 		static std::string target(const webhook& wh) {
 			return "/webhooks/{}/{}"_format(wh.id().val, wh.token().value());
 		}
 
+		static std::string target(snowflake s,std::string_view token) {
+			return "/webhooks/{}/{}"_format(s.val, token);
+		}
+
 	};
+
+	struct modify_webhook:
+		request_base<modify_webhook>,
+		patch_verb,
+		json_content_type
+	{
+
+		using request_base::request_base;
+		using return_type = webhook;
+
+		static std::string target(const webhook& wh) {
+			return "/webhooks/{}"_format(wh.id().val);			
+		}
+
+		static std::string target(snowflake id,std::string_view token) {
+			return "/webhooks/{}/{}"_format(id.val, token);
+		}
+		
+	};
+	
 
 	//not needed ;-;
 	struct get_guild_channels :

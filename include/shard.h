@@ -18,6 +18,7 @@
 #include "modify_guild_settings.h"
 #include "modify_role_settings.h"
 #include "intents.h"
+#include "webhook_client.h"
 
 struct shard {	
 
@@ -147,6 +148,14 @@ struct shard {
 	discord_obj_map<voice_channel> voice_channels() const noexcept { return m_voice_channel_map; }
 
 	discord_obj_map<channel_catagory> channel_catagories() const noexcept { return m_channel_catagory_map; }
+
+	webhook_client make_webhook_client(const webhook& wh) {
+		if(!wh.token()) {
+			throw std::runtime_error(";-;");
+		}
+		
+		return webhook_client(wh.id(), std::string(wh.token().value()), m_strand);
+	};
 	
 private:
 	using wsClient = rename_later_5;

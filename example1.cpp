@@ -1,8 +1,8 @@
-#include "client.h"
+#include "include/client.h"
 #include <fstream>
-#include "async_mutex.h"
-#include "modify_guild_settings.h"
-#include "mp3_audio_source.h"
+#include "include/async_mutex.h"
+#include "include/modify_guild_settings.h"
+#include "include/mp3_audio_source.h"
 
 
 using namespace std::literals;
@@ -15,7 +15,7 @@ std::string getFileContents(const std::string& filePath, decltype(std::ios::in) 
 	file.seekg(0, std::ios::beg);	
 	filesize -= (int)file.tellg();
 	fileContents.resize(filesize);
-	file.read(fileContents.data(), filesize);
+	file.read((char*)fileContents.data(), filesize);
 	file.close();
 	return fileContents;
 }
@@ -115,6 +115,17 @@ int main() {
 					embed_field().set_name("more awesome").set_value("best field")
 				)
 			);
+		}else if(msg.content() == "hamtaroland_worldy") {
+			s.send_message(msg.channel(), "charmander");
+			s.send_message(msg.channel(), "charmander");
+			s.send_message(msg.channel(), "charmander");
+			s.send_message(msg.channel(), "charmander");
+			s.send_message(msg.channel(), "charmander");
+			s.send_message(msg.channel(), "charmander");
+			s.send_message(msg.channel(), "charmander");
+			s.send_message(msg.channel(), "charmander");
+			s.send_message(msg.channel(), "charmander");
+			s.send_message(msg.channel(), "charmander");
 		}
 		//s.change_nick(wat.author(), wat.content());
 
@@ -156,7 +167,7 @@ int main() {
 		}
 	};
 
-	c.setToken(getFileContents("token.txt"), token_type::BOT);
+	c.set_token(getFileContents("token.txt"), token_type::BOT);
 	c.run();
 	//} catch (...) {
 	//std::cout << ";-;" << std::endl;

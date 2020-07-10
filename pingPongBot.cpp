@@ -1,5 +1,5 @@
-#include "client.h"
 #include <fstream>
+#include "include/client.h"
 
 
 std::string getFileContents_(const std::string& filePath, decltype(std::ios::in) mode = std::ios::in) {
@@ -10,12 +10,13 @@ std::string getFileContents_(const std::string& filePath, decltype(std::ios::in)
 	file.seekg(0, std::ios::beg);
 	filesize -= (int)file.tellg();
 	fileContents.resize(filesize);
-	file.read(fileContents.data(), filesize);
+	
+	file.read((char*)fileContents.data(), filesize);
 	file.close();
 	return fileContents;
 }
 
-int main_() {
+int main() {
 	client c;
 	c.on_guild_text_msg = [](const guild_text_message& msg, shard& s) {
 		if(msg.content() == "ping") {
@@ -23,7 +24,7 @@ int main_() {
 		}
 	};
 	
-	c.setToken(getFileContents_("token.txt"),token_type::BOT);
+	c.set_token(getFileContents_("token.txt"),token_type::BOT);
 	
 	c.run();
 	return 0;
