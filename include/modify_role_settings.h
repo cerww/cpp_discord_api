@@ -5,27 +5,27 @@
 struct role_settings {
 	struct name {
 		std::string n;
-		static constexpr std::string_view vname = "name";
+		static constexpr const char* vname = "name";
 	};
 
 	struct permissions {
 		permission n;
-		static constexpr std::string_view vname = "permissions";
+		static constexpr const char* vname = "permissions";
 	};
 
 	struct color {
 		int n;
-		static constexpr std::string_view vname = "color";
+		static constexpr const char* vname = "color";
 	};
 
 	struct hoist {
 		bool n;
-		static constexpr std::string_view vname = "hoist";
+		static constexpr const char* vname = "hoist";
 	};
 
 	struct mentionable {
 		bool n;
-		static constexpr std::string_view vname = "mentionable";
+		static constexpr const char* vname = "mentionable";
 	};
 };
 

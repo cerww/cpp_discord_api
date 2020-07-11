@@ -6,7 +6,7 @@
 #include <variant>
 #include "ref_or_inplace.h"
 
-enum class webhook_type {	
+enum class webhook_type {
 	incoming = 1,
 	channel_follower = 2
 };
@@ -51,7 +51,7 @@ private:
 		hook.m_channel_id = json["channel_id"].get<snowflake>();
 		//hook.m_user = json.value("user", std::optional<::user>());
 		hook.m_name = json.value("name", std::optional<std::string>());
-		if(!json["avatar"].is_null()) {
+		if (!json["avatar"].is_null()) {
 			hook.m_avatar = json["avatar"].get<std::string>();
 		}
 		//hook.m_avatar = json.value("avatar", std::optional<std::string>());
@@ -60,4 +60,51 @@ private:
 };
 
 
+namespace webhook_settings {
+	struct name {
+		std::string n;
+		static constexpr const char* vname = "name";
+	};
 
+
+	struct avatar {
+		std::string n;
+		static constexpr const char* vname = "avatar";
+	};
+
+	struct channel_id {
+		snowflake n;
+		static constexpr const char* vname = "channel_id";
+	};
+}
+
+
+template<typename... setting>
+struct modify_webhook {
+
+	auto name(std::string n) {
+		return modify_webhook<setting..., webhook_settings::name>{
+			std::tuple_cat(	std::move(settings), 
+							std::tuple(webhook_settings::name{std::move(n)}))
+		};
+	}
+	
+	//TODO change type
+	auto avatar(std::string n) {
+		return modify_webhook<setting..., webhook_settings::avatar>{
+			std::tuple_cat(	std::move(settings), 
+							std::tuple(webhook_settings::avatar{std::move(n)}
+							)
+			)
+		};
+	}
+
+	auto channel_id(snowflake n) {
+		return modify_webhook<setting..., webhook_settings::channel_id>{
+			std::tuple_cat(	std::move(settings), 
+							std::tuple(webhook_settings::channel_id{ n }))
+		};
+	}
+
+	std::tuple<setting...> settings;
+};

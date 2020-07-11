@@ -20,11 +20,11 @@
 #include "intents.h"
 #include "webhook_client.h"
 
-struct shard {	
+struct shard {
 
 	rq::send_message send_message(const text_channel& channel, std::string content);
 	rq::send_message send_message(const dm_channel& channel, std::string content);
-	
+
 	rq::send_message send_message(const partial_channel& channel, std::string content, const embed& embed);
 
 	rq::add_role add_role(const partial_guild&, const guild_member&, const guild_role&);
@@ -91,7 +91,7 @@ struct shard {
 	requires is_range_of<rng, snowflake>
 	rq::add_guild_member add_guild_member(const Guild& guild, snowflake id, std::string access_token, rng&& roles, std::string nick = "", bool deaf = false, bool mute = false);
 
-	
+
 	template<typename rng>
 	requires is_range_of<rng, guild_role>
 	rq::add_guild_member add_guild_member(const Guild& guild, snowflake id, std::string access_token, rng&& roles, std::string nick = "", bool deaf = false, bool mute = false);
@@ -123,11 +123,18 @@ struct shard {
 
 	rq::get_channel_webhooks get_channel_webhooks(const partial_channel&);
 
-	rq::get_webhook get_webhook(snowflake,std::string token);
-	
+	rq::get_webhook get_webhook(snowflake, std::string token);
+
 	rq::get_webhook get_webhook(const webhook&);
 
 	rq::execute_webhook send_with_webhook(const webhook&, std::string s);
+
+
+	template<typename ...settings>
+	rq::modify_webhook modify_webhook(const webhook&, modify_webhook<settings...>);
+
+	template<typename ...settings>
+	rq::modify_webhook modify_webhook(const webhook&, settings&&...);
 
 	const user& self_user() const noexcept {
 		return m_self_user;
@@ -139,7 +146,7 @@ struct shard {
 		return m_strand;
 	}
 
-	discord_obj_map<Guild> guilds()const noexcept { return m_guilds; }
+	discord_obj_map<Guild> guilds() const noexcept { return m_guilds; }
 
 	discord_obj_map<text_channel> text_channels() const noexcept { return m_text_channel_map; }
 
@@ -150,13 +157,13 @@ struct shard {
 	discord_obj_map<channel_catagory> channel_catagories() const noexcept { return m_channel_catagory_map; }
 
 	webhook_client make_webhook_client(const webhook& wh) {
-		if(!wh.token()) {
+		if (!wh.token()) {
 			throw std::runtime_error(";-;");
 		}
-		
+
 		return webhook_client(wh.id(), std::string(wh.token().value()), m_strand);
 	};
-	
+
 private:
 	using wsClient = rename_later_5;
 
@@ -191,9 +198,9 @@ private:
 	ref_stable_map<snowflake, dm_channel> m_dm_channels;
 
 	bool will_have_guild(snowflake guild_id) const noexcept;
-	
+
 	explicit shard(int shard_number, client* t_parent, boost::asio::io_context& ioc);
-	
+
 	friend cerwy::task<void> init_shard(int shardN, internal_shard& t_parent, boost::asio::io_context& ioc, std::string_view gateway);
 	friend struct internal_shard;
 	friend struct client;
@@ -257,6 +264,7 @@ rq::modify_channel_positions shard::modify_channel_positions(const Guild& g, rng
 
 template<typename rng>
 requires is_range_of_v<rng, partial_message>
+
 rq::delete_message_bulk shard::delete_message_bulk(const partial_channel& channel, rng&& msgs) {
 	nlohmann::json body;
 	body["messages"] = msgs | ranges::views::transform(&partial_message::id) | ranges::to<std::vector>;
@@ -265,6 +273,7 @@ rq::delete_message_bulk shard::delete_message_bulk(const partial_channel& channe
 
 template<typename rng>
 requires is_range_of_v<rng, snowflake>
+
 rq::delete_message_bulk shard::delete_message_bulk(const partial_channel& channel, rng&& msgs) {
 	nlohmann::json body;
 	if constexpr (std::is_convertible_v<rng, nlohmann::json>) {
@@ -279,6 +288,7 @@ rq::delete_message_bulk shard::delete_message_bulk(const partial_channel& channe
 
 template<typename rng>
 requires is_range_of<rng, snowflake>
+
 rq::add_guild_member shard::add_guild_member(const Guild& guild, snowflake id, std::string access_token, rng&& roles, std::string nick, bool deaf, bool mute) {
 	nlohmann::json body;
 	body["access_token"] = access_token;
@@ -296,6 +306,7 @@ rq::add_guild_member shard::add_guild_member(const Guild& guild, snowflake id, s
 
 template<typename rng>
 requires is_range_of<rng, guild_role>
+
 rq::add_guild_member shard::add_guild_member(const Guild& guild, snowflake id, std::string access_token, rng&& roles, std::string nick, bool deaf, bool mute) {
 	nlohmann::json body;
 	body["access_token"] = access_token;
@@ -339,9 +350,25 @@ rq::modify_role shard::modify_role(const guild_role& g, modify_role_settings<set
 	return send_request<rq::modify_role>(body.dump(), g);
 }
 
+template<typename ... settings>//requires sizeof...(settings)>=1
+rq::modify_webhook shard::modify_webhook(const webhook& wh, ::modify_webhook<settings...> settings_) {
+	return std::apply([&](auto&& ... settings__) {
+			return modify_webhook(wh,std::forward<decltype(settings__)>(settings__)...);
+		},std::move(settings_.settings)
+	);
+}
+
+template<typename ... settings>//requires sizeof...(settings)>=1
+rq::modify_webhook shard::modify_webhook(const webhook& wh, settings&&... s) {
+	nlohmann::json body = {};
+	((body[s.vname] = std::move(s.n)), ...);
+	return send_request<rq::modify_webhook>(body.dump(), wh);
+}
+
 
 template<typename range>
 requires is_range_of<range, std::string>
+
 rq::create_group_dm shard::create_group_dm(range&& access_tokens, std::unordered_map<snowflake, std::string> nicks) {
 	nlohmann::json body;
 	body["access_tokens"] = std::vector<int>();

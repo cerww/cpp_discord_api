@@ -26,7 +26,6 @@ struct snowflake {
 		val(std::exchange(other.val, 0)) {}
 
 	constexpr snowflake(const snowflake& other) = default;
-	//TODO: remove me after im done debugging
 	
 	constexpr explicit snowflake(const size_t a):	
 		val(a) {}

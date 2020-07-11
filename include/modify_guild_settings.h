@@ -3,69 +3,67 @@
 #include "snowflake.h"
 
 
-template<typename T>
-struct modify_guild_setting :crtp<T> { };
 
 struct guild_settings {
 
 	struct name {
-		static constexpr std::string_view vname = "name";
+		static constexpr const char* vname = "name";
 		std::string n;
 	};
 
 	struct voice_region {
 		std::string n;
-		static constexpr std::string_view vname = "voice_region";
+		static constexpr const char* vname = "voice_region";
 	};
 
 	struct verification_level {
 		int n = 0;
-		static constexpr std::string_view vname = "verification_level";
+		static constexpr const char* vname = "verification_level";
 	};
 
 	struct default_message_notifications {
 		int n = 0;
-		static constexpr std::string_view vname = "default_message_notifications";
+		static constexpr const char* vname = "default_message_notifications";
 	};
 
 	struct explicit_content_filter {
 		int n = 0;
-		static constexpr std::string_view vname = "explicit_content_filter";
+		static constexpr const char* vname = "explicit_content_filter";
 	};
 
 	struct afk_channel_id {
 		snowflake n;
-		static constexpr std::string_view vname = "afk_channel_id";
+		static constexpr const char* vname = "afk_channel_id";
 	};
 
 	struct afk_timeout {
 		int n = 0;
-		static constexpr std::string_view vname = "afk_timeout";
+		static constexpr const char* vname = "afk_timeout";
 	};
 
 	struct icon {
 		std::string n;
-		static constexpr std::string_view vname = "icon";
+		static constexpr const char* vname = "icon";
 	};
 
 	struct owner_id {
 		snowflake n;
-		static constexpr std::string_view vname = "owner_id";
+		static constexpr const char* vname = "owner_id";
 	};
 
 	struct splash {
 		std::string n;
-		static constexpr std::string_view vname = "splash";
+		static constexpr const char* vname = "splash";
 	};
 
 	struct banner {
 		std::string n;
-		static constexpr std::string_view vname = "banner";
+		static constexpr const char* vname = "banner";
 	};
 
 	struct system_channel_id {
 		snowflake n;
-		static constexpr std::string_view vname = "system_channel_id";
+		static constexpr const char* vname = "system_channel_id";
 	};
 };
 

@@ -26,6 +26,8 @@ int main() {
 	std::thread t([&]() {
 		c2.ioc().run();
 	});
+
+	
 	client c;
 	c.on_guild_text_msg = [](const guild_text_message& msg, shard& s)-> cerwy::task<void> {
 		if (msg.content() == "rawrly") {
@@ -34,6 +36,8 @@ int main() {
 			auto wh_client = s.make_webhook_client(hook);				
 			co_await wh_client.send("potatoland");
 			co_await wh_client.send("potatoland2");
+			
+			co_await s.modify_webhook(hook,modify_webhook().name("charizard"));
 			
 		}
 	};
