@@ -35,13 +35,7 @@ void shard::set_up_request(boost::beast::http::request<boost::beast::http::strin
 	m_parent->set_up_request(req);
 }
 
-rq::send_message shard::send_message(const text_channel& channel, std::string content) {
-	nlohmann::json body;
-	body["content"] = std::move(content);
-	return send_request<rq::send_message>(body.dump(), channel);
-}
-
-rq::send_message shard::send_message(const dm_channel& channel, std::string content) {
+rq::send_message shard::send_message(const partial_channel& channel, std::string content) {
 	nlohmann::json body;
 	body["content"] = std::move(content);
 	return send_request<rq::send_message>(body.dump(), channel);

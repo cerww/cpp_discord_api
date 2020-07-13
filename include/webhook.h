@@ -1,10 +1,7 @@
 #pragma once
 #include "snowflake.h"
-#include <boost/asio.hpp>
 #include "User.h"
 #include <optional>
-#include <variant>
-#include "ref_or_inplace.h"
 
 enum class webhook_type {
 	incoming = 1,
@@ -80,10 +77,10 @@ namespace webhook_settings {
 
 
 template<typename... setting>
-struct modify_webhook {
+struct modify_webhook_settings {
 
 	auto name(std::string n) {
-		return modify_webhook<setting..., webhook_settings::name>{
+		return modify_webhook_settings<setting..., webhook_settings::name>{
 			std::tuple_cat(	std::move(settings), 
 							std::tuple(webhook_settings::name{std::move(n)}))
 		};
@@ -91,7 +88,7 @@ struct modify_webhook {
 	
 	//TODO change type
 	auto avatar(std::string n) {
-		return modify_webhook<setting..., webhook_settings::avatar>{
+		return modify_webhook_settings<setting..., webhook_settings::avatar>{
 			std::tuple_cat(	std::move(settings), 
 							std::tuple(webhook_settings::avatar{std::move(n)}
 							)
@@ -100,7 +97,7 @@ struct modify_webhook {
 	}
 
 	auto channel_id(snowflake n) {
-		return modify_webhook<setting..., webhook_settings::channel_id>{
+		return modify_webhook_settings<setting..., webhook_settings::channel_id>{
 			std::tuple_cat(	std::move(settings), 
 							std::tuple(webhook_settings::channel_id{ n }))
 		};

@@ -22,6 +22,18 @@ struct text_channel :guild_channel {
 
 	std::string_view topic() const noexcept { return m_topic; };
 	//snowflake last_message_id() const noexcept { return m_last_message_id; };
+
+	bool is_news_channel()const noexcept {
+		return m_channel_type == text_channel_type::news;
+	}
+
+	bool is_store_channel()const noexcept {
+		return m_channel_type == text_channel_type::store;
+	}
+
+	bool is_normal_channel()const noexcept {
+		return m_channel_type == text_channel_type::normal;
+	}
 private:
 	std::string m_topic;
 	snowflake m_last_message_id;

@@ -258,11 +258,17 @@ void internal_shard::m_opcode8_guild_member_chunk(snowflake id) const {
 }
 
 cerwy::task<void> internal_shard::m_opcode9_on_invalid_session(const nlohmann::json& d) {
-	//boost::asio::steady_timer timer(m_ioc, std::chrono::steady_clock::now() + 5s);
-	//auto ec = co_await timer.async_wait(cerwy::bind_executor(strand(),use_task_return_ec));
+	boost::asio::steady_timer timer(strand(), std::chrono::steady_clock::now() + 5s);
+	auto ec = co_await timer.async_wait(use_task_return_ec);
+	
+	if (d.get<bool>())
+		m_opcode6_send_resume();
+	else
+		m_opcode2_send_identity();
 
 	//remove this for the above later when concepts and modules are in boost asio,
 	//cuz it'll too big to compile on vc;-;
+	/*
 	std::this_thread::sleep_for(5s);
 
 	if (d.get<bool>())
@@ -271,6 +277,7 @@ cerwy::task<void> internal_shard::m_opcode9_on_invalid_session(const nlohmann::j
 		m_opcode2_send_identity();
 
 	co_return;
+	*/
 }
 
 void internal_shard::send_heartbeat() {
@@ -323,6 +330,16 @@ void internal_shard::send_resume() const {
 	}
 	)"s);
 	m_client->send_thing(std::move(temp));
+}
+
+void internal_shard::apply_presences(const nlohmann::json& presences, Guild& guild) {
+	for (const auto& presence : presences) {
+		auto& member = guild.m_members[presence["user"]["id"].get<snowflake>()];
+		member.m_status = string_to_status(presence["status"].get_ref<const nlohmann::json::string_t&>());
+		const auto temp = presence["game"];
+		if (!temp.is_null())
+			member.m_game.emplace(temp.get<activity>());
+	}
 }
 
 void internal_shard::replay_events_for(snowflake guild_id) {
@@ -387,9 +404,8 @@ void internal_shard::procces_event<event_name::READY>(nlohmann::json& event) {
 	m_guilds.reserve(event["guilds"].size());
 
 	const auto& private_channels = event["private_channels"].get_ref<const nlohmann::json::array_t&>();
-	m_dm_channels.reserve(private_channels.size());
-	for (const auto& c : private_channels)
-		insert_proj_as_key(m_dm_channels, c.get<dm_channel>(),get_id);
+
+	m_dm_channels = private_channels | ranges::views::transform(&get_then_return_id<dm_channel>) | ranges::to<ref_stable_map<snowflake,dm_channel>>();
 	
 	m_parent->on_ready(*this);
 	
@@ -460,13 +476,7 @@ void internal_shard::procces_event<event_name::GUILD_CREATE>(nlohmann::json& dat
 
 	if (m_intents.has_intents(intent::GUILD_PRESENCES)) {
 		if (guild.m_is_ready) {
-			for (const auto& presence : data["presences"]) {
-				auto& member = guild.m_members[presence["user"]["id"].get<snowflake>()];
-				member.m_status = string_to_status(presence["status"].get_ref<const nlohmann::json::string_t&>());
-				const auto temp = presence["game"];
-				if (!temp.is_null())
-					member.m_game.emplace(temp.get<activity>());
-			}
+			apply_presences(data["presences"], guild);
 		}
 		else {
 			guild.m_presences = std::move(data["presences"]);//save it for later
@@ -485,7 +495,7 @@ void internal_shard::procces_event<event_name::GUILD_CREATE>(nlohmann::json& dat
 //These values can be used to keep track of how many events you have left to receive in response to a Request Guild Members command.
 
 template<>
-void internal_shard::procces_event<event_name::GUILD_MEMBERS_CHUNK>(nlohmann::json& e) {//really bad ;-;
+void internal_shard::procces_event<event_name::GUILD_MEMBERS_CHUNK>(nlohmann::json& e) {
 	std::cout << e.dump(0) << std::endl;
 	Guild& g = m_guilds[e["guild_id"].get<snowflake>()];
 	for (const auto& i : e["members"]) {
@@ -504,13 +514,7 @@ void internal_shard::procces_event<event_name::GUILD_MEMBERS_CHUNK>(nlohmann::js
 	if (--chunks_left == 0){
 		m_chunks_left_for_guild.erase(g.id());
 		g.m_is_ready = true;
-		for (const auto& presence : g.m_presences) {
-			auto& member = g.m_members[presence["user"]["id"].get<snowflake>()];
-			member.m_status = string_to_status(presence["status"].get_ref<const nlohmann::json::string_t&>());
-			const auto game = presence["game"];
-			if (!game.is_null())
-				member.m_game.emplace(game.get<activity>());
-		}
+		apply_presences(g.m_presences, g);
 
 
 		m_parent->on_guild_ready(g, *this);
@@ -587,6 +591,7 @@ void internal_shard::procces_event<event_name::MESSAGE_CREATE>(nlohmann::json& e
 
 		text_channel& ch = it->second;
 		auto& guild = ch.guild();
+		
 		if(!guild.m_is_ready) {
 			m_backed_up_events[guild.id()].emplace_back(std::move(e), event_name::MESSAGE_CREATE);
 			return;

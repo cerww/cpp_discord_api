@@ -1,6 +1,5 @@
 #include "include/client.h"
 #include <fstream>
-#include "include/async_mutex.h"
 #include "include/modify_guild_settings.h"
 #include "include/mp3_audio_source.h"
 
@@ -126,6 +125,10 @@ int main() {
 			s.send_message(msg.channel(), "charmander");
 			s.send_message(msg.channel(), "charmander");
 			s.send_message(msg.channel(), "charmander");
+		}else if(msg.content() == "at everyone") {
+			s.send_message(msg.channel(),"@everyone",allowed_mentions());
+		}else if(msg.content() == "at petery") {
+			s.send_message(msg.channel(), "<@188547243911938048>",disable_mentions);
 		}
 		//s.change_nick(wat.author(), wat.content());
 

@@ -19,14 +19,26 @@
 #include "modify_role_settings.h"
 #include "intents.h"
 #include "webhook_client.h"
+#include "allowed_mentions.h"
 
 struct shard {
 
-	rq::send_message send_message(const text_channel& channel, std::string content);
-	rq::send_message send_message(const dm_channel& channel, std::string content);
+	//content
+	//content, embed
+	//content, attachment
+	//content, embed,attachment
+	//have optional allowed_mentions?
+	rq::send_message send_message(const partial_channel& channel, std::string content);
 
 	rq::send_message send_message(const partial_channel& channel, std::string content, const embed& embed);
+	
+	template<int flags>
+	rq::send_message send_message(const partial_channel& channel, std::string content,const allowed_mentions<flags>&);
 
+	template<int flags>
+	rq::send_message send_message(const partial_channel& channel, std::string content, const embed& embed, const allowed_mentions<flags>&);
+
+	
 	rq::add_role add_role(const partial_guild&, const guild_member&, const guild_role&);
 	rq::remove_role remove_role(const partial_guild&, const guild_member&, const guild_role&);
 	rq::modify_member remove_all_roles(const partial_guild&, const guild_member&);
@@ -131,7 +143,7 @@ struct shard {
 
 
 	template<typename ...settings>
-	rq::modify_webhook modify_webhook(const webhook&, modify_webhook<settings...>);
+	rq::modify_webhook modify_webhook(const webhook&, modify_webhook_settings<settings...>);
 
 	template<typename ...settings>
 	rq::modify_webhook modify_webhook(const webhook&, settings&&...);
@@ -162,7 +174,7 @@ struct shard {
 		}
 
 		return webhook_client(wh.id(), std::string(wh.token().value()), m_strand);
-	};
+	}
 
 private:
 	using wsClient = rename_later_5;
@@ -244,6 +256,25 @@ std::enable_if_t<!rq::has_content_type_v<T>, T> shard::send_request(args&&... Ar
 	r.state->strand = &m_strand;
 	m_http_connection.send(std::move(r));
 	return std::move(retVal);//no nrvo cuz structured bindings
+}
+
+template<int flags>
+rq::send_message shard::send_message(const partial_channel& channel, std::string content, const allowed_mentions<flags>& mentions_allowed) {
+	nlohmann::json body = {};
+	body["content"] = std::move(content);
+	body["allowed_mentions"] = mentions_allowed;
+	
+	return send_request<rq::send_message>(body.dump(), channel);;
+}
+
+template<int flags>
+rq::send_message shard::send_message(const partial_channel& channel, std::string content, const embed& embed, const allowed_mentions<flags>& mentions_allowed) {
+	nlohmann::json body = {};
+	body["content"] = std::move(content);
+	body["allowed_mentions"] = mentions_allowed;
+	body["embed"] = embed;
+
+	return send_request<rq::send_message>(body.dump(), channel);;
 }
 
 template<typename rng>
@@ -351,7 +382,7 @@ rq::modify_role shard::modify_role(const guild_role& g, modify_role_settings<set
 }
 
 template<typename ... settings>//requires sizeof...(settings)>=1
-rq::modify_webhook shard::modify_webhook(const webhook& wh, ::modify_webhook<settings...> settings_) {
+rq::modify_webhook shard::modify_webhook(const webhook& wh, ::modify_webhook_settings<settings...> settings_) {
 	return std::apply([&](auto&& ... settings__) {
 			return modify_webhook(wh,std::forward<decltype(settings__)>(settings__)...);
 		},std::move(settings_.settings)

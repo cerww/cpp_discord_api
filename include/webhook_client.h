@@ -5,6 +5,8 @@
 #include "task.h"
 #include "concurrent_async_queue.h"
 #include <boost/asio/ssl.hpp>
+#include "ref_or_inplace.h"
+#include "allowed_mentions.h"
 
 struct webhook_request {
 	boost::beast::http::request<boost::beast::http::string_body> req;

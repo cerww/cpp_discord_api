@@ -222,6 +222,8 @@ private:
 	template<typename msg_t, typename channel_t, typename map_t>
 	msg_t createMsgUpdate(channel_t&, const nlohmann::json&, map_t&&);
 
+	void apply_presences(const nlohmann::json& presences,Guild&);
+
 	//HB stuff
 	std::atomic<bool> m_op11 = true;
 	size_t m_HBd = 0;
