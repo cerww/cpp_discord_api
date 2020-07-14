@@ -104,9 +104,8 @@ struct client {//<(^.^)>
 
 
 
-	Status status = Status::online;
-	std::string gameName = "";
-	timed_task_executor heartbeat_sender;
+	//Status status = Status::online;
+	//timed_task_executor heartbeat_sender;
 
 	void stop();
 

@@ -45,9 +45,10 @@ T* ptr_or_null(ref_stable_map<snowflake,T>& in,snowflake key) {
 
 internal_shard::internal_shard(int shard_number, client* t_parent, boost::asio::io_context& ioc, std::string_view gateway, intents intent) :
 	shard(shard_number,t_parent,ioc),
+	m_heartbeat_context(*this),
 	m_ioc(ioc),
 	m_resolver(ioc),
-	m_socket(ioc,m_ssl_ctx),
+	m_socket(strand(),m_ssl_ctx),
 	m_intents(intent)
 {
 	init_shard(shard_number, *this, ioc, gateway);	
@@ -143,9 +144,9 @@ void internal_shard::request_guild_members(Guild& g) const {
 	g.m_members.reserve(g.m_member_count);
 }
 
-void internal_shard::m_opcode0(nlohmann::json data, event_name event, size_t s) {
-	m_seqNum = std::max(s, m_seqNum);
-	std::cout << m_seqNum << std::endl;
+void internal_shard::m_opcode0(nlohmann::json data, event_name event, uint64_t s) {
+	m_seq_num.store(std::max(s, m_seq_num.load(std::memory_order_relaxed)), std::memory_order_relaxed);
+	std::cout << m_seq_num << std::endl;
 	//std::cout << data << std::endl;
 	try {
 		switch (event) {
@@ -202,7 +203,7 @@ R"({
 }
 
 void internal_shard::m_opcode2_send_identity() const {
-	m_sendIdentity();
+	m_send_identity();
 }
 
 void internal_shard::m_opcode3_send_presence() const {
@@ -280,43 +281,23 @@ cerwy::task<void> internal_shard::m_opcode9_on_invalid_session(const nlohmann::j
 	*/
 }
 
-void internal_shard::send_heartbeat() {
-	if (!m_op11.load()) {
-		reconnect();
-	}
-	m_opcode1_send_heartbeat();
-	m_op11 = false;
-	
-	m_parent->heartbeat_sender.execute(std::make_pair([this](){
-		send_heartbeat();
-	}, std::chrono::steady_clock::now() + std::chrono::milliseconds(m_hb_interval)));
-
-	/*
-	change ^ to v later
-	auto t = std::make_unique<boost::asio::steady_timer>(m_ioc);
-	t->expires_after(std::chrono::milliseconds(m_hb_interval));
-	t->async_wait([this,temp = std::move(t)](auto ec){
-		if(!ec)
-			send_heartbeat();
-	})
-	*/
-	
-}
 
 void internal_shard::m_opcode10_on_hello(nlohmann::json& stuff) {
-	m_hb_interval = stuff["heartbeat_interval"].get<int>();
-	send_heartbeat();
-	m_sendIdentity();
+	m_heartbeat_context.hb_interval = stuff["heartbeat_interval"].get<int>();
+	m_heartbeat_context.start();
+	m_send_identity();
 }
 
 void internal_shard::m_opcode11(nlohmann::json& data) {
-	m_op11 = true;
+	//m_op11 = true;
+	m_heartbeat_context.recived_ack = true;
 }
 
 void internal_shard::reconnect() {
 	if (!is_disconnected())
-		close_connection(1000);
+		close_connection(1001);
 	//m_parent->reconnect(this, m_shard_number);
+	//reconnect will happen in init_shard
 }
 
 void internal_shard::send_resume() const {
@@ -325,7 +306,7 @@ void internal_shard::send_resume() const {
 		"d":{
 			"token":)"s + std::string(m_parent->token()) + R"(
 			"session_id:)"s + m_session_id + R"(
-			"seq:")" + std::to_string(m_seqNum) + R"(
+			"seq:")" + std::to_string(m_seq_num) + R"(
 		}
 	}
 	)"s);
@@ -355,7 +336,7 @@ void internal_shard::replay_events_for(snowflake guild_id) {
 	}
 }
 
-void internal_shard::m_sendIdentity()const {
+void internal_shard::m_send_identity()const {
 	/*
 	std::string identity = R"({
 		"op":2,
@@ -746,7 +727,7 @@ void internal_shard::procces_event<event_name::RESUMED>(nlohmann::json& e){
 template<>	
 void internal_shard::procces_event<event_name::HELLO>(nlohmann::json& json){
 	m_trace = json.at("_trace").get<std::vector<std::string>>();
-	m_hb_interval = json["heartbeat_interval"].get<int>();
+	m_heartbeat_context.hb_interval = json["heartbeat_interval"].get<int>();
 };
 
 template<>	

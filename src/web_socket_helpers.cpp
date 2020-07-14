@@ -116,6 +116,7 @@ cerwy::task<boost::beast::websocket::stream<boost::beast::ssl_stream<boost::asio
 	//co_await socket.async_connect(results,use_task_return_ec);
 	//socket.
 	//boost::asio::connect()
+	
 	if (!socket.is_open() || ec2) {
 		throw std::runtime_error(";-;");
 	}

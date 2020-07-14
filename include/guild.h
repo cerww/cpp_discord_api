@@ -20,6 +20,7 @@ struct Guild :partial_guild {
 	bool large() const noexcept;
 	bool unavailable() const noexcept;
 	int member_count() const noexcept;
+	
 	const text_channel& system_channel() const noexcept;
 
 	const auto& members() const noexcept {

@@ -22,6 +22,8 @@ namespace discord_ec {
 
 cerwy::task<void> init_shard(const int shard_number, internal_shard& me, boost::asio::io_context& ioc, std::string_view gateway) {
 	try {
+		auto& strand = me.strand();
+		
 		co_await reconnect_wss_from_url(me.m_socket, gateway, me.m_resolver, me.ssl_context());
 
 		auto& m_socket = me.m_socket;
@@ -33,14 +35,13 @@ cerwy::task<void> init_shard(const int shard_number, internal_shard& me, boost::
 
 		boost::beast::multi_buffer buffer = {};
 
-		auto& strand = me.strand();
 
 		while (true) {
 			std::cerr << "recieving stuffs\n";
-			const auto [ec, n] = co_await m_socket.async_read(buffer, cerwy::bind_executor(strand, use_task_return_tuple2));
+			const auto [ec, n] = co_await m_socket.async_read(buffer, use_task_return_tuple2);
 
 			if (ec) {
-				std::cout << "init shard " << ec<<' '<<ec.message() << std::endl;
+				std::cout << "init shard " << ec << ' ' << ec.message() << std::endl;
 				if (ec.value() == discord_ec::unknown_error) {
 					co_await reconnect_wss_from_url(m_socket, gateway, me.m_resolver, me.ssl_context());
 					m_client.maybe_restart();

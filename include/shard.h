@@ -176,7 +176,7 @@ struct shard {
 		return webhook_client(wh.id(), std::string(wh.token().value()), m_strand);
 	}
 
-private:
+protected:
 	using wsClient = rename_later_5;
 
 	cerwy::task<boost::beast::error_code> connect_http_connection();
@@ -196,7 +196,7 @@ private:
 
 
 	http_connection2 m_http_connection;
-	std::unique_ptr<wsClient> m_client = nullptr;
+	
 
 	boost::asio::io_context::strand m_strand;
 
@@ -214,7 +214,6 @@ private:
 	explicit shard(int shard_number, client* t_parent, boost::asio::io_context& ioc);
 
 	friend cerwy::task<void> init_shard(int shardN, internal_shard& t_parent, boost::asio::io_context& ioc, std::string_view gateway);
-	friend struct internal_shard;
 	friend struct client;
 };
 

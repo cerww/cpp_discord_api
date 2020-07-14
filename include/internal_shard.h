@@ -21,6 +21,7 @@
 #include "modify_role_settings.h"
 #include "intents.h"
 #include "shard.h"
+#include "heartbeat_context.h"
 
 
 using namespace std::string_literals;
@@ -48,7 +49,6 @@ struct internal_shard: shard {
 	~internal_shard() noexcept {
 		m_client->close(4000);
 	}
-
 	
 	bool is_disconnected() const noexcept {
 		return m_is_disconnected;
@@ -85,7 +85,15 @@ struct internal_shard: shard {
 		return *m_parent;
 	}
 
+	const client& parent_client() const {
+		return *m_parent;
+	}
+
+	void reconnect();
 	
+	std::atomic<uint64_t> m_seq_num = 0;
+
+	std::unique_ptr<wsClient> m_client = nullptr;
 
 private:
 	cerwy::task<boost::beast::error_code> connect_http_connection();
@@ -97,10 +105,7 @@ private:
 
 	void close_connection(int code);
 
-	void reconnect();
-	void send_heartbeat();
 	void send_resume() const;
-
 
 	bool m_is_disconnected = false;
 
@@ -108,7 +113,7 @@ private:
 	void request_guild_members(Guild& g) const;
 
 	//dispatch
-	void m_opcode0(nlohmann::json, event_name, size_t);
+	void m_opcode0(nlohmann::json, event_name, uint64_t);
 	//heartbeat
 	void m_opcode1_send_heartbeat() const;
 	//identify
@@ -130,7 +135,7 @@ private:
 	//heartbeat ack
 	void m_opcode11(nlohmann::json&);
 
-	void m_sendIdentity() const;
+	void m_send_identity() const;
 
 	//event stuff
 	template<event_name e>
@@ -225,9 +230,7 @@ private:
 	void apply_presences(const nlohmann::json& presences,Guild&);
 
 	//HB stuff
-	std::atomic<bool> m_op11 = true;
-	size_t m_HBd = 0;
-	int m_hb_interval = 0;
+	heartbeat_context m_heartbeat_context;
 	//trace stuff
 	nlohmann::json m_trace;//idk what this is;-;
 	nlohmann::json m_trace2;//;-;
@@ -239,10 +242,9 @@ private:
 
 	std::string m_session_id;
 
-	size_t m_seqNum = 0;
 	std::atomic<bool> m_done = false;
 
-
+	
 
 	boost::asio::io_context& m_ioc;
 	boost::asio::ssl::context m_ssl_ctx{boost::asio::ssl::context_base::sslv23};
