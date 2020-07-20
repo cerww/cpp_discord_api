@@ -52,7 +52,7 @@ void client::set_token(std::string token, const token_type type = token_type::BO
 void client::set_up_request(boost::beast::http::request<boost::beast::http::string_body>& req) const {
 	req.set("Application", "cerwy");
 	req.set(boost::beast::http::field::authorization, m_authToken);
-	req.set(boost::beast::http::field::host, "discordapp.com"s);
+	req.set(boost::beast::http::field::host, "discord.com"s);
 	req.set(boost::beast::http::field::user_agent, "watland");
 	req.set(boost::beast::http::field::accept, "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
 	req.set(boost::beast::http::field::accept_language, "en-US,en;q=0.5");
@@ -89,12 +89,12 @@ void client::m_getGateway() {
 	boost::asio::ssl::stream<boost::asio::ip::tcp::socket> ssl_socket{ ioc, ssl_context };
 	boost::beast::flat_buffer buffer;
 
-	boost::asio::connect(ssl_socket.next_layer(), resolver.resolve("discordapp.com", "https"));
+	boost::asio::connect(ssl_socket.next_layer(), resolver.resolve("discord.com", "https"));
 	ssl_socket.handshake(boost::asio::ssl::stream_base::client);
 	boost::beast::http::request<boost::beast::http::string_body> request(boost::beast::http::verb::get, "/api/v6/gateway/bot", 11);
 	request.set("Application", "cerwy");
 	request.set(boost::beast::http::field::authorization, m_authToken);
-	request.set("Host", "discordapp.com"s);
+	request.set("Host", "discord.com"s);
 	request.set("Upgrade-Insecure-Requests", "1");
 	request.set(boost::beast::http::field::user_agent, "potato_world");
 		

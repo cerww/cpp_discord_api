@@ -21,8 +21,8 @@ struct partial_guild_member :user {
 	bool has_role(const guild_role& role) const noexcept;
 
 private:
-	std::string m_nick{};
 	boost::container::small_vector<snowflake, 5> m_roles{};
+	std::string m_nick{};
 	timestamp m_joined_at{};
 	bool m_deaf = false;
 	bool m_mute = false;
@@ -31,14 +31,13 @@ private:
 	friend struct internal_shard;
 };
 
-//constexpr int auidghsa djkashdiuas = sizeof(boost::container::small_vector<snowflake,5>);
+constexpr int auidghsadjkashdiuas = sizeof(boost::container::small_vector<snowflake,5>);
 
+constexpr int ashsdgasdasd = sizeof(partial_guild_member);
 
 inline void from_json(const nlohmann::json& in, partial_guild_member& out) {
 	from_json(in["user"], static_cast<user&>(out));
-	const auto it = in.find("nick");
-	if (it != in.end())
-		out.m_nick = in["nick"].is_null() ? "" : in["nick"].get<std::string>();
+	out.m_nick = in.value("nick",std::string(""));
 	//out.m_roles = in["roles"].get<std::vector<snowflake>>();
 	out.m_roles = in["roles"] | ranges::views::transform(&nlohmann::json::get<snowflake>) | ranges::to<boost::container::small_vector<snowflake, 5>>();
 	

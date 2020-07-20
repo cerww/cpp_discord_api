@@ -129,7 +129,7 @@ private:
 	//request guild members
 	void m_opcode8_guild_member_chunk(snowflake) const;
 	//invalid session
-	cerwy::task<void> m_opcode9_on_invalid_session(const nlohmann::json&);
+	cerwy::task<void> m_opcode9_on_invalid_session(nlohmann::json);
 	//hello
 	void m_opcode10_on_hello(nlohmann::json&);
 	//heartbeat ack
@@ -218,7 +218,7 @@ private:
 
 
 	
-	guild_member make_member_from_msg(const nlohmann::json& user_json, const nlohmann::json& member_json);
+	guild_member make_member_from_msg(const nlohmann::json& user_json, const nlohmann::json& member_json) const;
 
 
 	template<typename msg_t, typename channel_t, typename map_t>
@@ -271,13 +271,13 @@ void internal_shard::procces_event(nlohmann::json&) {
 	//static_assert(false);
 }
 
-inline guild_member internal_shard::make_member_from_msg(const nlohmann::json& user_json, const nlohmann::json& member_json) {
+inline guild_member internal_shard::make_member_from_msg(const nlohmann::json& user_json, const nlohmann::json& member_json) const {
 	guild_member ret;
 	from_json(user_json, (user&)ret);
+	
 	const auto it = member_json.find("nick");
 	if (it != member_json.end())
-		ret.m_nick = member_json["nick"].is_null() ? "" : member_json["nick"].get<std::string>();
-	//out.m_roles = in["roles"].get<std::vector<snowflake>>();
+		ret.m_nick = it->is_null() ? "" : it->get<std::string>();
 
 	ret.m_roles = member_json["roles"] | ranges::views::transform(&nlohmann::json::get<snowflake>) | ranges::to<boost::container::small_vector<snowflake, 5>>();
 
@@ -292,7 +292,7 @@ inline guild_member internal_shard::make_member_from_msg(const nlohmann::json& u
 template<typename msg_t, typename channel_t, typename map_t>
 msg_t internal_shard::create_msg(channel_t& ch, const nlohmann::json& stuffs, map_t&& members_in_channel) {
 	msg_t retVal;
-	from_json(stuffs, static_cast<partial_message&>(retVal));
+	stuffs.get_to(static_cast<partial_message&>(retVal));
 	retVal.m_channel = &ch;
 	
 	constexpr bool is_guild_msg = std::is_same_v<msg_t, guild_text_message>;

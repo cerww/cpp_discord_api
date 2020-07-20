@@ -10,6 +10,7 @@
 #include <range/v3/all.hpp>
 #include "guild_integration.h"
 #include "webhook.h"
+#include "audit_log.h"
 
 
 // clang-format off
@@ -121,6 +122,7 @@ namespace rq {
 		
 		explicit request_base(ref_count_ptr<shared_state> t_state):state(std::move(t_state)){}
 
+		//TODO
 		template<typename T>
 		explicit request_base(with_exception<T> e,boost::asio::io_context::strand* strand):request_base(make_ref_count_ptr<shared_state>()) {
 			state->strand = strand;
@@ -206,7 +208,8 @@ namespace rq {
 				}
 
 				decltype(auto) await_resume() {
-					return me->await_resume();
+					//me->handle_errors();
+					//return me->await_resume();
 				}
 				
 			};
@@ -549,12 +552,92 @@ namespace rq {
 	{
 		using request_base::request_base;
 		using return_type = void;
-		//TODO make this work
+		
+		
 		static std::string target(const partial_message& msg,const partial_emoji& emo) {
-			return "/channel/{}/messages/{}/reactions/{}:{}/@me"_format(msg.channel_id().val, msg.id().val, emo.id().val, emo.name());
+			return "/channels/{}/messages/{}/reactions/{}/@me"_format(msg.channel_id().val, msg.id().val, emo.to_reaction_string());
 		}
 	};
+	
+	struct delete_own_reaction:
+		request_base<delete_own_reaction>,
+		delete_verb
+	{
+		using request_base::request_base;
+		using return_type = void;
 
+		static std::string target(const partial_message& msg,const partial_emoji& emoji) {
+			return "/channels/{}/messages/{}/reactions/{}/@me"_format(msg.channel_id().val, msg.id().val, emoji.to_reaction_string());
+		}
+
+		static std::string target(const partial_message& msg, const reaction& reaction) {
+			return target(msg, reaction.emoji());
+		}
+		
+	};
+
+	struct delete_user_reaction:
+		request_base<delete_user_reaction>,
+		delete_verb
+	{
+		using request_base::request_base;
+		using return_type = void;
+
+		static std::string target(const partial_message& msg, const partial_emoji& emoji,const user& member) {
+			return "/channels/{}/messages/{}/reactions/{}/{}"_format(msg.channel_id().val, msg.id().val, emoji.to_reaction_string(),member.id().val);
+		}
+
+		static std::string target(const partial_message& msg, const reaction& react, const user& member) {
+			return target(msg, react.emoji(), member);
+		}		
+	};
+
+	struct get_reactions:
+		request_base<get_reactions>,
+		get_verb {
+
+		using request_base::request_base;
+		using return_type = std::vector<user>;
+
+		static std::string target(const partial_message& msg, const partial_emoji& emoji) {
+			return "/channels/{}/messages/{}/reactions/{}"_format(msg.channel_id().val, msg.id().val, emoji.to_reaction_string());
+		}
+
+		static std::string target(const partial_message& msg, const reaction& emoji) {
+			return "/channels/{}/messages/{}/reactions/{}"_format(msg.channel_id().val, msg.id().val, emoji.emoji().to_reaction_string());
+		}
+		
+	};
+
+	struct delete_all_reactions:
+		request_base<delete_all_reactions>,
+		delete_verb
+	{
+		using request_base::request_base;
+		using return_type = void;
+
+		static std::string target(const partial_message& msg) {
+			return "/channels/{}/messages/{}/reactions"_format(msg.channel_id().val, msg.id().val);			
+		}		
+	};
+
+	struct delete_all_reactions_emoji :
+		request_base<delete_all_reactions_emoji>,
+		delete_verb
+	{
+		using request_base::request_base;
+		using return_type = void;
+
+		static std::string target(const partial_message& msg,const partial_emoji& emoji) {
+			return "/channels/{}/messages/{}/reactions/{}"_format(msg.channel_id().val, msg.id().val,emoji.to_reaction_string());
+		}
+		
+		static std::string target(const partial_message& msg, const reaction& reaction) {
+			return target(msg, reaction.emoji());
+		}
+		
+	};
+	
 	struct typing_start:
 		request_base<typing_start>,
 		post_verb
@@ -563,7 +646,7 @@ namespace rq {
 		using return_type = void;
 
 		static std::string target(const partial_channel& ch) {
-			return "/channel/{}/typing"_format(ch.id().val);
+			return "/channels/{}/typing"_format(ch.id().val);
 		}
 	};
 
@@ -785,6 +868,19 @@ namespace rq {
 		
 		
 	};
+
+	struct get_message :
+		request_base<get_message>,
+		get_verb
+	{
+		
+		using request_base::request_base;
+		using return_type = partial_message;
+
+		static std::string target(const partial_channel& ch,snowflake msg_id) {
+			return "/channels/{}/messages/{}"_format(ch.id().val, msg_id.val);
+		}
+	};
 	
 	
 
@@ -886,7 +982,19 @@ namespace rq {
 		}
 		
 	};
-	
+
+	struct get_audit_log:
+		request_base<get_audit_log>,
+		get_verb
+	{
+
+		using request_base::request_base;
+		using return_type = audit_log;
+		
+		static std::string target(const partial_guild& g) {
+			return "/guilds/{}/audit-logs"_format(g.id().val);
+		}
+	};
 
 	//not needed ;-;
 	struct get_guild_channels :

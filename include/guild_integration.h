@@ -31,8 +31,7 @@ private:
 	}
 };
 
-struct guild_integration {
-
+struct partial_integration {
 	snowflake id() const {
 		return m_id;
 	};
@@ -44,6 +43,27 @@ struct guild_integration {
 	std::string_view type() const {
 		return m_type;
 	};
+
+
+	const integration_account& account() const {
+		return m_account;
+	};
+
+private:
+	snowflake m_id;
+	std::string m_name;
+	std::string m_type;
+	integration_account m_account;
+
+	friend void from_json(const nlohmann::json& json, partial_integration& me) {
+		me.m_id = json["id"].get<snowflake>();
+		me.m_name = json["name"].get<std::string>();
+		me.m_type = json["type"].get<std::string>();
+		me.m_account = json["account"].get<integration_account>();
+	}
+};
+
+struct guild_integration:partial_integration {	
 
 	bool enabled() const {
 		return m_enabled;
@@ -73,10 +93,6 @@ struct guild_integration {
 		return m_user;
 	};
 
-	const integration_account& account() const {
-		return m_account;
-	};
-
 
 	timestamp synced_at() const noexcept {
 		return m_synced_at;
@@ -84,9 +100,6 @@ struct guild_integration {
 
 
 private:
-	snowflake m_id;
-	std::string m_name;
-	std::string m_type;
 	bool m_enabled = false;
 	bool m_syncing = false;
 	snowflake m_role_id;
@@ -94,13 +107,9 @@ private:
 	integration_expire_behavior m_expire_behavior;
 	int m_expire_grace_period = 0;
 	::user m_user;
-	integration_account m_account;
 	timestamp m_synced_at;
 
 	friend void from_json(const nlohmann::json& json, guild_integration& me) {
-		me.m_id = json["id"].get<snowflake>();
-		me.m_name = json["name"].get<std::string>();
-		me.m_type = json["type"].get<std::string>();
 		me.m_enabled = json["enabled"].get<bool>();
 		me.m_syncing = json["syncing"].get<bool>();
 		me.m_role_id = json["role_id"].get<snowflake>();
@@ -108,7 +117,6 @@ private:
 		me.m_expire_behavior = json["expire_behavior"].get<integration_expire_behavior>();
 		me.m_expire_grace_period = json["expire_grace_period"].get<int>();
 		me.m_user = json["user"].get<::user>();
-		me.m_account = json["account"].get<integration_account>();
 		me.m_synced_at = json["synced_at"].get<timestamp>();
 	}
 };

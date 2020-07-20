@@ -613,7 +613,7 @@ namespace hof {
 		constexpr bind_first_n() = default;
 
 		template<typename... bind_args_>
-		constexpr bind_first_n(fn&& f, bind_args_&&... args):
+		constexpr explicit bind_first_n(fn&& f, bind_args_&&... args):
 			me(std::forward<fn>(f)),
 			calling_args(std::forward<bind_args_>(args)...) {}
 
@@ -736,7 +736,7 @@ namespace hof_tests {
 
 	inline void hof_test2() {
 		std::mt19937 engine;
-		std::uniform_int_distribution<> dist;
+		std::uniform_int_distribution<> dist(2,3);
 		const auto t = bind1st(dist, engine);
 		auto u = bind1st(dist, engine);
 		auto y = t();
@@ -754,7 +754,10 @@ namespace hof_tests {
 		c();
 
 		auto e = []() { return std::make_tuple(1); };
-		auto p = [](auto) {};
+		auto p = [](auto a) {
+			using type = std::remove_cvref_t<decltype(a)>;
+			static_assert(std::is_same_v<std::tuple<int>, type>);
+		};
 		auto w = flow(e, p);
 		w();
 

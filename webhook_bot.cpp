@@ -32,9 +32,10 @@ int main() {
 	webhook_client c2(snowflake(731786996493844591ull),"k8ElkHsnKrD83NkWiRniQhRHbR_JsXgiF038MecLLCem2bxcYaI2UuH74cOn6QwEWX9-");
 	c2.send("aaa");
 	std::thread t([&]() {
-		c2.ioc().run();
-	});
+		c2.run();
+	});	
 
+	
 	
 	client c;
 	c.on_guild_text_msg = [](const guild_text_message& msg, shard& s)-> cerwy::task<void> {

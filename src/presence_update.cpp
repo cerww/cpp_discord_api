@@ -5,7 +5,7 @@ std::string_view activity::name() const noexcept { return m_name; }
 
 activity_type activity::type() const noexcept { return m_type; }
 
-const std::optional<std::string>& activity::url() const noexcept { return m_url; }
+std::optional<std::string_view> activity::url() const noexcept { return m_url; }
 
 void from_json(const nlohmann::json& json, activity& thing) {
 	thing.m_name = json["name"].get<std::string>();
@@ -21,6 +21,8 @@ const std::optional<activity>& partial_presence_update::game() const noexcept { 
 void from_json(const nlohmann::json& json, partial_presence_update& thing) {
 	thing.m_id = json["user"]["id"].get<snowflake>();
 	thing.m_status = json["status"].get<Status>();
-	auto t = json["game"];
-	if (!t.is_null()) thing.m_game.emplace(t.get<activity>());
+	const auto& t = json["game"];
+	if (!t.is_null()) {
+		thing.m_game.emplace(t.get<activity>());
+	}
 }

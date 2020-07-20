@@ -61,7 +61,7 @@ int main() {
 
 	//c.on_guild_ready = &thingy;
 	
-	c.on_guild_text_msg = [&](guild_text_message msg, shard& s) {
+	c.on_guild_text_msg = [&](guild_text_message msg, shard& s)->cerwy::task<void> {
 		if (msg.content() == "rawrmander") {
 			//int i = 0;
 			/*
@@ -129,6 +129,22 @@ int main() {
 			s.send_message(msg.channel(),"@everyone",allowed_mentions());
 		}else if(msg.content() == "at petery") {
 			s.send_message(msg.channel(), "<@188547243911938048>",disable_mentions);
+		}else if(msg.content() == "hello kitty") {
+			const auto new_msg = co_await s.send_message(msg.channel(),"charmanderworld");
+			co_await s.add_reaction(new_msg, msg.guild().emojis().front());
+			co_return;
+			
+		}else if(msg.content() == "formosaland") {
+			auto logs = co_await s.get_audit_log(msg.guild());
+			std::string str;
+
+			for(const auto& entry: logs.entries()) {
+				str += fmt::format("{},{},{},{}", entry.id().val, entry.action_type(), entry.user_id().val, entry.target_id().value_or(snowflake(0)));
+				for(const auto& change:entry.changes()) {
+					
+				}
+			}
+			
 		}
 		//s.change_nick(wat.author(), wat.content());
 
@@ -169,7 +185,27 @@ int main() {
 			std::cout << new_thing << std::endl;;
 		}
 	};
+	
+	c.on_guild_reaction_add = [](guild_member who, const text_channel& channel, snowflake msg_id, partial_emoji emoji, shard& s) -> cerwy::task<void> {
+		if(who.id() == s.self_user().id()) {
+			co_return;
+		}
+		const auto msg = co_await s.fetch_message(channel, msg_id);
+		co_await s.delete_user_reaction(msg, emoji, who);
+		co_await s.add_reaction(msg, emoji);
 
+		
+		boost::asio::steady_timer timer(s.strand());
+		timer.expires_after(5s);		
+		co_await timer.async_wait(use_task);
+		
+		co_await s.delete_all_reactions(msg);
+		
+		co_return;
+	};
+	
+	
+	
 	c.set_token(getFileContents("token.txt"), token_type::BOT);
 	c.run();
 	//} catch (...) {

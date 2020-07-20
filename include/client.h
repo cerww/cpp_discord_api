@@ -54,6 +54,8 @@ struct client {//<(^.^)>
 
 	std::string_view token() const { return m_token; }
 
+	std::string_view auth_token() const { return m_authToken; }
+
 	size_t num_shards() const noexcept { return m_num_shards; }
 
 	std::function<void(guild_text_message, shard&)> on_guild_text_msg = nothing;
@@ -73,27 +75,30 @@ struct client {//<(^.^)>
 	std::function<void(const channel_catagory&, shard&)> on_guild_channel_catagory_update = nothing;
 	std::function<void(const Guild&, shard&)> on_guild_update = nothing;
 	std::function<void(const Guild&, bool, shard&)> on_guild_remove = nothing;
-	std::function<void(const Guild&, const user&, shard&)> on_ban_add = nothing;
-	std::function<void(const Guild&, const user&, shard&)> on_ban_remove = nothing;
+	std::function<void(const Guild&, user, shard&)> on_ban_add = nothing;
+	std::function<void(const Guild&, user, shard&)> on_ban_remove = nothing;
 	std::function<void(const Guild&, const guild_role&, shard&)> on_role_create = nothing;
 	std::function<void(const Guild&, const guild_role&, const guild_role&, shard&)> on_role_update = nothing;
 	std::function<void(const Guild&, const guild_role&, shard&)> on_role_delete = nothing;
 	std::function<void(dm_msg_update,  shard&)> on_dm_msg_update = nothing;
 	std::function<void(guild_msg_update, shard&)> on_guild_msg_update = nothing;
-	std::function<void(std::optional<dm_message>, snowflake, shard&)> on_dm_msg_delete = nothing;
-	std::function<void(std::optional<guild_text_message>, snowflake, shard&)> on_guild_msg_delete = nothing;
+	std::function<void(snowflake, const dm_channel&, shard&)> on_dm_msg_delete = nothing;
+	std::function<void(snowflake, const text_channel&, shard&)> on_guild_msg_delete = nothing;
 	std::function<void(const guild_member&, const text_channel&, shard&)> on_guild_typing_start = nothing;
 	std::function<void(const user&, const dm_channel&, shard&)> on_dm_typing_start = nothing;
 	
 	std::function<void(text_channel, shard&)> on_text_channel_delete = nothing;
 	std::function<void(dm_channel, shard&)> on_dm_channel_delete = nothing;
 	
-	std::function<void(const guild_member&, const text_channel&, optional_ref<guild_text_message>, const reaction&, shard&)> on_guild_reaction_add = nothing;
-	std::function<void(const user&, const dm_channel&, optional_ref<dm_message>, const reaction&, shard&)> on_dm_reaction_add = nothing;
-	std::function<void(const guild_member&, const text_channel&, optional_ref<guild_text_message>, const reaction&, shard&)> on_guild_reaction_remove = nothing;
-	std::function<void(const user&, const dm_channel&, optional_ref<dm_message>, reaction&, shard&)> on_dm_reaction_remove = nothing;
-	std::function<void(const text_channel&, optional_ref<const guild_text_message>, shard&)> on_guild_reaction_remove_all = nothing;
-	std::function<void(const dm_channel&, optional_ref<const dm_message>, shard&)> on_dm_reaction_remove_all = nothing;
+	std::function<void(guild_member, const text_channel&, snowflake, partial_emoji, shard&)> on_guild_reaction_add = nothing;
+	std::function<void(const user&, const dm_channel&, snowflake, partial_emoji, shard&)> on_dm_reaction_add = nothing;
+	
+	std::function<void(snowflake/*member_id*/, const text_channel&, snowflake/*msg_id*/, partial_emoji, shard&)> on_guild_reaction_remove = nothing;
+	std::function<void(const user&, const dm_channel&, snowflake,partial_emoji, shard&)> on_dm_reaction_remove = nothing;
+	
+	std::function<void(const text_channel&, snowflake,  shard&)> on_guild_reaction_remove_all = nothing;
+	std::function<void(const dm_channel&, snowflake,  shard&)> on_dm_reaction_remove_all = nothing;
+	
 	std::function<void(const guild_member&, shard&)> on_presence_update = nothing;
 
 	std::function<void(const Guild&, shard&)> on_guild_ready = nothing;

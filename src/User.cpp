@@ -12,7 +12,6 @@ int user::discriminator() const noexcept {
 	return m_discriminator;
 }
 
-Status user::status() const noexcept { return m_status; }
 
 void to_json(nlohmann::json& json, const user& other) {
 	json["id"] = std::to_string(other.id().val);
@@ -26,4 +25,11 @@ void from_json(const nlohmann::json& json, user& other) {
 	other.m_username = json["username"].get<std::string>();
 	other.m_bot = json.value("bot", false);
 	other.m_discriminator = std::stoi(json.value("discriminator", "-1"));
+	const auto& a = json["avatar"];
+	if(a.is_null()) {
+		other.m_avatar = "";
+	}
+	else {
+		other.m_avatar = json["avatar"];
+	}
 }

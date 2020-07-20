@@ -32,6 +32,7 @@ private:
 	bool m_suppress = false;
 	std::optional<guild_member> m_member;
 
+	friend struct internal_shard;
 	friend void from_json(const nlohmann::json& json, voice_state& vs);
 };
 

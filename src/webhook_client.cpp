@@ -8,7 +8,7 @@ void webhook_http_client::send(webhook_request&& d) {
 
 cerwy::task<boost::beast::error_code> webhook_http_client::async_connect() {
 	boost::asio::ip::tcp::resolver resolver(m_client->ioc());
-	const auto [ec, results] = co_await resolver.async_resolve("discordapp.com", "https", use_task_return_tuple2);
+	const auto [ec, results] = co_await resolver.async_resolve("discord.com", "https", use_task_return_tuple2);
 	if (ec) {
 		co_return ec;
 	}
@@ -67,7 +67,7 @@ cerwy::task<void> webhook_http_client::reconnect() {
 		if (m_socket.next_layer().is_open()) {
 			co_await m_socket.async_shutdown(use_task);
 		}
-		const auto [ec, results] = co_await resolver.async_resolve("discordapp.com", "https", use_task_return_tuple2);
+		const auto [ec, results] = co_await resolver.async_resolve("discord.com", "https", use_task_return_tuple2);
 		if (ec) {
 			continue;
 		}

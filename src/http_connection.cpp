@@ -140,7 +140,7 @@ bool http_connection::send_to_discord_(discord_request& r,size_t major_param_id_
 
 
 cerwy::task<boost::beast::error_code> http_connection::async_connect() {
-	const auto[ec, results] = co_await m_resolver.async_resolve("discordapp.com", "https", use_task_return_tuple2);
+	const auto[ec, results] = co_await m_resolver.async_resolve("discord.com", "https", use_task_return_tuple2);
 	if(ec) {
 		co_return ec;
 	}
@@ -169,14 +169,14 @@ cerwy::task<boost::beast::error_code> http_connection::async_connect() {
 }
 
 void http_connection::connect() {
-	auto results = m_resolver.resolve("discordapp.com", "https");
+	auto results = m_resolver.resolve("discord.com", "https");
 	connect_with_no_delay(m_socket.next_layer(), results);
 	m_socket.handshake(boost::asio::ssl::stream_base::client);
 }
 
 void http_connection::reconnect() {	
 	m_socket.next_layer().close();
-	const auto results = m_resolver.resolve("discordapp.com", "https");
+	const auto results = m_resolver.resolve("discord.com", "https");
 	connect_with_no_delay(m_socket.next_layer(), results);
 	m_socket.handshake(boost::asio::ssl::stream_base::client);
 }
@@ -239,7 +239,7 @@ std::future<void> http_conn(d::subscriber_thingy_async<std::variant<discord_requ
 	boost::asio::ssl::stream<boost::asio::ip::tcp::socket> m_ssl_stream{ m_ioc, m_sslCtx };
 	boost::beast::flat_buffer m_buffer;
 
-	const auto results = resolver.resolve("discordapp.com", "https");
+	const auto results = resolver.resolve("discord.com", "https");
 	boost::asio::connect(m_ssl_stream.next_layer(), results.begin(), results.end());
 	m_ssl_stream.handshake(boost::asio::ssl::stream_base::client);
 
@@ -276,7 +276,7 @@ void http_connection2::send(discord_request&& d) {
 
 
 cerwy::task<boost::beast::error_code> http_connection2::async_connect() {
-	const auto [ec, results] = co_await m_resolver.async_resolve("discordapp.com", "https", use_task_return_tuple2);
+	const auto [ec, results] = co_await m_resolver.async_resolve("discord.com", "https", use_task_return_tuple2);
 	if (ec) {
 		co_return ec;
 	}
@@ -388,7 +388,7 @@ void http_connection2::resend_rate_limted_requests_for(size_t id) {
 		std::lock_guard lock(m_rate_limit_mut);
 		auto ret = std::move(m_rate_limited_requests.front());
 		m_rate_limited_requests.erase(m_rate_limited_requests.begin());
-		return std::move(ret);
+		return ret;
 	}();
 	
 	for(auto& r: std::get<2>(requests)) {
@@ -434,7 +434,7 @@ bool http_connection2::check_rate_limit(size_t id, discord_request& rq) {
 }
 
 void http_connection2::connect() {
-	auto results = m_resolver.resolve("discordapp.com", "https");
+	auto results = m_resolver.resolve("discord.com", "https");
 	connect_with_no_delay(m_socket.next_layer(), results);
 	m_socket.handshake(boost::asio::ssl::stream_base::client);
 }
@@ -444,7 +444,7 @@ cerwy::task<void> http_connection2::reconnect() {
 		if (m_socket.next_layer().is_open()) {
 			co_await m_socket.async_shutdown(use_task);
 		}
-		const auto [ec, results] = co_await m_resolver.async_resolve("discordapp.com", "https", use_task_return_tuple2);
+		const auto [ec, results] = co_await m_resolver.async_resolve("discord.com", "https", use_task_return_tuple2);
 		if(ec) {
 			continue;
 		}

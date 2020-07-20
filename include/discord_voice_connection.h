@@ -209,6 +209,7 @@ private:
 public:
 	void disconnect() {
 		if (m_connection) {
+			//use .async_* lambda pyramids to close?
 			m_connection->close();
 			m_connection = nullptr;
 		}

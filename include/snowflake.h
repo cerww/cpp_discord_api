@@ -8,9 +8,11 @@
 #include "ref_stable_map.h"
 #include <charconv>
 #include "iterator_facade.h"
+#include <compare>
 
 struct snowflake {
-	constexpr bool operator==(const snowflake& other) const noexcept { return val == other.val; }
+	constexpr bool operator==(const snowflake& other) const noexcept = default;
+	constexpr std::strong_ordering operator<=>(const snowflake& other) const noexcept = default;
 
 	constexpr snowflake() = default;
 	~snowflake() = default;
@@ -31,8 +33,11 @@ struct snowflake {
 		val(a) {}
 
 	size_t val = 0;//no reason to be private?
+	
+	
 };
 
+/*
 constexpr bool operator!=(const snowflake& a, const snowflake& b) {
 	return a.val != b.val;
 }
@@ -52,6 +57,7 @@ constexpr bool operator<=(const snowflake& a, const snowflake& b) {
 constexpr bool operator>=(const snowflake& a, const snowflake& b) {
 	return a.val >= b.val;
 }
+*/
 
 inline void to_json(nlohmann::json& json, const snowflake& wawt) {
 	char buffer[20] = {};
@@ -66,6 +72,7 @@ inline void from_json(const nlohmann::json& in, snowflake& out) {
 	std::from_chars(str.data(), str.data() + str.size(), out.val);
 }
 
+
 namespace std {
 	template<>
 	struct hash<snowflake> {
@@ -75,6 +82,7 @@ namespace std {
 	};
 }
 
+/*
 template<typename T, typename = void>
 struct has_id :std::false_type {};
 
@@ -83,6 +91,7 @@ struct has_id<T, std::void_t<decltype(std::declval<T>().id())>> :std::is_same<de
 
 template<typename T>
 static constexpr bool has_id_v = has_id<T>::value;
+*/
 
 struct id_equal_to {
 	explicit id_equal_to(snowflake i) :

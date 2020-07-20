@@ -3,11 +3,12 @@
 #include "internal_shard.h"
 
 
-shard::shard(int shard_number, client* t_parent, boost::asio::io_context& ioc) :
+shard::shard(int shard_number, client* t_parent, boost::asio::io_context& ioc,std::string auth_token) :
 	m_shard_number(shard_number),
-	m_parent(t_parent),
 	m_strand(ioc),
-	m_http_connection(t_parent, ioc) { }
+	m_parent(t_parent),
+	m_http_connection(t_parent, ioc),
+	m_auth_token(std::move(auth_token)){ }
 
 cerwy::task<voice_connection> shard::connect_voice(const voice_channel& ch) {
 	//;-;
@@ -216,6 +217,42 @@ rq::add_reaction shard::add_reaction(const partial_message& msg, const partial_e
 	return send_request<rq::add_reaction>(msg, e);
 }
 
+rq::delete_own_reaction shard::delete_own_reaction(const partial_message& msg, const partial_emoji& emoji) {
+	return send_request<rq::delete_own_reaction>(msg, emoji);
+}
+
+rq::delete_own_reaction shard::delete_own_reaction(const partial_message& msg, const reaction& rc) {
+	return send_request<rq::delete_own_reaction>(msg,rc);
+}
+
+rq::delete_user_reaction shard::delete_user_reaction(const partial_message& msg, const partial_emoji& emoji, const user& user) {
+	return send_request<rq::delete_user_reaction>(msg, emoji, user);
+}
+
+rq::delete_user_reaction shard::delete_user_reaction(const partial_message& msg, const reaction& reaction, const user& user) {
+	return send_request<rq::delete_user_reaction>(msg, reaction, user);
+}
+
+rq::get_reactions shard::get_reactions(const partial_message& msg, const partial_emoji& emoji) {
+	return send_request<rq::get_reactions>(msg, emoji);
+}
+
+rq::get_reactions shard::get_reactions(const partial_message& msg, const reaction& rc) {
+	return send_request<rq::get_reactions>(msg, rc);
+}
+
+rq::delete_all_reactions shard::delete_all_reactions(const partial_message& msg) {
+	return send_request<rq::delete_all_reactions>(msg);
+}
+
+rq::delete_all_reactions_emoji shard::delete_all_reactions_emoji(const partial_message& msg, const partial_emoji& emoji) {
+	return send_request<rq::delete_all_reactions_emoji >(msg, emoji);
+}
+
+rq::delete_all_reactions_emoji shard::delete_all_reactions_emoji(const partial_message& msg, const reaction& rc) {
+	return send_request<rq::delete_all_reactions_emoji >(msg, rc);
+}
+
 rq::typing_start shard::typing_start(const partial_channel& ch) {
 	return send_request<rq::typing_start>(ch);
 }
@@ -318,3 +355,13 @@ rq::execute_webhook shard::send_with_webhook(const webhook& wh, std::string s) {
 	json["content"] = std::move(s);
 	return send_request<rq::execute_webhook>(json.dump(),wh);
 }
+
+rq::get_message shard::fetch_message(const partial_channel& ch, snowflake msg_id) {
+	return send_request<rq::get_message>(ch, msg_id);
+}
+
+rq::get_audit_log shard::get_audit_log(const partial_guild& guild) {	
+	return send_request<rq::get_audit_log>(guild);
+}
+
+

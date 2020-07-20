@@ -14,7 +14,7 @@ struct text_channel;
 struct Guild;
 
 struct partial_message {
-	std::string_view content() const noexcept;;
+	std::string_view content() const noexcept { return m_content; }
 	snowflake id() const noexcept;
 	snowflake author_id() const noexcept;
 	snowflake channel_id() const noexcept;
@@ -33,15 +33,15 @@ private:
 	snowflake m_author_id;
 	snowflake m_id;
 	snowflake m_channel_id;
-	std::string m_content;
-	timestamp m_timestamp;
-	std::optional<timestamp> m_edited_timestamp;
-	bool m_tts = false;
-	bool m_mention_everyone = false;
-
 	std::vector<embed> m_embeds;
 	std::vector<attachment> m_attachments;
 	std::vector<reaction> m_reactions;
+	std::string m_content;
+	std::optional<timestamp> m_edited_timestamp;
+	timestamp m_timestamp;
+	bool m_tts = false;
+	bool m_mention_everyone = false;
+
 
 	friend struct client;
 	friend struct internal_shard;
@@ -69,14 +69,16 @@ struct guild_text_message :partial_message {
 	}
 
 private:
+	guild_member m_author;
 	std::vector<snowflake> m_mention_roles_ids;
 	std::vector<guild_member> m_mentions;
 	std::vector<const guild_role*> m_mention_roles;
-	guild_member m_author;
 	text_channel* m_channel = nullptr;
 	friend struct internal_shard;
 	friend struct msg_update_access;
 };
+
+static constexpr int asueohdasd = sizeof(std::vector<snowflake>);
 
 static constexpr int rawradsjksdfhksldjfa = sizeof(guild_member);
 static constexpr int rawradsjksdfhksldjf = sizeof(guild_text_message);

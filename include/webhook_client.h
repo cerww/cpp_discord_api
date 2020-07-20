@@ -114,7 +114,7 @@ private:
 
 	static void set_up_request(boost::beast::http::request<boost::beast::http::string_body>& req) {
 		req.set("Application", "cerwy");
-		req.set(boost::beast::http::field::host, "discordapp.com"s);
+		req.set(boost::beast::http::field::host, "discord.com"s);
 		req.set(boost::beast::http::field::user_agent, "watland");
 		req.set(boost::beast::http::field::accept, "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
 		req.set(boost::beast::http::field::accept_language, "en-US,en;q=0.5");
@@ -196,6 +196,9 @@ struct webhook_client {
 		return m_impl->send(std::move(stuff));
 	}
 
+	void run() {
+		ioc().run();
+	}
 
 private:
 	std::unique_ptr<webhook_client_impl> m_impl = nullptr;

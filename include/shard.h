@@ -22,7 +22,12 @@
 #include "allowed_mentions.h"
 
 struct shard {
+protected:
 
+	explicit shard(int shard_number, client* t_parent, boost::asio::io_context& ioc,std::string auth_token);
+	
+public:
+	
 	//content
 	//content, embed
 	//content, attachment
@@ -80,6 +85,16 @@ struct shard {
 	rq::delete_message_bulk delete_message_bulk(const partial_channel&, std::vector<snowflake>);
 	rq::leave_guild leave_guild(const Guild&);
 	rq::add_reaction add_reaction(const partial_message&, const partial_emoji&);
+	rq::delete_own_reaction delete_own_reaction(const partial_message& msg, const partial_emoji&);
+	rq::delete_own_reaction delete_own_reaction(const partial_message& msg, const reaction&);
+	rq::delete_user_reaction delete_user_reaction(const partial_message& msg, const partial_emoji&,const user&);
+	rq::delete_user_reaction delete_user_reaction(const partial_message& msg, const reaction&, const user&);
+	rq::get_reactions get_reactions(const partial_message& msg, const partial_emoji&);
+	rq::get_reactions get_reactions(const partial_message& msg,const reaction&);
+	rq::delete_all_reactions delete_all_reactions(const partial_message& msg);
+	rq::delete_all_reactions_emoji delete_all_reactions_emoji(const partial_message& msg, const partial_emoji&);
+	rq::delete_all_reactions_emoji delete_all_reactions_emoji(const partial_message& msg, const reaction&);
+	
 	rq::typing_start typing_start(const partial_channel&);
 	rq::delete_channel_permission delete_channel_permissions(const partial_guild_channel&, const permission_overwrite&);
 
@@ -148,6 +163,12 @@ struct shard {
 	template<typename ...settings>
 	rq::modify_webhook modify_webhook(const webhook&, settings&&...);
 
+	rq::get_message fetch_message(const partial_channel& ch, snowflake msg_id);
+
+	rq::get_audit_log get_audit_log(
+		const partial_guild&
+	);
+
 	const user& self_user() const noexcept {
 		return m_self_user;
 	}
@@ -202,6 +223,8 @@ protected:
 
 	client* m_parent = nullptr;
 
+	std::string m_auth_token;
+
 
 	ref_stable_map<snowflake, Guild> m_guilds;
 	ref_stable_map<snowflake, text_channel> m_text_channel_map;
@@ -210,8 +233,6 @@ protected:
 	ref_stable_map<snowflake, dm_channel> m_dm_channels;
 
 	bool will_have_guild(snowflake guild_id) const noexcept;
-
-	explicit shard(int shard_number, client* t_parent, boost::asio::io_context& ioc);
 
 	friend cerwy::task<void> init_shard(int shardN, internal_shard& t_parent, boost::asio::io_context& ioc, std::string_view gateway);
 	friend struct client;

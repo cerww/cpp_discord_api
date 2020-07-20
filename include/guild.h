@@ -16,6 +16,14 @@
 struct internal_shard;
 
 struct Guild :partial_guild {
+
+	Guild() = default;
+	Guild(const Guild&) = delete;
+	Guild(Guild&&) = default;
+	
+	Guild& operator=(const Guild&) = delete;
+	Guild& operator=(Guild&&) = default;
+	
 	timestamp joined_at() const noexcept;
 	bool large() const noexcept;
 	bool unavailable() const noexcept;
@@ -76,6 +84,7 @@ private:
 	int m_member_count = 0;
 
 	ref_stable_map<snowflake, guild_member> m_members{};
+	ref_stable_map<snowflake, std::optional<activity>> m_activities;//no optional<activity&> ;-;
 
 	//non-const version used for conveniance in shard.cpp
 	//returns mutable members so it has to be private

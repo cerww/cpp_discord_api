@@ -12,15 +12,15 @@ enum struct activity_type{
 struct activity{
 	std::string_view name() const noexcept;
 	activity_type type() const noexcept;
-	const std::optional<std::string>& url() const noexcept;
+	std::optional<std::string_view> url() const noexcept;
 private:
+	std::optional<std::string> m_url;
 	activity_type m_type = activity_type::game;
 	std::string m_name;
-	std::optional<std::string> m_url;
 	friend void from_json(const nlohmann::json& json, activity& thing);
 };
 
-
+constexpr int jaskdghasjd = sizeof(activity);
 
 void from_json(const nlohmann::json& json, activity& thing);
 

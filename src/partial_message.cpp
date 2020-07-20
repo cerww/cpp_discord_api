@@ -4,7 +4,7 @@
 #include "guild.h"
 
 
-std::string_view partial_message::content() const noexcept { return m_content; }
+
 
 snowflake partial_message::id() const noexcept { return m_id; }
 

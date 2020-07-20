@@ -49,8 +49,10 @@ void from_json(const nlohmann::json& json, partial_guild& guild) {
 	guild.m_explicit_content_filter = json["explicit_content_filter"].get<int>();
 
 	guild.m_roles.reserve(json["roles"].size());
-	for (const auto& r : json["roles"]) 
-		insert_proj_as_key(guild.m_roles, r.get<guild_role>(), get_id);
+	guild.m_roles = json["roles"] | ranges::views::transform(&get_then_return_id<guild_role>) | ranges::to<ref_stable_map<snowflake,guild_role>>();
+	
+	//for (const auto& r : json["roles"]) 
+		//insert_proj_as_key(guild.m_roles, r.get<guild_role>(), get_id);
 
 	guild.m_emojis = json["emojis"].get<std::vector<emoji>>();
 	guild.m_features = json["features"].get<std::vector<std::string>>();
