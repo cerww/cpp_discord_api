@@ -38,7 +38,7 @@ void client::stop() {
 	context().stop();
 }
 
-void client::set_token(std::string token, const token_type type = token_type::BOT) {
+void client:: set_token(std::string token, const token_type type) {
 	m_token = token;
 	switch (type) {
 	case token_type::BOT: m_authToken = "Bot " + std::move(token);

@@ -381,7 +381,6 @@ msg_t internal_shard::createMsgUpdate(channel_t& ch, const nlohmann::json& stuff
 
 	if constexpr (is_guild_msg) {
 		//retVal.m_mention_role_ids = stuffs.value("mention_roles",std::optional<std::vector<snowflake>>());
-		//.value<std::optional<std::vector<T>> is broken rn
 
 		const auto has_mention_roles_it = stuffs.find("mentions_roles");
 		if(has_mention_roles_it != stuffs.end()) {

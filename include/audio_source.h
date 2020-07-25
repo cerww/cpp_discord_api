@@ -26,6 +26,28 @@ struct audio_frame {
 	std::vector<int16_t> optional_data_storage = {};
 };
 
+audio_frame transform_data(const audio_frame& frame,int new_channel_count, int new_sampling_rate) {
+	const auto frame_length = std::chrono::milliseconds(frame.frame_size / new_channel_count / new_sampling_rate * 1000);
+	const size_t needed_size = new_channel_count * new_sampling_rate * (int)frame_length.count() / 1000;
+	
+	audio_frame return_val;
+	return_val.optional_data_storage.resize(needed_size);
+	const double size_ratio = (double)needed_size / (double)frame.frame_data.size();
+	
+	//hmmm
+	return_val.optional_data_storage[0] = frame.frame_data[0];
+	for (int i = 1; i < frame.frame_data.size(); ++i) {
+		const int new_idx = i * size_ratio;
+		return_val.optional_data_storage[new_idx] = frame.frame_data[i];
+		
+		const int prev_entry_new_index = (i - 1) * size_ratio;
+		
+	}
+	
+	
+	return return_val;
+}
+
 struct audio_source_base {
 	audio_source_base() = default;
 
@@ -68,7 +90,7 @@ struct audio_data:audio_source_base {
 		
 		return
 		m_audio_data
-		| ranges::views::take(m_audio_data.size()/frame_size * frame_size)
+		| ranges::views::take(m_audio_data.size()/frame_size * frame_size)//this ensures the size is a mul;tiple of frame_size,so it doesn't read beyond the buffer, 
 		| ranges::views::chunk(frame_size)
 		| ranges::views::transform([=/*vars go out of scope, only copying ints*/](auto a) {
 			return audio_frame{

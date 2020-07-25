@@ -46,9 +46,10 @@ struct client {//<(^.^)>
 	client& operator=(client&&) = delete;
 	client& operator=(const client&) = delete;
 	~client() = default;
-	void run();
+	
+	/*virtual*/ void run();
 
-	void set_token(std::string token, token_type type);
+	void set_token(std::string token, token_type type = token_type::BOT);
 
 	void set_up_request(boost::beast::http::request<boost::beast::http::string_body>& req) const;
 
@@ -115,7 +116,7 @@ struct client {//<(^.^)>
 	void stop();
 
 
-	void rate_limit_global(const std::chrono::system_clock::time_point);
+	/*virtual*/ void rate_limit_global(const std::chrono::system_clock::time_point);
 
 	boost::asio::io_context& context() {
 		if(std::holds_alternative<boost::asio::io_context>(m_ioc)) {
@@ -125,7 +126,7 @@ struct client {//<(^.^)>
 		}
 	}
 	
-	std::chrono::steady_clock::time_point get_time_point_for_identifying() {
+	/*virtual*/ std::chrono::steady_clock::time_point get_time_point_for_identifying() {
 		//use mutex of atomic?
 		
 		std::lock_guard lock(m_identify_mut);
@@ -134,10 +135,10 @@ struct client {//<(^.^)>
 		return m_last_identify;
 	}	
 
-	void do_gateway_stuff();
+	/*virtual*/ void do_gateway_stuff();
 	
 private:
-	void m_getGateway();
+	/*virtual*/	void m_getGateway();
 	std::chrono::system_clock::time_point m_last_global_rate_limit = std::chrono::system_clock::now();
 	//1 identify every 5s, -6s is so we don't wait 5s for the first one
 	std::chrono::steady_clock::time_point m_last_identify = std::chrono::steady_clock::now() - std::chrono::seconds(6);

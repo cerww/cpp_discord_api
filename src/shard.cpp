@@ -5,14 +5,15 @@
 
 shard::shard(int shard_number, client* t_parent, boost::asio::io_context& ioc,std::string auth_token) :
 	m_shard_number(shard_number),
+	m_http_connection(t_parent, ioc),
 	m_strand(ioc),
 	m_parent(t_parent),
-	m_http_connection(t_parent, ioc),
 	m_auth_token(std::move(auth_token)){ }
 
 cerwy::task<voice_connection> shard::connect_voice(const voice_channel& ch) {
 	//;-;
 	//TODO: change this
+	//make it virutal?
 	auto& me = (internal_shard&)*this;
 	return me.connect_voice(ch);
 }
@@ -33,7 +34,14 @@ cerwy::task<boost::beast::error_code> shard::connect_http_connection() {
 }
 
 void shard::set_up_request(boost::beast::http::request<boost::beast::http::string_body>& req) const {
-	m_parent->set_up_request(req);
+	req.set("Application", "cerwy");
+	req.set(boost::beast::http::field::authorization, m_auth_token);
+	req.set(boost::beast::http::field::host, "discord.com"s);
+	req.set(boost::beast::http::field::user_agent, "watland");
+	req.set(boost::beast::http::field::accept, "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+	req.set(boost::beast::http::field::accept_language, "en-US,en;q=0.5");
+	req.keep_alive(true);
+	//m_parent->set_up_request(req);
 }
 
 rq::send_message shard::send_message(const partial_channel& channel, std::string content) {
@@ -363,5 +371,6 @@ rq::get_message shard::fetch_message(const partial_channel& ch, snowflake msg_id
 rq::get_audit_log shard::get_audit_log(const partial_guild& guild) {	
 	return send_request<rq::get_audit_log>(guild);
 }
+
 
 

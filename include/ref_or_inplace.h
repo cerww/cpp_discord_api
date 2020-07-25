@@ -4,6 +4,7 @@
 #include <utility>
 #include <vector>
 #include <stdexcept>
+#include <concepts/concepts.hpp>
 
 
 
@@ -12,18 +13,16 @@ template<typename T>
 struct ref_or_inplace {
 
 	//requires default_constructible<T>
-	ref_or_inplace():m_data(std::in_place_type<T>){}
-	 
-	//shuold i remove these?
-	ref_or_inplace(std::nullopt_t) {}
-
-	ref_or_inplace(std::monostate) {}
+	
+	ref_or_inplace() requires std::is_default_constructible_v<T> :m_data(std::in_place_type<T>){}
 
 	ref_or_inplace(T& t):
 		m_data(&t) { }
 
 	explicit ref_or_inplace(T* t) :
 		m_data(t) { }
+
+	ref_or_inplace(std::nullptr_t) = delete;
 
 	ref_or_inplace(T&& t) :
 		m_data(std::move(t)) { }

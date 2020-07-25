@@ -46,35 +46,33 @@ struct discord_voice_connection_impl :
 	}
 
 	template<typename T>
-	cerwy::task<void> send_voice(const T& data) {
-		
+	cerwy::task<void> send_voice(const T& data) {		
 		using namespace std::literals;
 		using std::chrono::duration_cast;
 
 		co_await control_speaking(1);
 		is_playing = true;
 
-		uint16_t sqeuence_number = 0;
-		
-		const auto ssrc_big_end = htonl(ssrc);
-		
+		uint16_t sqeuence_number = 0;		
+		const auto ssrc_big_end = htonl(ssrc);		
 		static constexpr auto time_frame = 20ms;
-
+		
 		auto last_time_sent_packet = std::chrono::steady_clock::now();
 		
-		for (const audio_frame frame : data.frames(time_frame)) {
+		for (audio_frame frame : data.frames(time_frame)) {
 			if(std::exchange(is_canceled,false)) {
-
 				co_await control_speaking(0);
-
 				is_playing = false;
-
 				co_await resume_on_strand{ *strand };
-
-				cancel_promise.set_value();
-				
+				cancel_promise.set_value();				
 				co_return;
-			}			
+			}
+			
+			if (frame.channel_count != 2 || frame.sampling_rate != 48000) {
+				//transform data
+			}
+			
+			
 			std::array<std::byte, 12> header{ {} };
 
 			(uint8_t&)header[0] = 0x80;
@@ -85,10 +83,7 @@ struct discord_voice_connection_impl :
 			(uint32_t&)header[4] = htonl(m_timestamp);
 			(uint32_t&)header[8] = ssrc_big_end;
 
-			//m_opus_encoder.set_bit_rate(64 * 1024);
-			std::array<std::byte, 1000> opus_data{};
-
-			//const std::vector<std::byte> opus_data = m_opus_encoder.encode(frame, 1000);
+			std::array<std::byte, 1000> opus_data{};//save 1 memory allocation
 			const int len = m_opus_encoder.encode_into_buffer(frame, opus_data.data(), (int)opus_data.size());
 
 			const auto encrypted_voice_data = encrypt_xsalsa20_poly1305(header, std::span<std::byte>(opus_data.data(),len));
@@ -96,16 +91,14 @@ struct discord_voice_connection_impl :
 			auto ec = send_voice_data_udp(encrypted_voice_data);
 
 			m_timestamp += frame.frame_size;
-			co_await wait(duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - (last_time_sent_packet += time_frame)));
+			last_time_sent_packet += time_frame;
+			const auto next_time_to_send_packet = last_time_sent_packet;
+			co_await wait(duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - next_time_to_send_packet));
 
 		}
 		co_await control_speaking(0);
-
-		co_await resume_on_strand{*strand};
-		
+		co_await resume_on_strand{*strand};		
 		is_playing = false;
-		
-		co_return;
 	};
 	
 	

@@ -1074,7 +1074,7 @@ void internal_shard::procces_event<event_name::VOICE_STATE_UPDATE>(nlohmann::jso
 };
 
 template<>
-void internal_shard::procces_event<event_name::VOICE_SERVER_UPDATE>(nlohmann::json& json){
+void internal_shard::procces_event<event_name::VOICE_SERVER_UPDATE>(nlohmann::json& json){	
 	const auto guild_id = json["guild_id"].get<snowflake>();
 	m_things_waiting_for_voice_endpoint[guild_id].set_value(std::move(json));
 };

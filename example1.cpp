@@ -11,7 +11,7 @@ std::string getFileContents(const std::string& filePath, decltype(std::ios::in) 
 	std::ifstream file(filePath, mode);
 	file.seekg(0, std::ios::end);
 	int filesize = (int)file.tellg();
-	file.seekg(0, std::ios::beg);	
+	file.seekg(0, std::ios::beg);
 	filesize -= (int)file.tellg();
 	fileContents.resize(filesize);
 	file.read((char*)fileContents.data(), filesize);
@@ -23,17 +23,17 @@ std::string getFileContents(const std::string& filePath, decltype(std::ios::in) 
 cerwy::task<void> do_audio_thingy(cerwy::task<voice_connection> vc_task) {
 	voice_connection channel = co_await vc_task;
 	//co_await channel.send(audio_from_mp3("C:/Users/cerw/Downloads/a2.mp3"));
-	co_await channel.send(mp3_audio_source(from_file{ "C:/Users/cerw/Downloads/a2.mp3" }));
-	
+	co_await channel.send(mp3_audio_source(from_file{"C:/Users/cerw/Downloads/a2.mp3"}));
+
 }
 
-cerwy::task<void> thingy(const Guild& g,shard& s) {
-	while(true) {
+cerwy::task<void> thingy(const Guild& g, shard& s) {
+	while (true) {
 		boost::asio::steady_timer timer(s.strand());
 		timer.expires_after(20s);
 		co_await timer.async_wait(use_task);
 		auto& role = g.roles()[snowflake(725880768659980330)];
-		s.send_message(s.text_channels().at(snowflake(504562059279728640)),role.to_mentionable_string() + " flag starts soon");
+		s.send_message(s.text_channels().at(snowflake(504562059279728640)), role.to_mentionable_string() + " flag starts soon");
 	}
 }
 
@@ -45,7 +45,7 @@ int main() {
 	//std::cin.get();
 	//try {
 	client c;
-	
+
 	boost::asio::io_context::strand* shard_of_guild = nullptr;
 
 
@@ -53,14 +53,14 @@ int main() {
 	std::vector<partial_message> msgs;
 
 	c.on_guild_ready = [&](const Guild& g, shard& s) {
-		if(g.id() == snowflake(199218706029608961)) {
+		if (g.id() == snowflake(199218706029608961)) {
 			shard_of_guild = &s.strand();
 			//thingy(g, s);
 		}
 	};
 
 	//c.on_guild_ready = &thingy;
-	
+
 	c.on_guild_text_msg = [&](guild_text_message msg, shard& s)->cerwy::task<void> {
 		if (msg.content() == "rawrmander") {
 			//int i = 0;
@@ -73,15 +73,12 @@ int main() {
 				std::cout << a.val << ' ' << std::endl;
 			}
 			do_audio_thingy(s.connect_voice(msg.guild().voice_channels()[0]));
-		}
-		else if (msg.content() == "watland") {
+		} else if (msg.content() == "watland") {
 			//s.delete_message(msgs.back()).get();
 			//msgs.pop_back();
-		}
-		else if (msg.content() == "make new channel") {
+		} else if (msg.content() == "make new channel") {
 			auto ch = s.create_text_channel(msg.guild(), "blargylandy").get();
-		}
-		else if (msg.content() == "rolesy") {
+		} else if (msg.content() == "rolesy") {
 			std::string stuff =
 					msg.author().roles() |
 					ranges::views::transform(&guild_role::name) |
@@ -89,32 +86,30 @@ int main() {
 					ranges::to<std::string>();
 
 			s.send_message(msg.channel(), stuff);
-		}
-		else if (msg.content() == "invite") {
+		} else if (msg.content() == "invite") {
 			s.create_channel_invite(msg.channel()).wait();
-		}
-		else if (msg.content() == "namey") {
+		} else if (msg.content() == "namey") {
 			s.send_message(msg.channel(), std::string(msg.author().nick()));
-		}else if(msg.content() == ";-;worldlandasdasdasd") {
+		} else if (msg.content() == ";-;worldlandasdasdasd") {
 			const optional_ref<const guild_role> role = msg.guild().role_by_name("Prophets of Milktea-ism");
 			if (role.has_value()) {
 				s.send_message(msg.channel(), role->to_mentionable_string());
 			}
-		}else if(msg.content() == "potatoland_world") {
+		} else if (msg.content() == "potatoland_world") {
 			s.send_message(msg.channel(), "rawr",
-				embed()
-				.set_author(embed_author().set_name("cerwtato"))
-				.set_footer(embed_footer().set_text("azumarill"))
-				.set_color(0x99a520)
-				.set_description("wat")
-				.add_fields(
-					embed_field().set_name("abc").set_value("a+b=c"),
-					embed_field()
-						.set_is_inline(true).set_name("better field").set_value("awesome"),
-					embed_field().set_name("more awesome").set_value("best field")
-				)
+						   embed()
+						   .set_author(embed_author().set_name("cerwtato"))
+						   .set_footer(embed_footer().set_text("azumarill"))
+						   .set_color(0x99a520)
+						   .set_description("wat")
+						   .add_fields(
+							   embed_field().set_name("abc").set_value("a+b=c"),
+							   embed_field()
+							   .set_is_inline(true).set_name("better field").set_value("awesome"),
+							   embed_field().set_name("more awesome").set_value("best field")
+						   )
 			);
-		}else if(msg.content() == "hamtaroland_worldy") {
+		} else if (msg.content() == "hamtaroland_worldy") {
 			s.send_message(msg.channel(), "charmander");
 			s.send_message(msg.channel(), "charmander");
 			s.send_message(msg.channel(), "charmander");
@@ -125,26 +120,90 @@ int main() {
 			s.send_message(msg.channel(), "charmander");
 			s.send_message(msg.channel(), "charmander");
 			s.send_message(msg.channel(), "charmander");
-		}else if(msg.content() == "at everyone") {
-			s.send_message(msg.channel(),"@everyone",allowed_mentions());
-		}else if(msg.content() == "at petery") {
-			s.send_message(msg.channel(), "<@188547243911938048>",disable_mentions);
-		}else if(msg.content() == "hello kitty") {
-			const auto new_msg = co_await s.send_message(msg.channel(),"charmanderworld");
+		} else if (msg.content() == "at everyone") {
+			s.send_message(msg.channel(), "@everyone", allowed_mentions());
+		} else if (msg.content() == "at petery") {
+			s.send_message(msg.channel(), "<@188547243911938048>", disable_mentions);
+		} else if (msg.content() == "hello kitty") {
+			const auto new_msg = co_await s.send_message(msg.channel(), "charmanderworld");
 			co_await s.add_reaction(new_msg, msg.guild().emojis().front());
 			co_return;
-			
-		}else if(msg.content() == "formosaland") {
+
+		} else if (msg.content() == "formosaland") {
 			auto logs = co_await s.get_audit_log(msg.guild());
 			std::string str;
+			// TODO create better interface
+			
+			for (const auto& entry : logs.entries()) {
+				str += fmt::format("{},{},{},{}\n", entry.id().val, (int)entry.action_type(), entry.user_id().val, entry.target_id().value_or(snowflake(0)).val);
+				for (const audit_log_change& change : entry.changes()
+					 | ranges::views::filter([&](const auto& a) {
+						 return a.keys_that_are_int.contains(a.key())
+								 || a.keys_that_are_bool.contains(a.key())
+								 || a.keys_that_are_string.contains(a.key())
+								 || a.keys_that_are_snowflake.contains(a.key());//only these keys cuz i need to format them
+					
+					 })
+				) {
 
-			for(const auto& entry: logs.entries()) {
-				str += fmt::format("{},{},{},{}", entry.id().val, entry.action_type(), entry.user_id().val, entry.target_id().value_or(snowflake(0)));
-				for(const auto& change:entry.changes()) {
+					std::visit([&](const auto& old_value, const auto& new_value) {
+						using old_type = std::decay_t<decltype(old_value)>;
+						using new_type = std::decay_t<decltype(new_value)>;
+
+						if constexpr (!std::is_same_v<old_type, new_type>) {
+							return;
+						}else {
+
+							using type = old_type;
+
+							if constexpr (
+								std::is_same_v<type, std::optional<changed_role>> ||
+								std::is_same_v<type, std::optional<std::vector<permission_overwrite>>>)
+							{
+								str += fmt::format("\t{:>30}, old:{:>20}, new:{:>20} \n", change.key(), "wat", "wat");
+								return;
+							}
+							else if constexpr (std::is_same_v<type, std::optional<snowflake>>) {
+
+								if (old_value.has_value() && new_value.has_value()) {
+									str += fmt::format("\t{:>30}, old:{:>20}, new:{:>20} \n", change.key(), old_value.value().val, new_value.value().val);
+								}
+								else if (old_value.has_value()) {
+									str += fmt::format("\t{:>30}, old:{:>20}, new:{:>20} \n", change.key(), old_value.value().val, "nope");
+								}
+								else if (new_value.has_value()) {
+									str += fmt::format("\t{:>30}, old:{:>20}, new:{:>20} \n", change.key(), "nope", new_value.value().val);
+								}
+								else {
+									str += fmt::format("\t{:>30}, old:{:>20}, new:{:>20} \n", change.key(), "nope", "nope");
+								}
+							}
+							else {
+								if (old_value.has_value() && new_value.has_value()) {
+									str += fmt::format("\t{:>30}, old:{:>20}, new:{:>20} \n", change.key(), old_value.value(), new_value.value());
+								}
+								else if (old_value.has_value()) {
+									str += fmt::format("\t{:>30}, old:{:>20}, new:{:>20} \n", change.key(), old_value.value(), "nope");
+								}
+								else if (new_value.has_value()) {
+									str += fmt::format("\t{:>30}, old:{:>20}, new:{:>20} \n", change.key(), "nope", new_value.value());
+								}
+								else {
+									str += fmt::format("\t{:>30}, old:{:>20}, new:{:>20} \n", change.key(), "nope", "nope");
+								}
+							}
+						}
+					}, change.old_value(), change.new_value());
+					std::fstream file = std::fstream("abcd.txt",std::ios::out);
+
+					file << str;
+					file.close();
 					
 				}
 			}
+
 			
+
 		}
 		//s.change_nick(wat.author(), wat.content());
 
@@ -180,33 +239,32 @@ int main() {
 	};
 
 	c.on_guild_msg_update = [](guild_msg_update g,shard& s) {
-		if(g.content().has_value()) {
+		if (g.content().has_value()) {
 			const auto new_thing = g.content().value();
 			std::cout << new_thing << std::endl;;
 		}
 	};
-	
-	c.on_guild_reaction_add = [](guild_member who, const text_channel& channel, snowflake msg_id, partial_emoji emoji, shard& s) -> cerwy::task<void> {
-		if(who.id() == s.self_user().id()) {
+
+	c.on_guild_reaction_add = [](guild_member who, const text_channel& channel, snowflake msg_id, partial_emoji emoji, shard& s) ->cerwy::task<void> {
+		if (who.id() == s.self_user().id()) {
 			co_return;
 		}
 		const auto msg = co_await s.fetch_message(channel, msg_id);
 		co_await s.delete_user_reaction(msg, emoji, who);
 		co_await s.add_reaction(msg, emoji);
 
-		
+
 		boost::asio::steady_timer timer(s.strand());
-		timer.expires_after(5s);		
+		timer.expires_after(5s);
 		co_await timer.async_wait(use_task);
-		
+
 		co_await s.delete_all_reactions(msg);
-		
+
 		co_return;
 	};
-	
-	
-	
-	c.set_token(getFileContents("token.txt"), token_type::BOT);
+
+
+	c.set_token(getFileContents("token.txt"));
 	c.run();
 	//} catch (...) {
 	//std::cout << ";-;" << std::endl;

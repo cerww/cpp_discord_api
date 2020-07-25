@@ -23,7 +23,7 @@ cerwy::task<boost::beast::error_code> webhook_http_client::async_connect() {
 }
 
 cerwy::task<void> webhook_http_client::send_to_discord(webhook_request r) {
-	//don't need to check rate limit,
+	//don't need to check rate limit,if we're rate limted, we'll just get 429
 
 	std::lock_guard<std::mutex> locky(r.state->ready_mut);
 	if (co_await send_to_discord_(r))

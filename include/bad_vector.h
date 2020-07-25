@@ -100,8 +100,12 @@ struct bad_vector {
 
 	template<typename range>
 	void assign(range&& r) {
+		//requires sized_range
 		clear();
-		
+		const auto size = r.size();
+		m_data = malloc(size * sizeof(T));
+		m_size = size;
+		std::uninitialized_copy(r.begin(), r.end(), m_data);		
 	}
 	
 

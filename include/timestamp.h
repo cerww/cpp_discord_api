@@ -5,7 +5,7 @@
 struct timestamp{
 	timestamp() = default;
 
-	timestamp(std::string_view date) {
+	explicit timestamp(std::string_view date) {
 		auto result =  std::from_chars(date.data(), date.data() + date.size(), m_year);
 		auto result2 = std::from_chars(result.ptr + 1, date.data() + date.size(), m_month);
 		auto result3 = std::from_chars(result2.ptr + 1, date.data() + date.size(), m_day);
@@ -25,10 +25,12 @@ struct timestamp{
 	}
 
 private:
-	int m_year = 0;
-	int m_month = 0;
-	int m_day = 0;
+	int16_t m_year = 0;
+	int8_t m_month = 0;
+	int8_t m_day = 0;
 };
+
+static constexpr int ashjidgasdasd = sizeof(timestamp);
 
 inline void from_json(const nlohmann::json&, timestamp& t) {
 	

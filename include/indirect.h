@@ -8,6 +8,7 @@ struct defer_construction {};
 template<typename T>
 struct indirect {
 
+	indirect() = default;
 		
 	indirect(T stuff) :
 		m_data(std::make_unique<T>(std::move(stuff))) {}
@@ -73,10 +74,10 @@ struct indirect {
 			return;
 		}
 		if (m_data) {
-			*m_data = *other.m_data;
+			*m_data = std::move(*other.m_data);
 		}
 		else {
-			m_data = std::make_unique<T>(*other.m_data);
+			m_data = std::make_unique<T>(std::move(*other.m_data));
 		}
 		return *this;
 	}
@@ -114,9 +115,9 @@ struct indirect {
 
 	const T& operator*() const noexcept { return *m_data; }
 
-	T* operator->() noexcept { return m_data; }
+	T* operator->() noexcept { return m_data.get(); }
 
-	const T* operator->() const noexcept { return m_data; }
+	const T* operator->() const noexcept { return m_data.get(); }
 
 	template<typename U>
 	bool operator==(U&& other) const {
@@ -150,6 +151,7 @@ struct indirect {
 
 private:
 	std::unique_ptr<T> m_data = std::make_unique<T>();
+	
 	template<typename>
 	friend struct indirect;
 };
