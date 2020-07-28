@@ -493,6 +493,8 @@ private:
 	friend void to_json(nlohmann::json&, const embed&);
 };
 
+static constexpr int jashdasdasd = sizeof(embed);
+
 inline void from_json(const nlohmann::json& json, embed& embed) {
 	embed.m_title = json.value("title", std::optional<std::string>());
 	embed.m_description = json.value("description", std::optional<std::string>());
@@ -570,6 +572,30 @@ namespace thingy_workyausdhasjdl {
 		friend void from_json(const nlohmann::json&, embed_object<tag, Property...>&);
 		friend void to_json(nlohmann::json&, const embed_object<tag, Property...>&);
 	};
+	
+	template<typename Obj_t>
+	struct name_property {
+		std::optional<std::string_view> name()const noexcept { return m_value; };
+		
+		Obj_t& set_name(std::string s) {
+			m_value = std::move(s);
+			return (Obj_t&)(*this);
+		}
+		
+	private:
+		std::optional<std::string> m_value;
+		friend void from_json(const nlohmann::json& json, name_property<Obj_t>& me) {
+			me.m_value = json.value("name",std::optional<std::string>());
+		}
+		friend void to_json(nlohmann::json& json,const name_property<Obj_t>& me) {
+			if(me.m_value.has_value()) {
+				json["name"] = me.m_value;
+			}
+		}
+	};
+#define MAKE_PROPERTY_AAA(type,name)
 
+	
+#undef MAKE_PROPERTY_AAA
 
 }

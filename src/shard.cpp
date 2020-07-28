@@ -206,11 +206,11 @@ rq::delete_message_bulk shard::delete_message_bulk(const partial_channel& channe
 	return send_request<rq::delete_message_bulk>(body.dump(), channel);
 }
 
-rq::delete_emoji shard::delete_emoji(const partial_guild& g, const emoji& e) {
+rq::delete_emoji shard::delete_emoji(const partial_guild& g, const partial_emoji& e) {
 	return send_request<rq::delete_emoji>(g, e);
 }
 
-rq::modify_emoji shard::modify_emoji(Guild& g, emoji& e, std::string s, std::vector<snowflake> v) {
+rq::modify_emoji shard::modify_emoji(const Guild& g, const partial_emoji& e, std::string s, std::vector<snowflake> v) {
 	nlohmann::json body;
 	body["name"] = std::move(s);
 	body["roles"] = std::move(v);

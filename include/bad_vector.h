@@ -109,7 +109,7 @@ struct bad_vector {
 	}
 	
 
-	//no push_back,emplace_back,erase
+	//no push_back,emplace_back,erase,reserve
 
 	T& operator[](const size_t idx) {
 		return m_data[idx];
@@ -126,7 +126,7 @@ struct bad_vector {
 		return m_data[idx];
 	}
 
-	const T& at(const size_t idx) {
+	T& at(const size_t idx) {
 		if (idx >= m_size) {
 			throw std::out_of_range("");
 		}

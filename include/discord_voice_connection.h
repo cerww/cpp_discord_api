@@ -69,7 +69,7 @@ struct discord_voice_connection_impl :
 			}
 			
 			if (frame.channel_count != 2 || frame.sampling_rate != 48000) {
-				//transform data
+				frame = resample_meh(frame, 2, 48000);
 			}
 			
 			
@@ -91,9 +91,10 @@ struct discord_voice_connection_impl :
 			auto ec = send_voice_data_udp(encrypted_voice_data);
 
 			m_timestamp += frame.frame_size;
+			
 			last_time_sent_packet += time_frame;
 			const auto next_time_to_send_packet = last_time_sent_packet;
-			co_await wait(duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - next_time_to_send_packet));
+			co_await wait(duration_cast<std::chrono::milliseconds>(next_time_to_send_packet - std::chrono::steady_clock::now()));
 
 		}
 		co_await control_speaking(0);
@@ -145,13 +146,13 @@ struct discord_voice_connection_impl :
 	bool is_playing = false;
 	bool is_canceled = false;
 	cerwy::promise<void> cancel_promise;
-	
+	std::function<audio_frame(const audio_frame&, int, int)> resample_fn = resample_easy;
 private:
 	std::string m_ip;
 	int m_port = 0;
 	int m_hb_number = 1;
 	std::vector<std::string> m_modes;
-	opus_encoder m_opus_encoder = opus_encoder(48000, 2, OPUS_APPLICATION_AUDIO);
+	opus_encoder m_opus_encoder = opus_encoder(48000, 2, OPUS_APPLICATION_AUDIO);	
 	uint32_t m_timestamp = 0;
 	boost::asio::ip::udp::endpoint m_my_endpoint;
 
@@ -217,7 +218,11 @@ public:
 	cerwy::task<void> cancel_current_data() {
 		return m_connection->cancel_current_data();
 	}
-	
+
+	template<typename F>
+	void set_resample_fn(F&& f) {
+		m_connection->resample_fn = std::forward<F>(f);
+	}
 
 private:
 	ref_count_ptr<discord_voice_connection_impl> m_connection = nullptr;

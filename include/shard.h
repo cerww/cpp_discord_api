@@ -69,8 +69,8 @@ public:
 	rq::edit_message edit_message(const partial_message&, std::string);
 	rq::create_voice_channel create_voice_channel(const Guild&, std::string, std::vector<permission_overwrite>  = {}, bool = false, int = 96);
 	rq::create_channel_catagory create_channel_catagory(const Guild&, std::string, std::vector<permission_overwrite>  = {}, bool = false);
-	rq::delete_emoji delete_emoji(const partial_guild&, const emoji&);
-	rq::modify_emoji modify_emoji(Guild&, emoji&, std::string, std::vector<snowflake>);
+	rq::delete_emoji delete_emoji(const partial_guild&, const partial_emoji&);
+	rq::modify_emoji modify_emoji(const Guild&, const partial_emoji&, std::string, std::vector<snowflake>);
 	rq::delete_message delete_message(const partial_message&);
 
 	template<typename rng>

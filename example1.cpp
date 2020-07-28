@@ -23,7 +23,7 @@ std::string getFileContents(const std::string& filePath, decltype(std::ios::in) 
 cerwy::task<void> do_audio_thingy(cerwy::task<voice_connection> vc_task) {
 	voice_connection channel = co_await vc_task;
 	//co_await channel.send(audio_from_mp3("C:/Users/cerw/Downloads/a2.mp3"));
-	co_await channel.send(mp3_audio_source(from_file{"C:/Users/cerw/Downloads/a2.mp3"}));
+	co_await channel.send(mp3_audio_source(from_file{"C:/Users/cerw/Downloads/a.mp3"}));
 
 }
 
@@ -37,8 +37,22 @@ cerwy::task<void> thingy(const Guild& g, shard& s) {
 	}
 }
 
+
+void test_transform_audio_thingy() {
+	audio_frame framy;
+	framy.optional_data_storage.resize(44100 * 20 * 2 / 1000);
+
+	framy.channel_count = 2;
+	framy.sampling_rate = 44100;
+	framy.frame_size = framy.sampling_rate * 20 / 1000;
+	framy.frame_data = framy.optional_data_storage;
+	auto transformed_framy = resample_meh(framy, 2, 48000);
+	int breakpoint_here = 0;
+}
+
 //spam bot
 int main() {
+	test_transform_audio_thingy();
 	//thingy_to_debugy();
 
 
@@ -47,7 +61,6 @@ int main() {
 	client c;
 
 	boost::asio::io_context::strand* shard_of_guild = nullptr;
-
 
 	cerwy::task<voice_connection> connashk;
 	std::vector<partial_message> msgs;
@@ -133,7 +146,7 @@ int main() {
 			auto logs = co_await s.get_audit_log(msg.guild());
 			std::string str;
 			// TODO create better interface
-			
+
 			for (const auto& entry : logs.entries()) {
 				str += fmt::format("{},{},{},{}\n", entry.id().val, (int)entry.action_type(), entry.user_id().val, entry.target_id().value_or(snowflake(0)).val);
 				for (const audit_log_change& change : entry.changes()
@@ -142,7 +155,7 @@ int main() {
 								 || a.keys_that_are_bool.contains(a.key())
 								 || a.keys_that_are_string.contains(a.key())
 								 || a.keys_that_are_snowflake.contains(a.key());//only these keys cuz i need to format them
-					
+
 					 })
 				) {
 
@@ -152,57 +165,37 @@ int main() {
 
 						if constexpr (!std::is_same_v<old_type, new_type>) {
 							return;
-						}else {
+						} else {
 
 							using type = old_type;
 
 							if constexpr (
 								std::is_same_v<type, std::optional<changed_role>> ||
-								std::is_same_v<type, std::optional<std::vector<permission_overwrite>>>)
-							{
+								std::is_same_v<type, std::optional<std::vector<permission_overwrite>>>) {
+									
 								str += fmt::format("\t{:>30}, old:{:>20}, new:{:>20} \n", change.key(), "wat", "wat");
-								return;
-							}
-							else if constexpr (std::is_same_v<type, std::optional<snowflake>>) {
-
-								if (old_value.has_value() && new_value.has_value()) {
-									str += fmt::format("\t{:>30}, old:{:>20}, new:{:>20} \n", change.key(), old_value.value().val, new_value.value().val);
-								}
-								else if (old_value.has_value()) {
-									str += fmt::format("\t{:>30}, old:{:>20}, new:{:>20} \n", change.key(), old_value.value().val, "nope");
-								}
-								else if (new_value.has_value()) {
-									str += fmt::format("\t{:>30}, old:{:>20}, new:{:>20} \n", change.key(), "nope", new_value.value().val);
-								}
-								else {
-									str += fmt::format("\t{:>30}, old:{:>20}, new:{:>20} \n", change.key(), "nope", "nope");
-								}
-							}
-							else {
+									
+							} else {
 								if (old_value.has_value() && new_value.has_value()) {
 									str += fmt::format("\t{:>30}, old:{:>20}, new:{:>20} \n", change.key(), old_value.value(), new_value.value());
-								}
-								else if (old_value.has_value()) {
+								} else if (old_value.has_value()) {
 									str += fmt::format("\t{:>30}, old:{:>20}, new:{:>20} \n", change.key(), old_value.value(), "nope");
-								}
-								else if (new_value.has_value()) {
+								} else if (new_value.has_value()) {
 									str += fmt::format("\t{:>30}, old:{:>20}, new:{:>20} \n", change.key(), "nope", new_value.value());
-								}
-								else {
+								} else {
 									str += fmt::format("\t{:>30}, old:{:>20}, new:{:>20} \n", change.key(), "nope", "nope");
 								}
 							}
 						}
 					}, change.old_value(), change.new_value());
-					std::fstream file = std::fstream("abcd.txt",std::ios::out);
+					std::fstream file = std::fstream("abcd.txt", std::ios::out);
 
 					file << str;
 					file.close();
-					
+
 				}
 			}
 
-			
 
 		}
 		//s.change_nick(wat.author(), wat.content());

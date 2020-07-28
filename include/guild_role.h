@@ -13,6 +13,7 @@ struct guild_role {
 	bool mentionable() const noexcept;
 	bool hoist() const noexcept;
 	std::string_view name() const noexcept;
+	
 	std::string to_mentionable_string()const {
 		return "<@&" + std::to_string(m_id.val) + ">";
 	}

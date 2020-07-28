@@ -9,6 +9,8 @@
 #include <charconv>
 #include "iterator_facade.h"
 #include <compare>
+#include <fmt/core.h>
+#include <fmt/format.h>
 
 struct snowflake {
 	constexpr bool operator==(const snowflake& other) const noexcept = default;
@@ -29,10 +31,10 @@ struct snowflake {
 
 	constexpr snowflake(const snowflake& other) = default;
 	
-	constexpr explicit snowflake(const size_t a):	
+	constexpr explicit snowflake(const uint64_t a):	
 		val(a) {}
 
-	size_t val = 0;//no reason to be private?
+	uint64_t val = 0;//no reason to be private?
 	
 	
 };
@@ -296,4 +298,13 @@ static inline const auto id_comp = [](auto&& a, snowflake b) { return a.id() < b
 
 static inline constexpr auto get_id = [](auto&& a) { return a.id(); };
 
+
+template<typename Char>
+struct fmt::formatter<snowflake,Char>: fmt::formatter<uint64_t, Char> {
+	
+	template <typename FormatContext>
+	auto format(const snowflake& val, FormatContext& ctx) {
+		return formatter<uint64_t>::format(val.val, ctx);
+	}
+};
 
