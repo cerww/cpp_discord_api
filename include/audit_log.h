@@ -263,6 +263,7 @@ private:
 	friend void from_json(const nlohmann::json& json, audit_log_change& log_change) {
 		log_change.m_key = json["key"].get<std::string>();
 
+		//"type" needs to be checked first, since it's in the set for strings, but it might be int
 		if (log_change.m_key == "type") {
 
 			log_change.m_type = audit_log_change_type::string;

@@ -4,13 +4,13 @@
 #include <boost/beast/websocket.hpp>
 //#include "rename_later_5.h"
 //#include "timed_task_executor.h"
-#include "ref_count_ptr.h"
+#include "../common/ref_count_ptr.h"
 #include "snowflake.h"
-#include "web_socket_session_impl.h"
-#include "task_completion_handler.h"
+#include "../common/web_socket_session_impl.h"
+#include "../common/task_completion_handler.h"
 #include "voice_channel.h"
-#include "opus_encoder.h"
-#include "resume_on_strand.h"
+#include "../common/opus_encoder.h"
+#include "../common/resume_on_strand.h"
 
 
 struct discord_voice_connection_impl :
@@ -120,7 +120,7 @@ struct discord_voice_connection_impl :
 	std::string web_socket_endpoint;
 	std::string session_id;
 
-	boost::asio::io_context::strand* strand;
+	boost::asio::io_context::strand* strand = nullptr;
 
 	web_socket_session socket;
 
@@ -128,7 +128,7 @@ struct discord_voice_connection_impl :
 	uint32_t ssrc = 0;
 
 	union {
-		const voice_channel* channel;
+		const Guild* channel;
 
 		//used in setting up vc only
 		cerwy::promise<void>* waiter = nullptr;
@@ -171,7 +171,7 @@ private:
 
 	void on_ready(nlohmann::json data);
 
-	void send_op1_select_protocol();
+	void send_op1_select_protocol() const;
 
 	void on_session_discription(nlohmann::json data);
 

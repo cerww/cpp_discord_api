@@ -10,10 +10,11 @@ struct channel_catagory;
 struct Guild;
 
 struct guild_channel :partial_guild_channel {
-	
+
 	const Guild& guild() const noexcept;
 
 	std::span<const permission_overwrite> parent_overwrites() const noexcept;
+
 	const channel_catagory& parent() const noexcept;
 	bool has_parent() const noexcept;
 
@@ -23,9 +24,9 @@ struct guild_channel :partial_guild_channel {
 		}
 		return permission_overwrites();
 	}
-	
+
 private:
-	
+
 	channel_catagory* m_parent = nullptr;
 
 	Guild* m_guild = nullptr;

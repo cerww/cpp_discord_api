@@ -124,8 +124,7 @@ inline event_name to_event_name(std::string_view name) {
 
 }
 
-template<typename str_t>//why is this a template
-inline Status string_to_status(str_t&& string) {
+inline Status string_to_status(std::string_view string) {
 	if (string == "dnd") return Status::dnd;
 	if (string == "online") return Status::online;
 	if (string == "idle") return Status::idle;

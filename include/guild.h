@@ -8,9 +8,9 @@
 #include "voice_channel.h"
 #include "partial_guild.h"
 #include "voice_state.h"
-#include "optional_ref.h"
+#include "../common/optional_ref.h"
 #include <range/v3/view/all.hpp>
-#include "higher_order_functions.h"
+#include "../common/higher_order_functions.h"
 #include "channel_catagory.h"
 
 struct internal_shard;
@@ -20,15 +20,15 @@ struct Guild :partial_guild {
 	Guild() = default;
 	Guild(const Guild&) = delete;
 	Guild(Guild&&) = default;
-	
+
 	Guild& operator=(const Guild&) = delete;
 	Guild& operator=(Guild&&) = default;
-	
+
 	timestamp joined_at() const noexcept;
 	bool large() const noexcept;
 	bool unavailable() const noexcept;
 	int member_count() const noexcept;
-	
+
 	const text_channel& system_channel() const noexcept;
 
 	const auto& members() const noexcept {
@@ -50,7 +50,7 @@ struct Guild :partial_guild {
 	}
 
 	auto channel_catagories() const noexcept {
-		return m_channel_catagorie_ids | ranges::views::transform(hof::map_with(all_channel_catagories()));
+		return m_channel_catagory_ids | ranges::views::transform(hof::map_with(all_channel_catagories()));
 	}
 
 	std::span<const snowflake> text_channel_ids() const noexcept {
@@ -58,7 +58,7 @@ struct Guild :partial_guild {
 	};
 
 	std::span<const snowflake> channel_catagories_ids() const noexcept {
-		return m_channel_catagorie_ids;
+		return m_channel_catagory_ids;
 	};
 
 	std::span<const snowflake> voice_channel_ids() const noexcept {
@@ -70,6 +70,33 @@ struct Guild :partial_guild {
 	std::span<const voice_state> voice_states() const noexcept {
 		return m_voice_states;
 	};
+
+	std::optional<activity> activity_for(snowflake id) const noexcept {
+		const auto it = m_activities.find(id);
+		if (it == m_activities.end()) {
+			return std::nullopt;
+		} else {
+			return it->second;
+		}
+	}
+	
+	std::optional<activity> activity_for(const partial_guild_member& member) const noexcept {
+		return activity_for(member.id());
+	}
+
+	std::optional<Status> status_for(snowflake id) const noexcept{
+		const auto it = m_status.find(id);
+		if (it == m_status.end()) {
+			return std::nullopt;
+		}
+		else {
+			return it->second;
+		}
+	}
+
+	std::optional<Status> status_for(const partial_guild_member& member) const noexcept {
+		return status_for(member.id());
+	}
 
 private:
 	//following is used for conveniance only
@@ -85,6 +112,7 @@ private:
 
 	ref_stable_map<snowflake, guild_member> m_members{};
 	ref_stable_map<snowflake, std::optional<activity>> m_activities;//no optional<activity&> ;-;
+	ska::bytell_hash_map<snowflake, Status> m_status;
 
 	//non-const version used for conveniance in shard.cpp
 	//returns mutable members so it has to be private
@@ -94,7 +122,7 @@ private:
 
 	std::vector<snowflake> m_text_channel_ids{};
 	std::vector<snowflake> m_voice_channel_ids{};
-	std::vector<snowflake> m_channel_catagorie_ids{};
+	std::vector<snowflake> m_channel_catagory_ids{};
 	std::vector<voice_state> m_voice_states{};
 
 

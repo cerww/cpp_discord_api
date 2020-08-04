@@ -1,14 +1,11 @@
 #pragma once
-#include <vector>
 #include "User.h"
 #include "guild_role.h"
 #include <nlohmann/json.hpp>
-#include "timestamp.h"
-#include <optional>
 #include "presence_update.h"
 #include "partial_guild_member.h"
 #include <range/v3/view/transform.hpp>
-#include "higher_order_functions.h"
+#include "../common/higher_order_functions.h"
 
 struct Guild;
 
@@ -19,15 +16,12 @@ struct guild_member :partial_guild_member {
 		return role_ids() | ranges::views::transform(hof::map_with(id_to_role_map()));
 	}
 
-	Status status() const noexcept {
-		return m_status;
-	}
 	
 private:
 	discord_obj_map<guild_role> id_to_role_map() const noexcept;
 
-	Status m_status = Status::unknown;
 	Guild* m_guild = nullptr;
+	
 	friend void from_json(const nlohmann::json& in, guild_member& out);
 	friend struct internal_shard;
 };

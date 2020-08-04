@@ -1,10 +1,10 @@
 #include "init_shard.h"
-#include "task_completion_handler.h"
-#include "web_socket_helpers.h"
+#include "../common/task_completion_handler.h"
+#include "../common/web_socket_helpers.h"
 #include "client.h"
 #include "rename_later_5.h"
 #include <fmt/core.h>
-#include "executor_binder.h"
+#include "../common/executor_binder.h"
 
 namespace discord_ec {
 	constexpr int unknown_error = 4000;
@@ -46,38 +46,42 @@ cerwy::task<void> init_shard(const int shard_number, internal_shard& me, boost::
 					co_await reconnect_wss_from_url(m_socket, gateway, me.m_resolver, me.ssl_context());
 					m_client.maybe_restart();
 					me.on_reconnect();
+					continue;
 				}
 				else if (ec.value() == discord_ec::not_authenticated) {
 					co_await reconnect_wss_from_url(m_socket, gateway, me.m_resolver, me.ssl_context());
 					m_client.maybe_restart();
 					me.on_reconnect();
+					continue;
 				}
 				else if (ec.value() == discord_ec::authentication_failed) {
 					fmt::print("authentication failed");
-					break;
+					co_return;
 				}
 				else if (ec.value() == discord_ec::already_authenticated) {
 					fmt::print("already authenticated");
-					break;
+					co_return;
 				}
 				else if (ec.value() == discord_ec::invalid_seq) {
 					co_await reconnect_wss_from_url(m_socket, gateway, me.m_resolver, me.ssl_context());
 					m_client.maybe_restart();
 					me.on_reconnect();
+					continue;
 				}
 				else if (ec.value() == discord_ec::rate_limited) {
 					fmt::print("rate limited");
-					break;
+					co_return;//don't reconnect?
 				}
 				else if (ec.value() == discord_ec::timeout) {
 					fmt::print("session timedout, reconnecting");
 					co_await reconnect_wss_from_url(m_socket, gateway, me.m_resolver, me.ssl_context());
 					m_client.maybe_restart();
 					me.on_reconnect();
+					continue;
 				}
 				else if (ec.value() == discord_ec::sharding_required) {
 					fmt::print("sharding required");
-					break;
+					co_return;
 				}
 				else {
 					std::cout << ec << std::endl;

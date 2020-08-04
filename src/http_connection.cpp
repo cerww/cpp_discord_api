@@ -2,8 +2,8 @@
 #include "http_connection.h"
 #include <charconv>
 #include <range/v3/core.hpp>
-#include "task_completion_handler.h"
-#include "executor_binder.h"
+#include "../common/task_completion_handler.h"
+#include "../common/executor_binder.h"
 
 template<int i>
 struct get_n {
@@ -50,15 +50,16 @@ cerwy::task<boost::system::error_code> async_connect_with_no_delay(boost::asio::
 	co_return ec;
 }
 
-size_t get_major_param_id(std::string_view s) {
-	s.remove_prefix(7);//strlen("/api/v6") == 7;
+uint64_t get_major_param_id(std::string_view s) {
+	//always first number after "/api/v6", or it's not included
+	s.remove_prefix(7);//remove "/api/v6"
 	const auto start = s.find_first_of("1234567890");
 	if (start == std::string_view::npos) 
 		return 0;
 	s.remove_prefix(start);
 	const auto end = ranges::find(s, '/');
 	const auto length = std::distance(s.begin(), end);
-	size_t ret = 0;
+	uint64_t ret = 0;
 	std::from_chars(s.data(), s.data() + length,ret);
 	return ret;
 }
@@ -263,7 +264,7 @@ std::future<void> http_conn(d::subscriber_thingy_async<std::variant<discord_requ
 http_connection2::http_connection2(client* t, boost::asio::io_context& ioc) :
 	m_ioc(ioc),
 	m_resolver(ioc),
-	m_socket(ioc, m_sslCtx),
+	m_socket(ioc, m_ssl_ctx),
 	m_client(t)
 {
 
@@ -272,6 +273,7 @@ http_connection2::http_connection2(client* t, boost::asio::io_context& ioc) :
 
 void http_connection2::send(discord_request&& d) {
 	m_request_queue.push(std::move(d));
+	//send_to_discord(std::move(d));
 }
 
 
@@ -294,8 +296,8 @@ cerwy::task<void> http_connection2::send_to_discord(discord_request r) {
 	return send_to_discord(r, get_major_param_id(std::string_view(r.req.target().data(), r.req.target().size())));
 }
 
-cerwy::task<void> http_connection2::send_to_discord(discord_request r, size_t major_param_id_) {
-	auto lock = co_await m_mut.async_lock();
+cerwy::task<void> http_connection2::send_to_discord(discord_request r, uint64_t major_param_id_) {
+	auto lock = co_await m_mut.async_lock();//i don't think i need this if i use the queue
 
 	if (m_global_rate_limited.load()) {
 		if (m_rate_limted_until > std::chrono::system_clock::now()) {
@@ -307,7 +309,7 @@ cerwy::task<void> http_connection2::send_to_discord(discord_request r, size_t ma
 	}
 
 
-	if(check_rate_limit(major_param_id_,r)) {
+	if(check_rate_limit(major_param_id_,r/* might move r away*/)) {
 		co_return;
 	}
 
@@ -350,16 +352,15 @@ cerwy::task<bool> http_connection2::send_to_discord_(discord_request& r) {
 			
 			co_return false;
 		}
-	}//this shuoldb't be riunning often ;-;
+	}
 	
-	//only runs when requests left == 0
-	//wat^
 	
 	if (auto it = r.state->res.find("X-RateLimit-Remaining"); it != r.state->res.end() && it->value() == "0") {
 		
 		const auto time = std::chrono::system_clock::time_point(std::chrono::seconds([&]() {//iife
+			const auto it2 = r.state->res.find("X-RateLimit-Reset");
 			int64_t seconds = 0;
-			std::from_chars(it->value().begin(), it->value().end(), seconds);
+			std::from_chars(it2->value().begin(), it2->value().end(), seconds);
 			return seconds;
 		}()));
 
@@ -381,32 +382,32 @@ cerwy::task<void> http_connection2::start_sending() {
 	}
 }
 
-void http_connection2::resend_rate_limted_requests_for(size_t id) {
+void http_connection2::resend_rate_limted_requests_for(uint64_t id) {
 	//auto v = *ranges::lower_bound(m_rate_limited_requests, id, std::less(), get_n<1>());;
 
-	auto requests = [&]() {//iife
+	auto requests = [&]() {//iife to guard mutex
 		std::lock_guard lock(m_rate_limit_mut);
 		auto ret = std::move(m_rate_limited_requests.front());
 		m_rate_limited_requests.erase(m_rate_limited_requests.begin());
 		return ret;
 	}();
 	
-	for(auto& r: std::get<2>(requests)) {
+	for(auto& r: requests.requests) {
 		send(std::move(r));
 	}	
 }
 
-void http_connection2::rate_limit_id(size_t major_param_id_, std::chrono::system_clock::time_point tp, std::optional<discord_request> rq) {
+void http_connection2::rate_limit_id(uint64_t major_param_id_, std::chrono::system_clock::time_point tp, std::optional<discord_request> rq) {
 	if(rq.has_value()) {
 		std::lock_guard lock(m_rate_limit_mut);
 		m_rate_limited_requests.insert(
-			ranges::upper_bound(m_rate_limited_requests, tp, std::less{}, get_n<1>{}),
+			ranges::upper_bound(m_rate_limited_requests, tp, std::less{}, &rate_limit_entry::until),
 			{ major_param_id_,tp, std::vector{std::move(rq.value())} }
 		);
 	}else {
 		std::lock_guard lock(m_rate_limit_mut);
 		m_rate_limited_requests.insert(
-			ranges::upper_bound(m_rate_limited_requests, tp, std::less{}, get_n<1>{}),
+			ranges::upper_bound(m_rate_limited_requests, tp, std::less{}, &rate_limit_entry::until),
 			{ major_param_id_,tp, empty_vector }
 		);
 	}
@@ -420,12 +421,12 @@ void http_connection2::rate_limit_id(size_t major_param_id_, std::chrono::system
 }
 
 //returns weather or not it was rate_limited
-bool http_connection2::check_rate_limit(size_t id, discord_request& rq) {
+bool http_connection2::check_rate_limit(uint64_t id, discord_request& rq) {
 	std::lock_guard lock(m_rate_limit_mut);
 	
-	const auto it = ranges::find(m_rate_limited_requests, id, get_n<0>());
+	const auto it = ranges::find(m_rate_limited_requests, id, &rate_limit_entry::id);
 	if (it != m_rate_limited_requests.end()) {
-		auto& vec = std::get<2>(*it);
+		auto& vec = it->requests;
 		vec.push_back(std::move(rq));
 		return true;
 	}else {
@@ -433,11 +434,13 @@ bool http_connection2::check_rate_limit(size_t id, discord_request& rq) {
 	}
 }
 
+/*
 void http_connection2::connect() {
 	auto results = m_resolver.resolve("discord.com", "https");
 	connect_with_no_delay(m_socket.next_layer(), results);
 	m_socket.handshake(boost::asio::ssl::stream_base::client);
 }
+*/
 
 cerwy::task<void> http_connection2::reconnect() {
 	while (true) {
@@ -480,6 +483,5 @@ redo:
 			goto redo;
 		}
 	}
-	//doesn't run on strand
 	
 }

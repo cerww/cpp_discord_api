@@ -5,7 +5,7 @@
 #include "guild_member.h"
 #include "partial_message.h"
 #include "guild_channel.h"
-#include "item_cache.h"
+#include "../common/item_cache.h"
 
 enum class text_channel_type {
 	normal,

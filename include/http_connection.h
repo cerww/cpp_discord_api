@@ -5,9 +5,9 @@
 #include <thread>
 #include "requests.h"
 #include "concurrent_queue.h"
-#include "task.h"
-#include "async_mutex.h"
-#include "concurrent_async_queue.h"
+#include "../common/task.h"
+#include "../common/async_mutex.h"
+#include "../common/concurrent_async_queue.h"
 //#include <variant>
 
 struct discord_request {
@@ -214,8 +214,8 @@ private:
 	boost::asio::ip::tcp::resolver m_resolver;
 	async_mutex m_mut;
 
-	boost::asio::ssl::context m_sslCtx{ boost::asio::ssl::context::tlsv12_client };
-	boost::asio::ssl::stream<boost::asio::ip::tcp::socket> m_socket{ m_ioc, m_sslCtx };
+	boost::asio::ssl::context m_ssl_ctx{ boost::asio::ssl::context::tlsv12_client };
+	boost::asio::ssl::stream<boost::asio::ip::tcp::socket> m_socket{ m_ioc, m_ssl_ctx };
 
 	
 	boost::beast::flat_buffer m_buffer{};
@@ -223,17 +223,17 @@ private:
 	client* m_client = nullptr;
 
 	cerwy::task<void> send_to_discord(discord_request);
-	cerwy::task<void> send_to_discord(discord_request,size_t major_param_id_);
+	cerwy::task<void> send_to_discord(discord_request, uint64_t major_param_id_);
 	
 	cerwy::task<bool> send_to_discord_(discord_request&);
 
 	cerwy::task<void> start_sending();
 	
-	void resend_rate_limted_requests_for(size_t);
-	void rate_limit_id(size_t major_param_id_, std::chrono::system_clock::time_point, std::optional<discord_request>);
-	bool check_rate_limit(size_t id, discord_request& rq);
+	void resend_rate_limted_requests_for(uint64_t);
+	void rate_limit_id(uint64_t major_param_id_, std::chrono::system_clock::time_point, std::optional<discord_request>);
+	bool check_rate_limit(uint64_t id, discord_request& rq);
 	
-	void connect();
+	//void connect();
 	cerwy::task<void> reconnect();
 
 	cerwy::task<void> send_rq(discord_request&);
@@ -243,7 +243,18 @@ private:
 	//not a queue/deque since it's size shuold be small
 	//can be a priority queue?
 	//can't be priority queue since i need to look at things inside
-	std::vector<std::tuple<size_t, std::chrono::system_clock::time_point, std::vector<discord_request>>> m_rate_limited_requests{};
+	//Q: sort by id or time?
+	
+	struct rate_limit_entry {
+		uint64_t id;
+		std::chrono::system_clock::time_point until;
+		std::vector<discord_request> requests;
+	};
+	
+	std::vector<rate_limit_entry> m_rate_limited_requests{};
 	std::mutex m_rate_limit_mut;
+	
+	
+	
 };
 

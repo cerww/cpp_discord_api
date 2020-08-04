@@ -3,11 +3,11 @@
 #include "permission.h"
 #include "guild_role.h"
 #include "emoji.h"
-#include "things2.h"
+#include "../common/things2.h"
 #include "voice_channel.h"
 #include <range/v3/all.hpp>
 #include <optional>
-#include "optional_ref.h"
+#include "../common/optional_ref.h"
 
 struct partial_guild {
 	snowflake id() const noexcept;

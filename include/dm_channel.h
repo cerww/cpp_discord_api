@@ -5,7 +5,7 @@
 #include <nlohmann/json.hpp>
 #include "partial_message.h"
 #include <deque>
-#include "item_cache.h"
+#include "../common/item_cache.h"
 #include <span>
 
 struct dm_channel :partial_channel {

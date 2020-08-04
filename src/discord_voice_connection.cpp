@@ -3,7 +3,7 @@
 #include <sodium.h>
 #include <iostream>
 #include <fmt/core.h>
-#include "resume_on_strand.h"
+#include "../common/resume_on_strand.h"
 
 discord_voice_connection_impl::discord_voice_connection_impl(web_socket_session sock,boost::asio::io_context& ioc):
 	socket(std::move(sock)),
@@ -37,7 +37,6 @@ cerwy::task<void> discord_voice_connection_impl::control_speaking(int is_speakin
 )", is_speaking, delay,ssrc);
 
 	co_await socket.send_thing(std::move(msg));
-
 }
 
 cerwy::task<void> discord_voice_connection_impl::send_silent_frames() {
@@ -74,12 +73,14 @@ TODO: convert these to C++
 
  */
 
+constexpr int a = crypto_secretbox_KEYBYTES;//32
+constexpr int b = crypto_secretbox_NONCEBYTES;//24
+constexpr int c = crypto_secretbox_MACBYTES;//16
+
 std::vector<std::byte> discord_voice_connection_impl::encrypt_xsalsa20_poly1305(const std::array<std::byte, 12> header, std::span<const std::byte> audio_data) {
 	//std::vector<std::byte> return_val;
 
-	constexpr int a = crypto_secretbox_KEYBYTES;//32
-	constexpr int b = crypto_secretbox_NONCEBYTES;//24
-	constexpr int c = crypto_secretbox_MACBYTES;//16
+
 	constexpr int header_size_bytes = 12;
 	std::vector<std::byte> return_val(audio_data.size() + crypto_secretbox_MACBYTES + header_size_bytes);
 
@@ -90,9 +91,9 @@ std::vector<std::byte> discord_voice_connection_impl::encrypt_xsalsa20_poly1305(
 	
 	std::copy(header.begin(), header.end(), nonce.begin());
 	
-	int abcd = sodium_init();
+	sodium_init();
 	
-	int result = crypto_secretbox_easy(
+	crypto_secretbox_easy(
 		(unsigned char*)return_val.data() + header_size_bytes,
 		(unsigned char*)audio_data.data(),
 		audio_data.size(),
@@ -226,21 +227,19 @@ void discord_voice_connection_impl::on_ready(nlohmann::json data) {
 	
 }
 
-void discord_voice_connection_impl::send_op1_select_protocol() {
+void discord_voice_connection_impl::send_op1_select_protocol() const {
 	std::string msg = fmt::format(
-		R"({{
-			"op": 1,
-			"d": {{
-				"protocol": "udp",
-				"data": {{
-					"address": "{}",
-					"port": {},
-					"mode": "xsalsa20_poly1305"
-				}}
-			}}
-		}})",
-		m_my_endpoint.address().to_string(), m_my_endpoint.port()
-	);
+R"({{
+	"op": 1,
+	"d": {{
+		"protocol": "udp",
+		"data": {{
+			"address": "{}",
+			"port": {},
+			"mode": "xsalsa20_poly1305"
+		}}
+	}}
+}})",m_my_endpoint.address().to_string(), m_my_endpoint.port());
 	
 	//std::cout << msg << std::endl;
 	

@@ -8,8 +8,7 @@
 #include "guild.h"
 #include "text_channel.h"
 #include "dm_channel.h"
-#include "timed_task_executor.h"
-#include "optional_ref.h"
+#include "../common/optional_ref.h"
 #include "intents.h"
 
 
@@ -45,13 +44,14 @@ struct client {//<(^.^)>
 	client(const client&) = delete;
 	client& operator=(client&&) = delete;
 	client& operator=(const client&) = delete;
-	~client() = default;
+	virtual ~client() = default;
 	
-	/*virtual*/ void run();
+	virtual void run();
 
 	void set_token(std::string token, token_type type = token_type::BOT);
 
-	void set_up_request(boost::beast::http::request<boost::beast::http::string_body>& req) const;
+	
+	//void set_up_request(boost::beast::http::request<boost::beast::http::string_body>& req) const;
 
 	std::string_view token() const { return m_token; }
 
@@ -67,7 +67,7 @@ struct client {//<(^.^)>
 	std::function<void(const dm_channel&, shard&)> on_dm_channel_create = nothing;
 	
 	std::function<void(const guild_member&, shard&)> on_guild_member_add = nothing;
-	std::function<void(const guild_member&, bool, shard&)> on_guild_member_remove = nothing;
+	std::function<void(guild_member, bool, shard&)> on_guild_member_remove = nothing;
 	std::function<void(const guild_member&, shard&)> on_guild_member_update = nothing;
 	
 	std::function<void(const text_channel&, shard&)> on_guild_text_channel_update = nothing;
@@ -79,13 +79,13 @@ struct client {//<(^.^)>
 	std::function<void(const Guild&, user, shard&)> on_ban_add = nothing;
 	std::function<void(const Guild&, user, shard&)> on_ban_remove = nothing;
 	std::function<void(const Guild&, const guild_role&, shard&)> on_role_create = nothing;
-	std::function<void(const Guild&, const guild_role&, const guild_role&, shard&)> on_role_update = nothing;
-	std::function<void(const Guild&, const guild_role&, shard&)> on_role_delete = nothing;
+	std::function<void(const Guild&, guild_role, const guild_role&, shard&)> on_role_update = nothing;
+	std::function<void(const Guild&, guild_role, shard&)> on_role_delete = nothing;
 	std::function<void(dm_msg_update,  shard&)> on_dm_msg_update = nothing;
 	std::function<void(guild_msg_update, shard&)> on_guild_msg_update = nothing;
 	std::function<void(snowflake, const dm_channel&, shard&)> on_dm_msg_delete = nothing;
 	std::function<void(snowflake, const text_channel&, shard&)> on_guild_msg_delete = nothing;
-	std::function<void(const guild_member&, const text_channel&, shard&)> on_guild_typing_start = nothing;
+	std::function<void(guild_member, const text_channel&, shard&)> on_guild_typing_start = nothing;
 	std::function<void(const user&, const dm_channel&, shard&)> on_dm_typing_start = nothing;
 	
 	std::function<void(text_channel, shard&)> on_text_channel_delete = nothing;
@@ -116,7 +116,7 @@ struct client {//<(^.^)>
 	void stop();
 
 
-	/*virtual*/ void rate_limit_global(const std::chrono::system_clock::time_point);
+	virtual void rate_limit_global(std::chrono::system_clock::time_point);
 
 	boost::asio::io_context& context() {
 		if(std::holds_alternative<boost::asio::io_context>(m_ioc)) {
@@ -126,8 +126,8 @@ struct client {//<(^.^)>
 		}
 	}
 	
-	/*virtual*/ std::chrono::steady_clock::time_point get_time_point_for_identifying() {
-		//use mutex of atomic?
+	virtual std::chrono::steady_clock::time_point get_time_point_for_identifying() {
+		//use mutex or atomic?
 		
 		std::lock_guard lock(m_identify_mut);
 		//5.1s to account for some random delay that might happen 
@@ -135,10 +135,16 @@ struct client {//<(^.^)>
 		return m_last_identify;
 	}	
 
-	/*virtual*/ void do_gateway_stuff();
+	virtual void do_gateway_stuff();
+
+	client& set_shards(size_t s) {
+		assert(s > 0);
+		m_num_shards = s;
+		return *this;
+	}
 	
-private:
-	/*virtual*/	void m_getGateway();
+protected:
+	void m_getGateway();
 	std::chrono::system_clock::time_point m_last_global_rate_limit = std::chrono::system_clock::now();
 	//1 identify every 5s, -6s is so we don't wait 5s for the first one
 	std::chrono::steady_clock::time_point m_last_identify = std::chrono::steady_clock::now() - std::chrono::seconds(6);
@@ -157,7 +163,6 @@ private:
 	std::mutex m_global_rate_limit_mut;
 
 	std::mutex m_shard_mut;
-	//std::vector<shard*> m_shards_vec;
 	std::vector<std::unique_ptr<internal_shard>> m_shards;
 	std::vector<std::thread> m_threads;
 

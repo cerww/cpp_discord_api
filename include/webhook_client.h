@@ -2,10 +2,10 @@
 #include "webhook.h"
 #include <string>
 #include "requests.h"
-#include "task.h"
-#include "concurrent_async_queue.h"
+#include "../common/task.h"
+#include "../common/concurrent_async_queue.h"
 #include <boost/asio/ssl.hpp>
-#include "ref_or_inplace.h"
+#include "../common/ref_or_inplace.h"
 #include "allowed_mentions.h"
 
 struct webhook_request {

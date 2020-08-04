@@ -36,7 +36,7 @@ constexpr int auidghsadjkashdiuas = sizeof(boost::container::small_vector<snowfl
 constexpr int ashsdgasdasd = sizeof(partial_guild_member);
 
 inline void from_json(const nlohmann::json& in, partial_guild_member& out) {
-	from_json(in["user"], static_cast<user&>(out));
+	in["user"].get_to(static_cast<user&>(out));
 	out.m_nick = in.value("nick",std::string(""));
 	//out.m_roles = in["roles"].get<std::vector<snowflake>>();
 	out.m_roles = in["roles"] | ranges::views::transform(&nlohmann::json::get<snowflake>) | ranges::to<boost::container::small_vector<snowflake, 5>>();

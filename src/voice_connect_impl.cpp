@@ -1,9 +1,9 @@
 #include "voice_connect_impl.h"
 #include "internal_shard.h"
-#include "web_socket_session_impl.h"
+#include "../common/web_socket_session_impl.h"
 #include "discord_voice_connection.h"
 #include "client.h"
-#include "resume_on_strand.h"
+#include "../common/resume_on_strand.h"
 
 using namespace boost::asio;
 
@@ -32,7 +32,7 @@ cerwy::task<voice_connection> voice_connect_impl(internal_shard& me, const voice
 	auto t = p.get_task();
 
 	co_await t;//wait till it's done setting up
-	vc->channel = &ch;
+	vc->channel = &ch.guild();
 	co_await resume_on_strand{me.strand()};
 	int put_breakpoint_here = 0;
 	co_return voice_connection(std::move(vc));

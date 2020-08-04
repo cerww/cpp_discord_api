@@ -131,7 +131,7 @@ struct allowed_mentions {
 
 	template<typename... T>
 		allowed_mentions<flags>& add_users(T&&... users)
-			requires !allow_all_users && allow_some_users && ((std::is_base_of_v<user, std::remove_cvref_t<T>>) && ...) {
+			requires !allow_all_users && allow_some_users && ((std::is_base_of_v<snowflake, std::remove_cvref_t<T>>) && ...) {
 				
 		((roles_ids.push_back(users)), ...);
 		return *this;
@@ -139,7 +139,7 @@ struct allowed_mentions {
 	
 	template<typename... T>
 		allowed_mentions<flags>& add_users(T&&... users)
-			requires !allow_all_users && allow_some_users && ((std::is_same_v<snowflake, std::remove_cvref_t<T>>) && ...) {
+			requires !allow_all_users && allow_some_users && ((std::is_same_v<user, std::remove_cvref_t<T>>) && ...) {
 				
 		((roles_ids.push_back(users.id())), ...);
 		return *this;

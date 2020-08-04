@@ -15,6 +15,7 @@ void from_json(const nlohmann::json& json, guild_channel& g) {
 }
 
 std::span<const permission_overwrite> guild_channel::parent_overwrites() const noexcept {
+	assert(has_parent());
 	return m_parent->permission_overwrites();
 }
 

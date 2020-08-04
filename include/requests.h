@@ -2,7 +2,7 @@
 #include <boost/beast.hpp>
 #include <nlohmann/json.hpp>
 #include "guild.h"
-#include "ref_count_ptr.h"
+#include "../common/ref_count_ptr.h"
 #include "voice_state.h"
 #include <fmt/format.h>
 #include "invite.h"
@@ -62,6 +62,7 @@ namespace rq {
 		std::mutex waiter_mut{};
 		std::condition_variable ready_cv{};
 		boost::beast::http::response<boost::beast::http::string_body> res = {};
+		std::optional<std::exception_ptr> exception;//rename?
 
 		void notify() {
 			ready_cv.notify_all();
@@ -122,18 +123,11 @@ namespace rq {
 		
 		explicit request_base(ref_count_ptr<shared_state> t_state):state(std::move(t_state)){}
 
-		//TODO
 		template<typename T>
 		explicit request_base(with_exception<T> e,boost::asio::io_context::strand* strand):request_base(make_ref_count_ptr<shared_state>()) {
 			state->strand = strand;
 			state->done = true;
-			try {
-				
-			}catch(T) {
-				
-			}
-			
-			
+			state->exception = std::make_exception_ptr(e.exception);			
 		}
 
 		template<typename ...Ts>
@@ -146,6 +140,9 @@ namespace rq {
 		}
 
 		void handle_errors() const {
+			if(state->exception.has_value()) {
+				std::rethrow_exception(state->exception.value());
+			}
 			const auto status = state->res.result_int();
 			if (status == 400) throw bad_request(";-;");
 			if (status == 401) throw unauthorized();			
@@ -192,7 +189,7 @@ namespace rq {
 				return nlohmann::json::parse(state->res.body()).template get<typename reqeust::return_type>();			
 		}
 		
-		//remove?
+		//remove along with wait?
 		decltype(auto) get() {
 			wait();
 			handle_errors();

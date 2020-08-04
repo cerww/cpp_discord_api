@@ -1,5 +1,5 @@
 #include "webhook_client.h"
-#include "task_completion_handler.h"
+#include "../common/task_completion_handler.h"
 
 
 void webhook_http_client::send(webhook_request&& d) {
@@ -23,7 +23,7 @@ cerwy::task<boost::beast::error_code> webhook_http_client::async_connect() {
 }
 
 cerwy::task<void> webhook_http_client::send_to_discord(webhook_request r) {
-	//don't need to check rate limit,if we're rate limted, we'll just get 429
+	//don't check rate limit,if we're rate limted, just get 429, only 1 request is sent out anyways
 
 	std::lock_guard<std::mutex> locky(r.state->ready_mut);
 	if (co_await send_to_discord_(r))
@@ -60,6 +60,7 @@ cerwy::task<void> webhook_http_client::start_sending() {
 		(void)co_await send_to_discord(std::move(rq));
 	}
 }
+
 cerwy::task<void> webhook_http_client::reconnect() {
 	boost::asio::ip::tcp::resolver resolver(m_client->ioc());
 	

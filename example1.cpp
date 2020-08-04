@@ -1,7 +1,7 @@
 #include "include/client.h"
 #include <fstream>
 #include "include/modify_guild_settings.h"
-#include "include/mp3_audio_source.h"
+#include "common/mp3_audio_source.h"
 
 
 using namespace std::literals;
@@ -188,14 +188,12 @@ int main() {
 							}
 						}
 					}, change.old_value(), change.new_value());
-					std::fstream file = std::fstream("abcd.txt", std::ios::out);
-
-					file << str;
-					file.close();
-
 				}
 			}
+			std::fstream file = std::fstream("abcd.txt", std::ios::out);
 
+			file << str;
+			file.close();
 
 		}
 		//s.change_nick(wat.author(), wat.content());

@@ -11,7 +11,7 @@
 #include <type_traits>
 #include "range-like-stuffs.h"
 #include "discord_enums.h"
-#include "task.h"
+#include "../common/task.h"
 #include "rename_later_5.h"
 #include "attachment.h"
 #include "discord_voice_connection.h"
@@ -224,6 +224,8 @@ protected:
 	client* m_parent = nullptr;
 
 	std::string m_auth_token;
+	
+	async_mutex m_events_mut;
 
 
 	ref_stable_map<snowflake, Guild> m_guilds;
@@ -342,7 +344,7 @@ requires is_range_of<rng, snowflake>
 
 rq::add_guild_member shard::add_guild_member(const Guild& guild, snowflake id, std::string access_token, rng&& roles, std::string nick, bool deaf, bool mute) {
 	nlohmann::json body;
-	body["access_token"] = access_token;
+	body["access_token"] = std::move(access_token);
 	body["nick"] = std::move(nick);
 	body["deaf"] = deaf;
 	body["mute"] = mute;
@@ -360,7 +362,7 @@ requires is_range_of<rng, guild_role>
 
 rq::add_guild_member shard::add_guild_member(const Guild& guild, snowflake id, std::string access_token, rng&& roles, std::string nick, bool deaf, bool mute) {
 	nlohmann::json body;
-	body["access_token"] = access_token;
+	body["access_token"] = std::move(access_token);
 	body["nick"] = std::move(nick);
 	body["deaf"] = deaf;
 	body["mute"] = mute;
@@ -422,10 +424,12 @@ requires is_range_of<range, std::string>
 
 rq::create_group_dm shard::create_group_dm(range&& access_tokens, std::unordered_map<snowflake, std::string> nicks) {
 	nlohmann::json body;
-	body["access_tokens"] = std::vector<int>();
-	for (auto&& token : access_tokens) {
-		body["access_tokens"].push_back(token);
-	}
+	
+	// body["access_tokens"] = std::vector<int>();
+	// for (auto&& token : access_tokens) {
+	// 	body["access_tokens"].push_back(token);
+	// }
+	body["access_tokens"] = access_tokens | ranges::to<nlohmann::json>();
 	body["nicks"] = std::move(nicks);
 	return send_request<rq::create_group_dm>(body.dump());
 }
