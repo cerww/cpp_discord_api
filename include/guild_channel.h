@@ -1,6 +1,6 @@
 #pragma once
 #include "partial_channel.h"
-#include "range-like-stuffs.h"
+#include "../common/range-like-stuffs.h"
 #include "partial_guild_channel.h"
 #include <range/v3/all.hpp>
 #include <span>

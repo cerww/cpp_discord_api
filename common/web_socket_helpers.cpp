@@ -1,5 +1,5 @@
-#include "../common/web_socket_helpers.h"
-#include "../common/parsing_stuff.h"
+#include "web_socket_helpers.h"
+#include "parsing_stuff.h"
 #include <charconv>
 #include <range/v3/all.hpp>
 

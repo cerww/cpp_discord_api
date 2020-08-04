@@ -1,6 +1,6 @@
 #include "guild_channel.h"
 #include "channel_catagory.h"
-#include "range-like-stuffs.h"
+#include "../common/range-like-stuffs.h"
 
 const Guild& guild_channel::guild() const noexcept { return *m_guild; }
 
