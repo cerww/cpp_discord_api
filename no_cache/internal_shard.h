@@ -67,6 +67,7 @@ struct internal_shard :shard {
 	nlohmann::json presence() const;
 
 	cerwy::task<voice_connection> connect_voice(const voice_channel&);
+	cerwy::task<voice_connection> connect_voice(snowflake, snowflake);
 
 
 	auto& resolver() {
@@ -114,7 +115,7 @@ private:
 	bool m_is_disconnected = false;
 
 
-	void request_guild_members(Guild& g) const;
+	void request_guild_members(snowflake g) const;
 
 	//dispatch
 	void m_opcode0(nlohmann::json, event_name, uint64_t);
@@ -125,7 +126,7 @@ private:
 	//status update
 	void m_opcode3_send_presence() const;//update presence
 	//voice state
-	std::pair<cerwy::task<nlohmann::json>, cerwy::task<std::string>> m_opcode4(const voice_channel&);
+	std::pair<cerwy::task<nlohmann::json>, cerwy::task<std::string>> m_opcode4(snowflake,snowflake);
 	//resume
 	void m_opcode6_send_resume() const;
 	//reconnect

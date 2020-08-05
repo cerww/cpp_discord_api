@@ -11,14 +11,6 @@ shard::shard(int shard_number, client* t_parent, boost::asio::io_context& ioc, s
 	m_parent(t_parent),
 	m_auth_token(std::move(auth_token)) { }
 
-cerwy::task<voice_connection> shard::connect_voice(const voice_channel& ch) {
-	//;-;
-	//TODO: change this
-	//make it virutal?
-	auto& me = (internal_shard&)*this;
-	return me.connect_voice(ch);
-}
-
 bool shard::will_have_guild(snowflake guild_id) const noexcept {
 	return (guild_id.val >> 22) % m_parent->num_shards() == m_shard_number;
 }

@@ -128,15 +128,10 @@ struct discord_voice_connection_impl :
 	int heartbeat_interval = 0;
 	uint32_t ssrc = 0;
 
-	union {
-		const Guild* channel;
 
-		//used in setting up vc only
-		cerwy::promise<void>* waiter = nullptr;
+	//used in setting up vc only
+	cerwy::promise<void>* waiter = nullptr;
 
-		//only 1 of these two^ will be used at any time ;-;
-		//while setting up, the coroutine has access to the channel
-	};
 
 
 	int delay = 0;
@@ -230,5 +225,6 @@ public:
 private:
 	ref_count_ptr<discord_voice_connection_impl> m_connection = nullptr;
 	friend cerwy::task<voice_connection> voice_connect_impl(internal_shard& me, const voice_channel& ch, std::string endpoint, std::string token, std::string session_id);
+	friend cerwy::task<voice_connection> voice_connect_impl(internal_shard& me, snowflake,snowflake, std::string endpoint, std::string token, std::string session_id);
 };
 }

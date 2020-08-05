@@ -72,7 +72,6 @@ public:
 	requires is_range_of_v<rng, snowflake>
 	rq::delete_message_bulk delete_message_bulk(const partial_channel&, rng&&);
 
-
 	rq::delete_message_bulk delete_message_bulk(const partial_channel&, std::vector<snowflake>);
 	rq::leave_guild leave_guild(const Guild&);
 	rq::add_reaction add_reaction(const partial_message&, const partial_emoji&);
@@ -95,12 +94,9 @@ public:
 	rq::list_guild_members list_guild_members(const partial_guild&, int n = 1, snowflake after = {});
 	rq::edit_channel_permissions edit_channel_permissions(const partial_guild_channel&, const permission_overwrite&);
 	rq::create_dm create_dm(const user&);
-
 	rq::get_guild_integrations get_guild_integrations(const partial_guild& guild);
-
 	rq::create_guild_integration create_guild_integration(const partial_guild& guild, std::string type, snowflake id);
-
-
+	
 	template<typename range>
 	requires is_range_of<range, std::string>
 	rq::create_group_dm create_group_dm(range&& access_tokens, std::unordered_map<snowflake, std::string> nicks = {});
@@ -136,17 +132,11 @@ public:
 	rq::modify_role modify_role(const guild_role&, modify_role_settings<settings...>);
 
 	rq::create_webhook create_webhook(const partial_channel& channel, std::string name);
-
 	rq::get_guild_webhooks get_guild_webhooks(const partial_guild&);
-
 	rq::get_channel_webhooks get_channel_webhooks(const partial_channel&);
-
 	rq::get_webhook get_webhook(snowflake, std::string token);
-
 	rq::get_webhook get_webhook(const webhook&);
-
 	rq::execute_webhook send_with_webhook(const webhook&, std::string s);
-
 
 	template<typename ...settings>
 	rq::modify_webhook modify_webhook(const webhook&, modify_webhook_settings<settings...>);
@@ -160,15 +150,18 @@ public:
 		const partial_guild&
 	);
 
-	const user& self_user() const noexcept {
-		return m_self_user;
+	snowflake id() const noexcept{
+		return m_id;
 	}
 
-	cerwy::task<voice_connection> connect_voice(const voice_channel&);
+	virtual cerwy::task<voice_connection> connect_voice(const voice_channel&) = 0;
+	virtual cerwy::task<voice_connection> connect_voice(snowflake, snowflake) = 0;
 
 	boost::asio::io_context::strand& strand() {
 		return m_strand;
 	}
+
+	virtual void request_guild_members(snowflake g) const = 0;
 
 protected:
 	using wsClient = rename_later_5;
@@ -186,7 +179,8 @@ protected:
 
 	int m_shard_number = 0;
 
-	user m_self_user;
+	//user m_self_user;
+	snowflake m_id;
 
 
 	http_connection2 m_http_connection;
