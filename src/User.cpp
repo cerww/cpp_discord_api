@@ -30,6 +30,6 @@ void from_json(const nlohmann::json& json, user& other) {
 		other.m_avatar = "";
 	}
 	else {
-		other.m_avatar = json["avatar"];
+		other.m_avatar = json["avatar"].get<std::string>();
 	}
 }

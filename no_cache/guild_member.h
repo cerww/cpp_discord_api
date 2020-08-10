@@ -24,7 +24,9 @@ constexpr int ashsdgasdasd = sizeof(guild_member);
 
 inline void from_json(const nlohmann::json& in, guild_member& out) {
 	in["user"].get_to(static_cast<user&>(out));
-	out.nick = in.value("nick", std::string(""));
+	if (in.contains("nick") && !in["nick"].is_null()) {
+		out.nick = in.value("nick", std::string(""));
+	}
 
 	out.roles = in["roles"].get<std::vector<snowflake>>();
 

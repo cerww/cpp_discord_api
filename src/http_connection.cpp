@@ -138,8 +138,6 @@ bool http_connection::send_to_discord_(discord_request& r,size_t major_param_id_
 	return true;
 }
 
-
-
 cerwy::task<boost::beast::error_code> http_connection::async_connect() {
 	const auto[ec, results] = co_await m_resolver.async_resolve("discord.com", "https", use_task_return_tuple2);
 	if(ec) {
@@ -260,14 +258,18 @@ std::future<void> http_conn(d::subscriber_thingy_async<std::variant<discord_requ
 }
 */
 
-
 http_connection2::http_connection2(client* t, boost::asio::io_context& ioc) :
 	m_ioc(ioc),
 	m_resolver(ioc),
 	m_socket(ioc, m_ssl_ctx),
-	m_client(t)
+	m_client(t),
+	m_rate_limiter(ioc)
 {
-
+	m_rate_limiter.on_rate_limit_finish = [this](std::vector<discord_request> requests) {
+		for(auto& request:requests) {
+			send(std::move(request));
+		}
+	};
 
 }
 
@@ -297,7 +299,7 @@ cerwy::task<void> http_connection2::send_to_discord(discord_request r) {
 }
 
 cerwy::task<void> http_connection2::send_to_discord(discord_request r, uint64_t major_param_id_) {
-	auto lock = co_await m_mut.async_lock();//i don't think i need this if i use the queue
+	//auto lock = co_await m_mut.async_lock();//i don't think i need this if i use the queue
 
 	if (m_global_rate_limited.load()) {
 		if (m_rate_limted_until > std::chrono::system_clock::now()) {
@@ -309,7 +311,12 @@ cerwy::task<void> http_connection2::send_to_discord(discord_request r, uint64_t 
 	}
 
 
-	if(check_rate_limit(major_param_id_,r/* might move r away*/)) {
+	/*
+	if(check_rate_limit(major_param_id_,r/* might move r away#1#)) {
+		co_return;
+	}*/
+	
+	if (m_rate_limiter.maybe_rate_limit(major_param_id_, r)) {
 		co_return;
 	}
 
@@ -342,13 +349,13 @@ cerwy::task<bool> http_connection2::send_to_discord_(discord_request& r) {
 			r.state->res.clear();
 			r.state->res.body().clear();
 			co_await send_rq(r);
-		}
-		else {
+		} else {
 			r.state->res.clear();
 			r.state->res.body().clear();
 
 			const auto major_param_id_ = get_major_param_id(std::string_view(r.req.target().data(), r.req.target().size()));			
-			rate_limit_id(major_param_id_, tp, std::move(r));
+			//rate_limit_id(major_param_id_, tp, std::move(r));
+			m_rate_limiter.rate_limit(major_param_id_, tp, std::move(r));
 			
 			co_return false;
 		}
@@ -366,7 +373,8 @@ cerwy::task<bool> http_connection2::send_to_discord_(discord_request& r) {
 
 		
 		const auto major_param_id_ = get_major_param_id(std::string_view(r.req.target().data(), r.req.target().size()));
-		rate_limit_id(major_param_id_,time,std::nullopt);
+		//rate_limit_id(major_param_id_,time,std::nullopt);
+		m_rate_limiter.rate_limit(major_param_id_, time);
 	}
 
 	std::cout << r.req << std::endl;
@@ -382,57 +390,57 @@ cerwy::task<void> http_connection2::start_sending() {
 	}
 }
 
-void http_connection2::resend_rate_limted_requests_for(uint64_t id) {
-	//auto v = *ranges::lower_bound(m_rate_limited_requests, id, std::less(), get_n<1>());;
-
-	auto requests = [&]() {//iife to guard mutex
-		std::lock_guard lock(m_rate_limit_mut);
-		auto ret = std::move(m_rate_limited_requests.front());
-		m_rate_limited_requests.erase(m_rate_limited_requests.begin());
-		return ret;
-	}();
-	
-	for(auto& r: requests.requests) {
-		send(std::move(r));
-	}	
-}
-
-void http_connection2::rate_limit_id(uint64_t major_param_id_, std::chrono::system_clock::time_point tp, std::optional<discord_request> rq) {
-	if(rq.has_value()) {
-		std::lock_guard lock(m_rate_limit_mut);
-		m_rate_limited_requests.insert(
-			ranges::upper_bound(m_rate_limited_requests, tp, std::less{}, &rate_limit_entry::until),
-			{ major_param_id_,tp, std::vector{std::move(rq.value())} }
-		);
-	}else {
-		std::lock_guard lock(m_rate_limit_mut);
-		m_rate_limited_requests.insert(
-			ranges::upper_bound(m_rate_limited_requests, tp, std::less{}, &rate_limit_entry::until),
-			{ major_param_id_,tp, empty_vector }
-		);
-	}
-
-	auto timer = std::make_unique<boost::asio::system_timer>(m_ioc);
-	timer->expires_at(tp);
-	timer->async_wait([this, major_param_id_, t = std::move(timer)](auto ec)mutable {
-		if (!ec)
-			resend_rate_limted_requests_for(major_param_id_);
-	});
-}
-
-//returns weather or not it was rate_limited
-bool http_connection2::check_rate_limit(uint64_t id, discord_request& rq) {
-	std::lock_guard lock(m_rate_limit_mut);
-	
-	const auto it = ranges::find(m_rate_limited_requests, id, &rate_limit_entry::id);
-	if (it != m_rate_limited_requests.end()) {
-		auto& vec = it->requests;
-		vec.push_back(std::move(rq));
-		return true;
-	}else {
-		return false;
-	}
-}
+// void http_connection2::resend_rate_limted_requests_for(uint64_t id) {
+// 	//auto v = *ranges::lower_bound(m_rate_limited_requests, id, std::less(), get_n<1>());;
+//
+// 	auto requests = [&]() {//iife to guard mutex
+// 		std::lock_guard lock(m_rate_limit_mut);
+// 		auto ret = std::move(m_rate_limited_requests.front());
+// 		m_rate_limited_requests.erase(m_rate_limited_requests.begin());
+// 		return ret;
+// 	}();
+// 	
+// 	for(auto& r: requests.requests) {
+// 		send(std::move(r));
+// 	}	
+// }
+//
+// void http_connection2::rate_limit_id(uint64_t major_param_id_, std::chrono::system_clock::time_point tp, std::optional<discord_request> rq) {
+// 	if(rq.has_value()) {
+// 		std::lock_guard lock(m_rate_limit_mut);
+// 		m_rate_limited_requests.insert(
+// 			ranges::upper_bound(m_rate_limited_requests, tp, std::less{}, &rate_limit_entry::until),
+// 			{ major_param_id_,tp, std::vector{std::move(rq.value())} }
+// 		);
+// 	}else {
+// 		std::lock_guard lock(m_rate_limit_mut);
+// 		m_rate_limited_requests.insert(
+// 			ranges::upper_bound(m_rate_limited_requests, tp, std::less{}, &rate_limit_entry::until),
+// 			{ major_param_id_,tp, empty_vector }
+// 		);
+// 	}
+//
+// 	auto timer = std::make_unique<boost::asio::system_timer>(m_ioc);
+// 	timer->expires_at(tp);
+// 	timer->async_wait([this, major_param_id_, t = std::move(timer)](auto ec)mutable {
+// 		if (!ec)
+// 			resend_rate_limted_requests_for(major_param_id_);
+// 	});
+// }
+//
+// //returns weather or not it was rate_limited
+// bool http_connection2::check_rate_limit(uint64_t id, discord_request& rq) {
+// 	std::lock_guard lock(m_rate_limit_mut);
+// 	
+// 	const auto it = ranges::find(m_rate_limited_requests, id, &rate_limit_entry::id);
+// 	if (it != m_rate_limited_requests.end()) {
+// 		auto& vec = it->requests;
+// 		vec.push_back(std::move(rq));
+// 		return true;
+// 	}else {
+// 		return false;
+// 	}
+// }
 
 /*
 void http_connection2::connect() {

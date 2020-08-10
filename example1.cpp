@@ -37,7 +37,7 @@ cerwy::task<void> thingy(const Guild& g, shard& s) {
 	}
 }
 
-
+//test for crashing
 void test_transform_audio_thingy() {
 	audio_frame framy;
 	framy.optional_data_storage.resize(44100 * 20 * 2 / 1000);
@@ -52,7 +52,7 @@ void test_transform_audio_thingy() {
 
 //spam bot
 int main() {
-	test_transform_audio_thingy();
+	//test_transform_audio_thingy();
 	//thingy_to_debugy();
 
 
@@ -120,7 +120,7 @@ int main() {
 							   embed_field().set_name("abc").set_value("a+b=c"),
 							   embed_field()
 							   .set_is_inline(true).set_name("better field").set_value("awesome"),
-							   embed_field().set_name("more awesome").set_value("best field")
+							   embed_field().set_is_inline(true).set_name("more awesome").set_value("best field")
 						   )
 			);
 		} else if (msg.content() == "hamtaroland_worldy") {

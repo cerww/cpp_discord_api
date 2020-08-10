@@ -5,17 +5,6 @@
 #include <span>
 #include <fmt/format.h>
 
-namespace opus_params {//copied from discord.py
-	constexpr int sampling_rate = 48000;
-	constexpr int channels = 2;
-	constexpr int frame_length = 20;
-	constexpr int sample_size = 4;//# (bit_rate / 8) * CHANNELS   (bit_rate == 16)
-	constexpr int samples_per_frame = int(sampling_rate * frame_length) / 1000;
-
-	constexpr int frame_size = samples_per_frame * sample_size;
-}
-
-
 struct audio_frame {
 	std::span<int16_t> frame_data = {};
 	int sampling_rate = 0;
@@ -27,7 +16,6 @@ struct audio_frame {
 };
 
 inline audio_frame resample_meh(const audio_frame& frame, int new_channel_count, int new_sampling_rate) {
-
 	if (new_channel_count == frame.channel_count && new_sampling_rate == frame.sampling_rate) {
 		const bool frame_is_using_storage = frame.frame_data.data() == frame.optional_data_storage.data();
 		if (!frame_is_using_storage) {
@@ -53,7 +41,6 @@ inline audio_frame resample_meh(const audio_frame& frame, int new_channel_count,
 
 	const double size_ratio = (double)needed_size / (double)frame.frame_data.size();
 	const double sampling_rate_ratio = (double)new_sampling_rate / (double)frame.sampling_rate;
-
 
 	int last_idx_used = -1;
 

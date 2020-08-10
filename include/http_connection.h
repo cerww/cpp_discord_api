@@ -8,6 +8,7 @@
 #include "../common/task.h"
 #include "../common/async_mutex.h"
 #include "../common/concurrent_async_queue.h"
+#include "../common/rate_limiter.h"
 //#include <variant>
 
 struct discord_request {
@@ -229,9 +230,10 @@ private:
 
 	cerwy::task<void> start_sending();
 	
-	void resend_rate_limted_requests_for(uint64_t);
-	void rate_limit_id(uint64_t major_param_id_, std::chrono::system_clock::time_point, std::optional<discord_request>);
-	bool check_rate_limit(uint64_t id, discord_request& rq);
+	// void resend_rate_limted_requests_for(uint64_t);
+	// void rate_limit_id(uint64_t major_param_id_, std::chrono::system_clock::time_point, std::optional<discord_request>);
+	// bool check_rate_limit(uint64_t id, discord_request& rq);
+	
 	
 	//void connect();
 	cerwy::task<void> reconnect();
@@ -254,7 +256,7 @@ private:
 	std::vector<rate_limit_entry> m_rate_limited_requests{};
 	std::mutex m_rate_limit_mut;
 	
-	
+	rate_limiter<uint64_t, discord_request, std::chrono::system_clock> m_rate_limiter;
 	
 };
 

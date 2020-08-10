@@ -28,6 +28,10 @@ struct partial_message {
 	std::span<const attachment> attachments() const noexcept {
 		return m_attachments;
 	};
+	
+	std::span<const embed> embeds()const noexcept {
+		return m_embeds;
+	}
 
 private:
 	snowflake m_author_id;
@@ -42,16 +46,14 @@ private:
 	bool m_tts = false;
 	bool m_mention_everyone = false;
 
-
-	friend struct client;
 	friend struct internal_shard;
 	friend void from_json(const nlohmann::json& json, partial_message& msg);
 	friend struct msg_update_access;
 };
 
+constexpr int asudhgasdasd = sizeof(partial_message);
 
-struct guild_text_message :partial_message {
-	
+struct guild_text_message :partial_message {	
 	const text_channel& channel() const noexcept;;
 	const Guild& guild() const noexcept;
 	const guild_member& author() const noexcept;
@@ -74,6 +76,7 @@ private:
 	std::vector<guild_member> m_mentions;
 	std::vector<const guild_role*> m_mention_roles;
 	text_channel* m_channel = nullptr;
+	
 	friend struct internal_shard;
 	friend struct msg_update_access;
 };
@@ -98,6 +101,8 @@ private:
 	friend struct internal_shard;
 	friend struct msg_update_access;
 };
+
+constexpr int asjdihadasdasda = sizeof(dm_message);
 
 void from_json(const nlohmann::json& json, partial_message& msg);
 

@@ -5,6 +5,7 @@
 #include "init_shard.h"
 #include "voice_connect_impl.h"
 #include "../common/executor_binder.h"
+#include <iostream>
 //#include <boost/beast/>
 
 //copy paste start
@@ -396,11 +397,12 @@ void internal_shard::procces_event<event_name::GUILD_CREATE>(nlohmann::json& dat
 		request_guild_members(guild);		
 	} else if(m_intents.has_intents(intent::GUILD_MEMBERS)){
 		for (const auto& member_json : data["members"]) {
+			std::cout << "asdasda" << std::endl;
 			auto member = member_json.get<guild_member>();
 			member.m_guild = &guild;
 			const auto id = member.id();
 			guild.m_members.insert(std::make_pair(id, std::move(member)));
-		}		
+		}
 	}
 
 	const auto channels = data["channels"].get_ref<const nlohmann::json::array_t&>();
@@ -471,7 +473,7 @@ void internal_shard::procces_event<event_name::GUILD_CREATE>(nlohmann::json& dat
 
 template<>
 void internal_shard::procces_event<event_name::GUILD_MEMBERS_CHUNK>(nlohmann::json& e) {
-	std::cout << e.dump(0) << std::endl;
+	//std::cout << e.dump(0) << std::endl;
 	Guild& g = m_guilds[e["guild_id"].get<snowflake>()];
 	for (const auto& i : e["members"]) {
 		auto temp_member = i.get<guild_member>();
@@ -490,8 +492,7 @@ void internal_shard::procces_event<event_name::GUILD_MEMBERS_CHUNK>(nlohmann::js
 		m_chunks_left_for_guild.erase(g.id());
 		g.m_is_ready = true;
 		apply_presences(g.m_presences, g);
-
-
+		
 		m_parent->on_guild_ready(g, *this);
 		
 		replay_events_for(g.id());
@@ -568,6 +569,7 @@ void internal_shard::procces_event<event_name::MESSAGE_CREATE>(nlohmann::json& e
 		auto& guild = ch.guild();
 		
 		if(!guild.m_is_ready) {
+			std::cout << "aaaaaaaaaaa" << std::endl;
 			m_backed_up_events[guild.id()].emplace_back(std::move(e), event_name::MESSAGE_CREATE);
 			return;
 		}
