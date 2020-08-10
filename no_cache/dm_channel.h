@@ -7,6 +7,7 @@
 #include <deque>
 #include "item_cache.h"
 #include <span>
+#include "../common/ref_stable_map.h"
 
 namespace cacheless {
 

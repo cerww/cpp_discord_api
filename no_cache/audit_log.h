@@ -6,6 +6,7 @@
 #include <span>
 #include <unordered_set>
 #include <set>
+#include "../common/common/optional_from_json.h"
 
 namespace cacheless {
 enum class audit_log_entry_type {

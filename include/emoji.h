@@ -1,10 +1,8 @@
 #pragma once
 #include <nlohmann/json.hpp>
-#include "snowflake.h"
-#include <range/v3/core.hpp>
 #include <span>
 #include <fmt/core.h>
-#include <fmt/format.h>
+#include "snowflake.h"
 
 
 struct partial_emoji {

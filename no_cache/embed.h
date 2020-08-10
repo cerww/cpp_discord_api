@@ -1,6 +1,7 @@
 #pragma once
 #include <nlohmann/json.hpp>
 #include "timestamp.h"
+#include "../common/common/optional_from_json.h"
 
 //i can prolly use mixins to do this in half as many lines
 

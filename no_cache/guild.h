@@ -1,18 +1,17 @@
 #pragma once
+#include "snowflake.h"
 #include "partial_channel.h"
 #include "text_channel.h"
 #include "guild_member.h"
 #include <nlohmann/json.hpp>
-#include "snowflake.h"
 #include "timestamp.h"
 #include "voice_channel.h"
 #include "partial_guild.h"
 #include "voice_state.h"
-#include "optional_ref.h"
-#include <range/v3/view/all.hpp>
 #include "../common/higher_order_functions.h"
 #include "channel_catagory.h"
 #include "presence_update.h"
+#include "../common/ref_stable_map.h"
 
 namespace cacheless {
 

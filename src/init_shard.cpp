@@ -31,7 +31,10 @@ cerwy::task<void> init_shard(const int shard_number, internal_shard& me, boost::
 		me.m_client = std::make_unique<rename_later_5>(m_socket);
 		rename_later_5& m_client = *me.m_client;
 
-		co_await me.connect_http_connection();
+		auto ec = co_await me.connect_http_connection();
+		if(ec) {
+			std::cout << "connect http " << ec << std::endl;
+		}
 
 		boost::beast::multi_buffer buffer = {};
 

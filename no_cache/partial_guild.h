@@ -8,6 +8,9 @@
 #include <range/v3/all.hpp>
 #include <optional>
 #include "optional_ref.h"
+#include "guild_member.h"
+#include "text_channel.h"
+#include "../common/ref_stable_map.h"
 
 namespace cacheless {
 struct partial_guild {
@@ -40,7 +43,7 @@ struct partial_guild {
 	int verification_level = 0;
 	int default_message_notifications = 0;//what is this for ;-;
 	bool explicit_content_filter = false;
-	ref_stable_map<snowflake, guild_role> roles{};
+	ref_stable_map<snowflake, guild_role> roles;
 	std::vector<emoji> emojis{};
 	std::vector<std::string> features{};
 	int mfa_level = 0;

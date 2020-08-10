@@ -3,6 +3,7 @@
 #include <optional>
 #include "User.h"
 #include "timestamp.h"
+#include "../common/common/optional_from_json.h"
 
 namespace cacheless {
 struct integration_account {

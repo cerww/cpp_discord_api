@@ -11,7 +11,7 @@
 
 struct snowflake {
 	constexpr bool operator==(const snowflake& other) const noexcept = default;
-	constexpr std::strong_ordering operator<=>(const snowflake& other) const noexcept = default;
+	//constexpr std::strong_ordering operator<=>(const snowflake& other) const noexcept = default;
 
 	constexpr snowflake() = default;
 	~snowflake() = default;

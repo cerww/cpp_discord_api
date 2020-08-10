@@ -3,9 +3,10 @@
 #include "intents.h"
 #include <boost/asio.hpp>
 #include <variant>
-#include "shard.h"
+#include "internal_shard.h"
 #include "unavailable_guild.h"
 #include "guild_member_update.h"
+#include "events.h"
 
 
 namespace cacheless {
@@ -41,72 +42,66 @@ struct client {
 
 	size_t num_shards() const noexcept { return m_num_shards; }
 
-	std::function<void(guild_text_message, shard&)> on_guild_text_msg = nothing;
-	std::function<void(dm_message, shard&)> on_dm_msg = nothing;
+	std::function<void(events::guild_message_create, shard&)> on_guild_text_msg = nothing;
+	std::function<void(events::dm_message_create, shard&)> on_dm_msg = nothing;
 	
-	std::function<void(text_channel, shard&)> on_guild_text_channel_create = nothing;
-	std::function<void(channel_catagory, shard&)> on_guild_channel_catagory_create = nothing;
-	std::function<void(voice_channel, shard&)> on_guild_voice_channel_create = nothing;
-	std::function<void(dm_channel, shard&)> on_dm_channel_create = nothing;
+	std::function<void(events::text_channel_create, shard&)> on_guild_text_channel_create = nothing;
+	std::function<void(events::channel_catagory_create, shard&)> on_guild_channel_catagory_create = nothing;
+	std::function<void(events::voice_channel_create, shard&)> on_guild_voice_channel_create = nothing;
+	std::function<void(events::dm_channel_create, shard&)> on_dm_channel_create = nothing;
 
-	std::function<void(text_channel, shard&)> on_guild_text_channel_update = nothing;
-	std::function<void(dm_channel, shard&)> on_dm_channel_update = nothing;
-	std::function<void(voice_channel, shard&)> on_guild_voice_channel_update = nothing;
-	std::function<void(channel_catagory, shard&)> on_guild_channel_catagory_update = nothing;
+	std::function<void(events::text_channel_update, shard&)> on_guild_text_channel_update = nothing;
+	std::function<void(events::dm_channel_update, shard&)> on_dm_channel_update = nothing;
+	std::function<void(events::voice_channel_update, shard&)> on_guild_voice_channel_update = nothing;
+	std::function<void(events::channel_catagory_update, shard&)> on_guild_channel_catagory_update = nothing;
 
-	std::function<void(text_channel, shard&)> on_guild_text_channel_delete= nothing;
-	std::function<void(dm_channel, shard&)> on_dm_channel_delete = nothing;
-	std::function<void(voice_channel, shard&)> on_guild_voice_channel_delete = nothing;
-	std::function<void(channel_catagory, shard&)> on_guild_channel_catagory_delete = nothing;
+	std::function<void(events::text_channel_delete, shard&)> on_guild_text_channel_delete= nothing;
+	std::function<void(events::dm_channel_delete, shard&)> on_dm_channel_delete = nothing;
+	std::function<void(events::voice_channel_delete, shard&)> on_guild_voice_channel_delete = nothing;
+	std::function<void(events::channel_catagory_delete, shard&)> on_guild_channel_catagory_delete = nothing;
 
-	std::function<void(snowflake,guild_member, shard&)> on_guild_member_add = nothing;
-	std::function<void(snowflake,user, shard&)> on_guild_member_remove = nothing;
+	std::function<void(events::guild_member_add,shard&)> on_guild_member_add = nothing;
+	std::function<void(events::guild_member_remove, shard&)> on_guild_member_remove = nothing;
 	
-	std::function<void(guild_member_update, shard&)> on_guild_member_update = nothing;
-	std::function<void(snowflake, std::vector<guild_member>,int,int, shard&)> on_guild_member_chunk = nothing;	
+	std::function<void(events::guild_member_update, shard&)> on_guild_member_update = nothing;
+	std::function<void(events::guild_members_chunk, shard&)> on_guild_member_chunk = nothing;	
 	
-	std::function<void(partial_guild, shard&)> on_guild_update = nothing;
-	std::function<void(unavailable_guild,shard&)> on_guild_remove = nothing;
-	std::function<void(snowflake, user, shard&)> on_ban_add = nothing;
-	std::function<void(snowflake, user, shard&)> on_ban_remove = nothing;
-	std::function<void(snowflake, guild_role, shard&)> on_role_create = nothing;
-	std::function<void(snowflake, guild_role, shard&)> on_role_update = nothing;
-	std::function<void(snowflake, snowflake, shard&)> on_role_delete = nothing;
+	std::function<void(events::guild_update, shard&)> on_guild_update = nothing;
+	std::function<void(events::guild_delete,shard&)> on_guild_remove = nothing;
+	std::function<void(events::guild_ban_add, shard&)> on_ban_add = nothing;
+	std::function<void(events::guild_ban_remove, shard&)> on_ban_remove = nothing;
+	std::function<void(events::guild_role_create, shard&)> on_role_create = nothing;
+	std::function<void(events::guild_role_update, shard&)> on_role_update = nothing;
+	std::function<void(events::guild_role_delete, shard&)> on_role_delete = nothing;
 	
-	std::function<void(dm_msg_update, shard&)> on_dm_msg_update = nothing;
-	std::function<void(snowflake,guild_msg_update, shard&)> on_guild_msg_update = nothing;
+	std::function<void(events::dm_message_update, shard&)> on_dm_msg_update = nothing;
+	std::function<void(events::guild_message_update, shard&)> on_guild_msg_update = nothing;
 	
-	std::function<void(snowflake, snowflake, shard&)> on_dm_msg_delete = nothing;
-	std::function<void(snowflake, snowflake,snowflake, shard&)> on_guild_msg_delete = nothing;
+	std::function<void(events::dm_message_delete, shard&)> on_dm_msg_delete = nothing;
+	std::function<void(events::guild_message_delete, shard&)> on_guild_msg_delete = nothing;
 	
-	std::function<void(snowflake, snowflake, guild_member, shard&)> on_guild_typing_start = nothing;
-	std::function<void(snowflake, snowflake, shard&)> on_dm_typing_start = nothing;
+	std::function<void(events::guild_typing_start, shard&)> on_guild_typing_start = nothing;
+	std::function<void(events::dm_typing_start, shard&)> on_dm_typing_start = nothing;
 
-	std::function<void(snowflake/*guild id*/, snowflake/*channel id*/,snowflake, guild_member, partial_emoji, shard&)> on_guild_reaction_add = nothing;
-	std::function<void(snowflake, snowflake, snowflake,partial_emoji, shard&)> on_dm_reaction_add = nothing;
+	std::function<void(events::guild_message_reaction_add, shard&)> on_guild_reaction_add = nothing;
+	std::function<void(events::dm_message_reaction_add, shard&)> on_dm_reaction_add = nothing;
 
-	std::function<void(snowflake, snowflake, snowflake, snowflake, partial_emoji, shard&)> on_guild_reaction_remove = nothing;
-	std::function<void(snowflake, snowflake, snowflake, partial_emoji, shard&)> on_dm_reaction_remove = nothing;
+	std::function<void(events::guild_message_reaction_remove, shard&)> on_guild_reaction_remove = nothing;
+	std::function<void(events::dm_message_reaction_remove, shard&)> on_dm_reaction_remove = nothing;
 
-	std::function<void(snowflake, snowflake, snowflake, shard&)> on_guild_reaction_remove_all = nothing;
-	std::function<void(snowflake, snowflake, shard&)> on_dm_reaction_remove_all = nothing;
+	std::function<void(events::guild_message_reaction_remove_all, shard&)> on_guild_reaction_remove_all = nothing;
+	std::function<void(events::dm_message_reaction_remove_all, shard&)> on_dm_reaction_remove_all = nothing;
 
-	std::function<void(presence_update_event, shard&)> on_presence_update = nothing;
+	std::function<void(events::presence_update_event, shard&)> on_presence_update = nothing;
 
-	std::function<void(Guild, shard&)> on_guild_ready = nothing;
+	std::function<void(events::guild_create, shard&)> on_guild_ready = nothing;
 
-	std::function<void(snowflake,snowflake,std::vector<snowflake>, shard&)> on_message_bulk_delete= nothing;
-	std::function<void(snowflake, std::vector<snowflake>, shard&)> on_dm_message_bulk_delete = nothing;
+	std::function<void(events::guild_message_delete_bulk, shard&)> on_message_bulk_delete= nothing;
+	std::function<void(events::dm_message_delete_bulk, shard&)> on_dm_message_bulk_delete = nothing;
 	std::function<void(shard&)> on_ready = nothing;
-	std::function<void(snowflake, std::vector<emoji>, shard&)> on_emoji_update = nothing;
-
-	
-
-	//Status status = Status::online;
-	//timed_task_executor heartbeat_sender;
+	std::function<void(events::guild_emoji_update, shard&)> on_emoji_update = nothing;
 
 	void stop();
-
 
 	virtual void rate_limit_global(std::chrono::system_clock::time_point);
 
@@ -123,7 +118,7 @@ struct client {
 		//use mutex or atomic?
 
 		std::lock_guard lock(m_identify_mut);
-		//5.1s to account for some random delay that might happen 
+		//5.1s to account for some random delay that might happen? 
 		m_last_identify = std::max(std::chrono::steady_clock::now(), m_last_identify + std::chrono::milliseconds(5100));
 		return m_last_identify;
 	}
@@ -156,7 +151,7 @@ protected:
 	std::mutex m_global_rate_limit_mut;
 
 	std::mutex m_shard_mut;
-	//std::vector<std::unique_ptr<internal_shard>> m_shards;
+	std::vector<std::unique_ptr<internal_shard>> m_shards;
 	std::vector<std::thread> m_threads;
 
 	std::variant<boost::asio::io_context, boost::asio::io_context*> m_ioc{};

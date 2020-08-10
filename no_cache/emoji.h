@@ -1,10 +1,7 @@
 #pragma once
 #include <nlohmann/json.hpp>
-#include "snowflake.h"
-#include <range/v3/core.hpp>
-#include <span>
 #include <fmt/core.h>
-#include <fmt/format.h>
+#include "snowflake.h"
 
 namespace cacheless {
 
@@ -15,8 +12,8 @@ struct partial_emoji {
 		name(std::move(name)) {}
 
 	std::string to_string() const {
-		if (id== snowflake(0)) {
-			return ":" + name+ ":";
+		if (id == snowflake(0)) {
+			return ":" + name + ":";
 		}
 		if (animated) {
 			return fmt::format("<a:{}:{}>", name, id);
@@ -26,7 +23,7 @@ struct partial_emoji {
 	}
 
 	std::string to_reaction_string() const {
-		if (id== snowflake(0)) {
+		if (id == snowflake(0)) {
 			return ":" + name + ":";
 		}
 		if (animated) {
@@ -39,7 +36,7 @@ struct partial_emoji {
 	snowflake id = snowflake(0);
 	std::string name;
 	bool animated = false;
-	
+
 	friend void from_json(const nlohmann::json&, partial_emoji&);
 };
 

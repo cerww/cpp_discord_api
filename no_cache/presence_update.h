@@ -54,36 +54,6 @@ inline void from_json(const nlohmann::json& json,client_status& status) {
 	}
 }
 
-struct presence_update_event {
-	user user;
-	std::vector<snowflake> roles;
-	std::optional<activity> game;
-	snowflake guild_id;
-	Status status;
-	std::vector<activity> activities;
-	client_status client_status;
-	std::optional<timestamp> premium_since;
-	std::optional<std::string> nick;
-	
-};
 
-inline void from_json(const nlohmann::json& json, presence_update_event& e) {
-	json["user"].get_to(e.user);
-	json["roles"].get_to(e.roles);
-	json["game"].get_to(e.roles);
-	json["guild_id"].get_to(e.roles);
-	json["status"].get_to(e.roles);
-	json["activities"].get_to(e.roles);
-	json["client_status"].get_to(e.roles);
-	if(json.contains("premium_since")) {
-		e.premium_since = json["premium_since"].get<timestamp>();
-	}
-
-	if(json.contains("nick")) {
-		e.nick = json["nick"].get<std::string>();
-	}
-
-	
-}
 
 };

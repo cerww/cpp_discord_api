@@ -17,6 +17,7 @@ struct guild_role {
 	bool managed = false;
 	bool mentionable = false;
 	bool hoist = false;
+	
 	friend void from_json(const nlohmann::json& json, guild_role& other);
 };
 

@@ -5,6 +5,10 @@
 #include <span>
 
 namespace cacheless {
+
+	struct partial_guild;
+	struct channel_catagory;
+
 struct partial_guild_channel :partial_channel {
 	snowflake guild_id;
 	bool nsfw = false;
@@ -27,7 +31,3 @@ inline void from_json(const nlohmann::json& json, partial_guild_channel& g) {
 	g.parent_id = json.value("parent_id", snowflake());
 }
 };
-namespace potato {
-	struct asdasd {
-	};
-}

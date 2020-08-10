@@ -1,6 +1,7 @@
 #pragma once
 #include "snowflake.h"
 #include "User.h"
+#include "../common/common/optional_from_json.h"
 #include <optional>
 
 enum class webhook_type {

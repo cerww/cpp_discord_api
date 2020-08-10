@@ -18,15 +18,11 @@ struct voice_state {
 	std::optional<snowflake> guild_id;
 	
 	
-	friend struct internal_shard;
 	friend void from_json(const nlohmann::json& json, voice_state& vs);
 };
 
 struct voice_state2 :voice_state {
-	snowflake guild_id() const noexcept { return m_guild_id; }
-
-private:
-	snowflake m_guild_id;
+	snowflake guild_id;
 	friend void from_json(const nlohmann::json& json, voice_state2& vs);
 };
 
@@ -39,7 +35,11 @@ inline void from_json(const nlohmann::json& json, voice_state& vs) {
 	vs.self_deaf = json["self_deaf"].get<bool>();
 	vs.self_mute = json["self_mute"].get<bool>();
 	vs.suppress = json["suppress"].get<bool>();
-	vs.member = json.value("member", std::optional<guild_member>());
+	
+	if (json.contains("member")) {
+		vs.member = json["member"].get<guild_member>();
+	}
+	
 	if(json.contains("guild_id")) {
 		vs.guild_id = json["guild_id"].get<snowflake>();
 	}
@@ -47,7 +47,7 @@ inline void from_json(const nlohmann::json& json, voice_state& vs) {
 
 inline void from_json(const nlohmann::json& json, voice_state2& vs) {
 	from_json(json, static_cast<voice_state&>(vs));
-	vs.m_guild_id = json["guild_id"].get<snowflake>();
+	vs.guild_id = json["guild_id"].get<snowflake>();
 }
 
 struct voice_region {

@@ -92,6 +92,7 @@ int main() {
 		} else if (msg.content() == "make new channel") {
 			auto ch = s.create_text_channel(msg.guild(), "blargylandy").get();
 		} else if (msg.content() == "rolesy") {
+			std::cout << "rolesy" << std::endl;
 			std::string stuff =
 					msg.author().roles() |
 					ranges::views::transform(&guild_role::name) |

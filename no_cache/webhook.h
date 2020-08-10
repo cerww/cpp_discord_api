@@ -2,6 +2,7 @@
 #include "snowflake.h"
 #include "User.h"
 #include <optional>
+#include "../common/common/optional_from_json.h"
 
 
 namespace cacheless {

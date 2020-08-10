@@ -36,4 +36,6 @@ private:
 static constexpr int ashjidgasdasd = sizeof(timestamp);
 
 inline void from_json(const nlohmann::json&, timestamp& t) { }
+inline void to_json(nlohmann::json&, const timestamp& t) { }
+
 }

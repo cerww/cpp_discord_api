@@ -1,7 +1,9 @@
 #include "../common/mp3_audio_source.h"
 #define MINIMP3_IMPLEMENTATION
+#pragma warning(push,0)
 #include <minimp3/minimp3.h>
 #include <minimp3/minimp3_ex.h>
+#pragma warning(pop)
 #include <fmt/format.h>
 #include <fstream>
 #include <array>

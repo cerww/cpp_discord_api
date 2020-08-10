@@ -1,26 +1,24 @@
 #pragma once
 #include <nlohmann/json.hpp>
-#include <type_traits>
-#include "../common/ref_stable_map.h"
-#include <charconv>
-#include "../common/iterator_facade.h"
-#include <compare>
-#include <fmt/format.h>
 #include <utility>
+#include <type_traits>
+#include <charconv>
+#include <fmt/core.h>
+#include <fmt/format.h>
 
 namespace cacheless {
 
 struct snowflake {
-		
-	constexpr std::strong_ordering operator<=>(const snowflake& other) const noexcept = default;
+
+	//constexpr std::strong_ordering operator<=>(const snowflake& other) const noexcept = default;
 	constexpr bool operator==(const snowflake& other) const noexcept = default;
 
 	snowflake() = default;
-	explicit snowflake(uint64_t a):val(a){}
-	
+
+	explicit snowflake(uint64_t a):
+		val(a) {}
+
 	uint64_t val = 0;//no reason to be private?
-
-
 };
 
 inline void to_json(nlohmann::json& json, const snowflake& wawt) {
@@ -35,8 +33,6 @@ inline void from_json(const nlohmann::json& in, snowflake& out) {
 	const auto& str = in.get_ref<const std::string&>();
 	std::from_chars(str.data(), str.data() + str.size(), out.val);
 }
-
-
 
 
 struct id_equal_to {
@@ -72,15 +68,18 @@ struct fmt::formatter<cacheless::snowflake, Char> :fmt::formatter<uint64_t, Char
 
 	template<typename FormatContext>
 	auto format(const cacheless::snowflake& val, FormatContext& ctx) {
-		return formatter<uint64_t>::format(val.val, ctx);
+		return fmt::formatter<uint64_t>::format(val.val, ctx);
 	}
 };
 
+
 namespace std {
-	template<>
-	struct hash<cacheless::snowflake> {
-		size_t operator()(cacheless::snowflake s) const noexcept {
-			return std::hash<uint64_t>()(s.val);
-		}
-	};
+
+template<>
+struct hash<cacheless::snowflake> {
+	size_t operator()(cacheless::snowflake s) const noexcept {
+		return std::hash<uint64_t>()(s.val);
+	}
+};
+
 }

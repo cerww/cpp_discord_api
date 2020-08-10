@@ -11,7 +11,6 @@ struct channel_catagory;
 struct Guild;
 
 struct guild_channel :partial_guild_channel {
-	snowflake guild_id;
 
 	friend struct internal_shard;
 	friend void from_json(const nlohmann::json&, guild_channel& g);
