@@ -21,8 +21,8 @@ struct guild_role {
 private:
 	snowflake m_id;
 	std::string m_name;
-	int m_position = 0;
 	permission m_permissions;
+	int m_position = 0;
 	bool m_managed = false;
 	bool m_mentionable = false;
 	bool m_hoist = false;

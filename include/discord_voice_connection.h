@@ -40,10 +40,7 @@ struct discord_voice_connection_impl :
 
 	cerwy::task<void> send_silent_frames();
 
-	void close() {
-		is_alive = false;
-		socket.close(1000);
-	}
+	void close();
 
 	template<typename T>
 	cerwy::task<void> send_voice(const T& data) {		
@@ -128,7 +125,7 @@ struct discord_voice_connection_impl :
 	uint32_t ssrc = 0;
 
 	union {
-		const Guild* channel;
+		const Guild* guild;
 
 		//used in setting up vc only
 		cerwy::promise<void>* waiter = nullptr;
@@ -137,6 +134,7 @@ struct discord_voice_connection_impl :
 		//while setting up, the coroutine has access to the channel
 	};
 
+	internal_shard* shard_ptr;
 
 	int delay = 0;
 	std::atomic<bool> is_alive = true;

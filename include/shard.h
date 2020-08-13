@@ -24,8 +24,8 @@
 struct shard {
 protected:
 
-	explicit shard(int shard_number, client* t_parent, boost::asio::io_context& ioc,std::string auth_token);
-	
+	explicit shard(int shard_number, client* t_parent, boost::asio::io_context& ioc, std::string auth_token);
+
 public:
 	
 	//content
@@ -36,14 +36,14 @@ public:
 	rq::send_message send_message(const partial_channel& channel, std::string content);
 
 	rq::send_message send_message(const partial_channel& channel, std::string content, const embed& embed);
-	
+
 	template<int flags>
-	rq::send_message send_message(const partial_channel& channel, std::string content,const allowed_mentions<flags>&);
+	rq::send_message send_message(const partial_channel& channel, std::string content, const allowed_mentions<flags>&);
 
 	template<int flags>
 	rq::send_message send_message(const partial_channel& channel, std::string content, const embed& embed, const allowed_mentions<flags>&);
 
-	
+
 	rq::add_role add_role(const partial_guild&, const guild_member&, const guild_role&);
 	rq::remove_role remove_role(const partial_guild&, const guild_member&, const guild_role&);
 	rq::modify_member remove_all_roles(const partial_guild&, const guild_member&);
@@ -87,14 +87,14 @@ public:
 	rq::add_reaction add_reaction(const partial_message&, const partial_emoji&);
 	rq::delete_own_reaction delete_own_reaction(const partial_message& msg, const partial_emoji&);
 	rq::delete_own_reaction delete_own_reaction(const partial_message& msg, const reaction&);
-	rq::delete_user_reaction delete_user_reaction(const partial_message& msg, const partial_emoji&,const user&);
+	rq::delete_user_reaction delete_user_reaction(const partial_message& msg, const partial_emoji&, const user&);
 	rq::delete_user_reaction delete_user_reaction(const partial_message& msg, const reaction&, const user&);
 	rq::get_reactions get_reactions(const partial_message& msg, const partial_emoji&);
-	rq::get_reactions get_reactions(const partial_message& msg,const reaction&);
+	rq::get_reactions get_reactions(const partial_message& msg, const reaction&);
 	rq::delete_all_reactions delete_all_reactions(const partial_message& msg);
 	rq::delete_all_reactions_emoji delete_all_reactions_emoji(const partial_message& msg, const partial_emoji&);
 	rq::delete_all_reactions_emoji delete_all_reactions_emoji(const partial_message& msg, const reaction&);
-	
+
 	rq::typing_start typing_start(const partial_channel&);
 	rq::delete_channel_permission delete_channel_permissions(const partial_guild_channel&, const permission_overwrite&);
 
@@ -197,6 +197,46 @@ public:
 		return webhook_client(wh.id(), std::string(wh.token().value()), m_strand);
 	}
 
+	template<typename fn>
+	void clear_deleted_data_if(fn&& pred) {
+		if constexpr (std::is_invocable_v<fn, std::chrono::steady_clock::time_point, const Guild&>) {
+			auto it = std::remove_if(m_deleted_guilds.begin(), m_deleted_guilds.end(), [&](const auto& thing) {
+				return std::invoke(pred, thing.first, thing.second.value());
+			});
+			m_deleted_guilds.erase(it, m_deleted_guilds.end());
+		}
+		if constexpr (std::is_invocable_v<fn, std::chrono::steady_clock::time_point, const text_channel&>) {
+			auto it = std::remove_if(m_deleted_text_channels.begin(), m_deleted_text_channels.end(), [&](const auto& thing) {
+				return std::invoke(pred, thing.first, thing.second.value());
+			});
+			m_deleted_text_channels.erase(it, m_deleted_text_channels.end());
+		}
+		if constexpr (std::is_invocable_v<fn, std::chrono::steady_clock::time_point, const voice_channel&>) {
+			auto it = std::remove_if(m_deleted_voice_channels.begin(), m_deleted_voice_channels.end(), [&](const auto& thing) {
+				return std::invoke(pred, thing.first, thing.second.value());
+			});
+			m_deleted_voice_channels.erase(it, m_deleted_voice_channels.end());
+		}
+		if constexpr (std::is_invocable_v<fn, std::chrono::steady_clock::time_point, const channel_catagory&>) {
+			auto it = std::remove_if(m_deleted_channel_catagories.begin(), m_deleted_channel_catagories.end(), [&](const auto& thing) {
+				return std::invoke(pred, thing.first, thing.second.value());
+			});
+			m_deleted_channel_catagories.erase(it, m_deleted_channel_catagories.end());
+		}
+		if constexpr (std::is_invocable_v<fn, std::chrono::steady_clock::time_point, const dm_channel&>) {
+			auto it = std::remove_if(m_deleted_dm_channels.begin(), m_deleted_dm_channels.end(), [&](const auto& thing) {
+				return std::invoke(pred, thing.first, thing.second.value());
+			});
+			m_deleted_dm_channels.erase(it, m_deleted_dm_channels.end());
+		}
+		if constexpr (std::is_invocable_v<fn, std::chrono::steady_clock::time_point, const guild_member&>) {
+			auto it = std::remove_if(m_deleted_guild_members.begin(), m_deleted_guild_members.end(), [&](const auto& thing) {
+				return std::invoke(pred, thing.first, thing.second.value());
+			});
+			m_deleted_guild_members.erase(it, m_deleted_guild_members.end());
+		}
+	}
+
 protected:
 	using wsClient = rename_later_5;
 
@@ -210,29 +250,27 @@ protected:
 	template<typename T, typename ... args>
 	std::enable_if_t<!rq::has_content_type_v<T>, T> send_request(args&&...);
 
-
 	int m_shard_number = 0;
-
 	user m_self_user;
-
-
 	http_connection2 m_http_connection;
-	
-
 	boost::asio::io_context::strand m_strand;
-
 	client* m_parent = nullptr;
-
 	std::string m_auth_token;
-	
 	async_mutex m_events_mut;
-
 
 	ref_stable_map<snowflake, Guild> m_guilds;
 	ref_stable_map<snowflake, text_channel> m_text_channel_map;
 	ref_stable_map<snowflake, voice_channel> m_voice_channel_map;
 	ref_stable_map<snowflake, channel_catagory> m_channel_catagory_map;
 	ref_stable_map<snowflake, dm_channel> m_dm_channels;
+
+	std::vector<std::pair<std::chrono::steady_clock::time_point, indirect<Guild>>> m_deleted_guilds;
+	std::vector<std::pair<std::chrono::steady_clock::time_point, indirect<text_channel>>> m_deleted_text_channels;
+	std::vector<std::pair<std::chrono::steady_clock::time_point, indirect<voice_channel>>> m_deleted_voice_channels;
+	std::vector<std::pair<std::chrono::steady_clock::time_point, indirect<channel_catagory>>> m_deleted_channel_catagories;
+	std::vector<std::pair<std::chrono::steady_clock::time_point, indirect<dm_channel>>> m_deleted_dm_channels;
+	std::vector<std::pair<std::chrono::steady_clock::time_point, indirect<guild_member>>> m_deleted_guild_members;
+
 
 	bool will_have_guild(snowflake guild_id) const noexcept;
 
@@ -242,19 +280,19 @@ protected:
 
 namespace rawrland {//rename later ;-;
 
-	template<typename fut_type, typename ... Args>
-	std::pair<fut_type, discord_request> get_default_stuffs_for_request(Args&&... args) {
-		std::pair<fut_type, discord_request> retVal;
-		retVal.second.state = make_ref_count_ptr<rq::shared_state>();
+template<typename fut_type, typename ... Args>
+std::pair<fut_type, discord_request> get_default_stuffs_for_request(Args&&... args) {
+	std::pair<fut_type, discord_request> retVal;
+	retVal.second.state = make_ref_count_ptr<rq::shared_state>();
 
-		retVal.first = fut_type(retVal.second.state);
-		retVal.second.req = fut_type::request(std::forward<Args>(args)...);
+	retVal.first = fut_type(retVal.second.state);
+	retVal.second.req = fut_type::request(std::forward<Args>(args)...);
 
-		if constexpr (rq::has_content_type_v<fut_type>) {
-			retVal.second.req.set(boost::beast::http::field::content_type, fut_type::content_type);
-		}
-		return retVal;
+	if constexpr (rq::has_content_type_v<fut_type>) {
+		retVal.second.req.set(boost::beast::http::field::content_type, fut_type::content_type);
 	}
+	return retVal;
+}
 
 }
 
@@ -285,7 +323,7 @@ rq::send_message shard::send_message(const partial_channel& channel, std::string
 	nlohmann::json body = {};
 	body["content"] = std::move(content);
 	body["allowed_mentions"] = mentions_allowed;
-	
+
 	return send_request<rq::send_message>(body.dump(), channel);;
 }
 
@@ -406,8 +444,8 @@ rq::modify_role shard::modify_role(const guild_role& g, modify_role_settings<set
 template<typename ... settings>//requires sizeof...(settings)>=1
 rq::modify_webhook shard::modify_webhook(const webhook& wh, ::modify_webhook_settings<settings...> settings_) {
 	return std::apply([&](auto&& ... settings__) {
-			return modify_webhook(wh,std::forward<decltype(settings__)>(settings__)...);
-		},std::move(settings_.settings)
+						  return modify_webhook(wh, std::forward<decltype(settings__)>(settings__)...);
+					  }, std::move(settings_.settings)
 	);
 }
 

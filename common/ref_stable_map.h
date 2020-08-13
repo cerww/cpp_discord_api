@@ -101,6 +101,14 @@ struct ref_stable_map {
 			return *m_data.second;
 		}
 
+		indirect<V>& mapped_indirect() noexcept{
+			return m_data.second;
+		}
+
+		const indirect<V>& mapped_indirect() const noexcept {
+			return m_data.second;
+		}
+
 	private:
 		friend struct ref_stable_map;
 		std::pair<K, indirect<V>> m_data;

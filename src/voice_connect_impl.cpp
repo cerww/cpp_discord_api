@@ -23,6 +23,7 @@ cerwy::task<voice_connection> voice_connect_impl(internal_shard& me, const voice
 	vc->web_socket_endpoint = std::move(endpoint);
 	vc->session_id = std::move(session_id);
 	vc->strand = &me.strand();
+	vc->shard_ptr = &me;
 	//vc->heartbeat_sender = &me.parent_client().heartbeat_sender;
 
 	cerwy::promise<void> p;
@@ -32,8 +33,9 @@ cerwy::task<voice_connection> voice_connect_impl(internal_shard& me, const voice
 	auto t = p.get_task();
 
 	co_await t;//wait till it's done setting up
-	vc->channel = &ch.guild();
+	vc->guild = &ch.guild();
 	co_await resume_on_strand{me.strand()};
 	int put_breakpoint_here = 0;
+	me.voice_connections.insert(std::make_pair(guild_id, vc.get()));
 	co_return voice_connection(std::move(vc));
 }

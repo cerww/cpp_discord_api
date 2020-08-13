@@ -145,6 +145,7 @@ struct audit_log_change {
 
 	std::string_view key() const noexcept { return m_key; }
 
+	//do something else, don't use static sets ;-;
 	inline static const std::set<std::string_view, std::less<>> keys_that_are_int = {
 		"afk_timeout", "mfa_level", "verification_level", "explicit_content_filter", "default_message_notification",
 		"prune_delete_days", "position", "bitrate", "rate_limit_per_user", "permissions", "color",

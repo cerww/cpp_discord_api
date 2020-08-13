@@ -27,7 +27,7 @@ cerwy::task<void> webhook_http_client::send_to_discord(webhook_request r) {
 
 	std::lock_guard<std::mutex> locky(r.state->ready_mut);
 	if (co_await send_to_discord_(r))
-		r.state->notify();
+		r.state->finish();
 }
 
 cerwy::task<bool> webhook_http_client::send_to_discord_(webhook_request& r) {
@@ -50,7 +50,6 @@ cerwy::task<bool> webhook_http_client::send_to_discord_(webhook_request& r) {
 
 	std::cout << r.req << std::endl;
 	std::cout << r.state->res << std::endl;
-	r.state->done = true;
 	co_return true;
 }
 

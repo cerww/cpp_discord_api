@@ -35,6 +35,7 @@ struct empty_function_t{
 
 static inline constexpr empty_function_t empty_function;
 */
+
 struct client {//<(^.^)>
 	explicit client(int = 1, intents = intent::ALL);
 	
@@ -67,7 +68,7 @@ struct client {//<(^.^)>
 	std::function<void(const dm_channel&, shard&)> on_dm_channel_create = nothing;
 	
 	std::function<void(const guild_member&, shard&)> on_guild_member_add = nothing;
-	std::function<void(guild_member, bool, shard&)> on_guild_member_remove = nothing;
+	std::function<void(const guild_member&, shard&)> on_guild_member_remove = nothing;
 	std::function<void(const guild_member&, shard&)> on_guild_member_update = nothing;
 	
 	std::function<void(const text_channel&, shard&)> on_guild_text_channel_update = nothing;
@@ -88,8 +89,10 @@ struct client {//<(^.^)>
 	std::function<void(guild_member, const text_channel&, shard&)> on_guild_typing_start = nothing;
 	std::function<void(const user&, const dm_channel&, shard&)> on_dm_typing_start = nothing;
 	
-	std::function<void(text_channel, shard&)> on_text_channel_delete = nothing;
-	std::function<void(dm_channel, shard&)> on_dm_channel_delete = nothing;
+	std::function<void(const text_channel&, shard&)> on_text_channel_delete = nothing;
+	std::function<void(const voice_channel&, shard&) > on_voice_channel_delete = nothing;
+	std::function<void(const channel_catagory&, shard&)> on_channel_catagory_delete = nothing;
+	std::function<void(const dm_channel&, shard&)> on_dm_channel_delete = nothing;
 	
 	std::function<void(guild_member, const text_channel&, snowflake, partial_emoji, shard&)> on_guild_reaction_add = nothing;
 	std::function<void(const user&, const dm_channel&, snowflake, partial_emoji, shard&)> on_dm_reaction_add = nothing;

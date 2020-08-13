@@ -50,6 +50,10 @@ void test_transform_audio_thingy() {
 	int breakpoint_here = 0;
 }
 
+void aujsdhasdasd() {
+	//std::apply([](int, int) {}, std::pair<int, int>());
+}
+
 //spam bot
 int main() {
 	//test_transform_audio_thingy();
@@ -196,6 +200,13 @@ int main() {
 			file << str;
 			file.close();
 
+		}else if(msg.content() == "charizard_world") {
+			auto m1 = s.send_message(msg.channel(), "wat");
+			s.send_message(msg.channel(), "wat");
+			auto m2 = s.send_message(msg.channel(), "wat");
+			m2.cancel();
+			auto m = co_await m1;
+			
 		}
 		//s.change_nick(wat.author(), wat.content());
 

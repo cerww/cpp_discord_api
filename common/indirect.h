@@ -5,6 +5,7 @@
 struct defer_construction {};
 
 //std::unique_ptr but supports copy
+//can also be called "ref_stable"
 template<typename T>
 struct indirect {
 
@@ -16,7 +17,6 @@ struct indirect {
 	template<typename... Ts, std::enable_if_t<std::is_constructible_v<T, Ts...>, int>  = 0>
 	explicit indirect(Ts&&... args):
 		m_data(std::make_unique<T>(std::forward<Ts>(args)...)) {}
-
 
 	template<typename U>
 	indirect(std::initializer_list<U> li):
@@ -81,9 +81,7 @@ struct indirect {
 		}
 		return *this;
 	}
-
-
-
+	
 	indirect& operator=(T other) {
 		if (!m_data)
 			m_data = std::make_unique<T>(std::move(other));
@@ -94,30 +92,52 @@ struct indirect {
 
 	~indirect() = default;
 
-	T& value() noexcept { return *m_data; }
+	T& value() noexcept {
+		//ensure_created();
+		return *m_data;
+	}
 
-	const T& value() const noexcept { return *m_data; }
+	const T& value() const noexcept {
+		//ensure_created();
+		return *m_data;
+	}
 
-	T* get() noexcept { return m_data; }
+	T* get() noexcept {
+		//ensure_created();
+		return m_data;
+	}
 
-	const T* get() const noexcept { return m_data; }
+	const T* get() const noexcept {
+		//ensure_created();
+		return m_data;
+	}
 
 
 	operator T&() {
+		//ensure_created();
 		return *m_data;
 	}
 
 	operator const T&() const {
+		//ensure_created();
 		return *m_data;
 	}
 
-	T& operator*() noexcept { return *m_data; }
+	T& operator*() noexcept {
+		return *m_data;
+	}
 
-	const T& operator*() const noexcept { return *m_data; }
+	const T& operator*() const noexcept {
+		return *m_data;
+	}
 
-	T* operator->() noexcept { return m_data.get(); }
+	T* operator->() noexcept {
+		return m_data.get();
+	}
 
-	const T* operator->() const noexcept { return m_data.get(); }
+	const T* operator->() const noexcept {
+		return m_data.get();
+	}
 
 	template<typename U>
 	bool operator==(U&& other) const {
@@ -150,7 +170,19 @@ struct indirect {
 	}
 
 private:
-	std::unique_ptr<T> m_data = std::make_unique<T>();
+	mutable std::unique_ptr<T> m_data = std::make_unique<T>();
+
+	void ensure_created() /*requires std::is_default_constructible<T>*/{
+		if(!m_data) {
+			m_data = std::make_unique<T>();
+		}
+	}
+
+	void ensure_created2() const /*requires !std::is_default_constructible<T>*/ {
+		if (!m_data) {
+			throw std::runtime_error(";-;");
+		}
+	}
 	
 	template<typename>
 	friend struct indirect;

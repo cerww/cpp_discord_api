@@ -95,6 +95,8 @@ struct internal_shard: shard {
 
 	std::unique_ptr<wsClient> m_client = nullptr;
 
+	ska::bytell_hash_map<snowflake, discord_voice_connection_impl*> voice_connections;
+	
 private:
 	cerwy::task<boost::beast::error_code> connect_http_connection();
 
@@ -235,16 +237,10 @@ private:
 	nlohmann::json m_trace;//idk what this is;-;
 	nlohmann::json m_trace2;//;-;
 
-	//discord object stuffs
-	
 	Status m_status = Status::online;
 	std::string m_game_name;
 
 	std::string m_session_id;
-
-	std::atomic<bool> m_done = false;
-
-	
 
 	boost::asio::io_context& m_ioc;
 	boost::asio::ssl::context m_ssl_ctx{boost::asio::ssl::context_base::sslv23};

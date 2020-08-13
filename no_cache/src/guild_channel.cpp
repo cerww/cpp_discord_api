@@ -7,7 +7,6 @@ namespace cacheless {
 
 void from_json(const nlohmann::json& json, guild_channel& g) {
 	from_json(json, static_cast<partial_guild_channel&>(g));
-	//g.guild_id = json["guild_id"].get<snowflake>();
 }
 
 }

@@ -397,7 +397,6 @@ void internal_shard::procces_event<event_name::GUILD_CREATE>(nlohmann::json& dat
 		request_guild_members(guild);		
 	} else if(m_intents.has_intents(intent::GUILD_MEMBERS)){
 		for (const auto& member_json : data["members"]) {
-			std::cout << "asdasda" << std::endl;
 			auto member = member_json.get<guild_member>();
 			member.m_guild = &guild;
 			const auto id = member.id();
@@ -569,7 +568,6 @@ void internal_shard::procces_event<event_name::MESSAGE_CREATE>(nlohmann::json& e
 		auto& guild = ch.guild();
 		
 		if(!guild.m_is_ready) {
-			std::cout << "aaaaaaaaaaa" << std::endl;
 			m_backed_up_events[guild.id()].emplace_back(std::move(e), event_name::MESSAGE_CREATE);
 			return;
 		}
@@ -640,34 +638,36 @@ void internal_shard::procces_event<event_name::CHANNEL_DELETE>(nlohmann::json& e
 		}
 		
 		if (erase_first_quick(guild.m_text_channel_ids, channel_id)) {
-			auto channel_it = m_text_channel_map.find(channel_id);
-			auto channel = std::move(channel_it->second);
-			m_text_channel_map.erase(channel_it);
-			m_parent->on_text_channel_delete(std::move(channel),*this);
+			const auto channel_it = m_text_channel_map.find(channel_id);
+			auto node_handle = m_text_channel_map.extract(channel_it);
+			const auto& channel = m_deleted_text_channels.emplace_back(std::chrono::steady_clock::now(), std::move(node_handle.mapped_indirect())).second;
+			
+			m_parent->on_text_channel_delete(channel.value(),*this);
 		}else if(erase_first_quick(guild.m_voice_channel_ids, channel_id)) {
-			auto channel_it = m_voice_channel_map.find(channel_id);
-			auto channel = std::move(channel_it->second);
-			m_voice_channel_map.erase(channel_it);
-			//m_parent->on_text_channel_delete(std::move(channel), *this);
-		}else if(erase_first_quick(guild.m_channel_catagory_ids, channel_id)) {
-			auto channel_it = m_channel_catagory_map.find(channel_id);
-			auto channel = std::move(channel_it->second);
-			m_channel_catagory_map.erase(channel_it);
+			const auto channel_it = m_voice_channel_map.find(channel_id);
+			auto node_handle = m_voice_channel_map.extract(channel_it);
+			const auto& channel = m_deleted_voice_channels.emplace_back(std::chrono::steady_clock::now(),std::move(node_handle.mapped_indirect())).second;
+			
+			m_parent->on_voice_channel_delete(channel.value(), *this);
+		}else if(erase_first_quick(guild.m_channel_catagory_ids, channel_id)) {			
+			const auto channel_it = m_channel_catagory_map.find(channel_id);			
+			auto node_handle = m_channel_catagory_map.extract(channel_it);
+			const auto& channel = m_deleted_channel_catagories.emplace_back(std::chrono::steady_clock::now(), std::move(node_handle.mapped_indirect())).second;
 
-			//m_parent->on_text_channel_delete(std::move(channel), *this);
+			m_parent->on_channel_catagory_delete(channel.value(), *this);
 		}else {
 			//unimplemented channel
 		}
 		
 	}
 	else {
-		auto it2 = m_dm_channels.find(channel_id);
+		const auto it2 = m_dm_channels.find(channel_id);
 		if (it2 == m_dm_channels.end())	{
 			return;//not guild_channel or dm_channel? 
 		}
-		dm_channel d = std::move(it2->second);
-		m_dm_channels.erase(it2);
-		m_parent->on_dm_channel_delete(std::move(d), *this);
+		auto node_handle = m_dm_channels.extract(it2);
+		auto& channel = m_deleted_dm_channels.emplace_back(std::chrono::steady_clock::now(), std::move(node_handle.mapped_indirect())).second;
+		m_parent->on_dm_channel_delete(channel, *this);
 	}
 }
 
@@ -699,20 +699,19 @@ void internal_shard::procces_event<event_name::GUILD_MEMBER_REMOVE>(nlohmann::js
 		return;
 	}
 	const auto user_id = e["user"]["id"].get<snowflake>();
-	
-	auto it = guild.m_members.find(user_id);
-	--guild.m_member_count;
+
+	const auto it = guild.m_members.find(user_id);
 	//member not in guild for some reason?
 	if(it == guild.m_members.end()) {//;-;
-		//create fake member
-		guild_member member;
-		from_json(e["user"], static_cast<user&>(member));
-		member.m_guild = &guild;
-		m_parent->on_guild_member_remove(std::move(member), false,*this);
+		//create fake member or ignore?
+		//choose ignore, other libs ignore
+		return;
 	}else {		
-		auto member = std::move(it->second);
-		guild.m_members.erase(it);
-		m_parent->on_guild_member_remove(std::move(member),true,*this);
+		--guild.m_member_count;
+		auto node_handle = guild.m_members.extract(it);
+		const auto& member = m_deleted_guild_members.emplace_back(std::chrono::steady_clock::now(), std::move(node_handle.mapped_indirect())).second;
+		
+		m_parent->on_guild_member_remove(member, *this);
 	}
 }
 
@@ -773,26 +772,35 @@ void internal_shard::procces_event<event_name::GUILD_UPDATE>(nlohmann::json& e){
 template<>	
 void internal_shard::procces_event<event_name::GUILD_DELETE>(nlohmann::json& e){
 	const auto unavailable = e["unavailable"].get<bool>();
-	try {
-		//in case guild_create never came for some reason
-		const Guild g = std::move(m_guilds.extract(e["id"].get<snowflake>()).mapped());
-		m_parent->on_guild_remove(g, unavailable, *this);
-	}catch(...) {
-		//swallow		 
+	
+	//in case guild_create never came for some reason
+	const auto it = m_guilds.find(e["id"].get<snowflake>());
+	if (it != m_guilds.end()) {
+		auto node_handle = m_guilds.extract(it);
+		auto& guild = m_deleted_guilds.emplace_back(std::chrono::steady_clock::now(), std::move(node_handle.mapped_indirect())).second;
+		m_parent->on_guild_remove(guild.value(), unavailable, *this);
 	}
 }
 
 template<>	
 void internal_shard::procces_event<event_name::GUILD_BAN_ADD>(nlohmann::json& e){
 	auto member = e.get<user>();
-	Guild& g = m_guilds[e["guild_id"].get<snowflake>()];
+	const auto it = m_guilds.find(e["guild_id"].get<snowflake>());
+	if(it == m_guilds.end()) {
+		return;
+	}
+	const Guild& g = it->second;
 	m_parent->on_ban_add(g, std::move(member), *this);
 };
 
 template<>	
 void internal_shard::procces_event<event_name::GUILD_BAN_REMOVE>(nlohmann::json& e){
 	auto member = e.get<user>();
-	Guild& g = m_guilds[member.id()];
+	const auto it = m_guilds.find(e["guild_id"].get<snowflake>());
+	if (it == m_guilds.end()) {
+		return;
+	}
+	const Guild& g = it->second;
 	m_parent->on_ban_remove(g, std::move(member), *this);
 }
 

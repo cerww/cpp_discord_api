@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fmt/core.h>
 #include "../common/resume_on_strand.h"
+#include "internal_shard.h"
 
 discord_voice_connection_impl::discord_voice_connection_impl(web_socket_session sock,boost::asio::io_context& ioc):
 	socket(std::move(sock)),
@@ -44,9 +45,13 @@ cerwy::task<void> discord_voice_connection_impl::send_silent_frames() {
 	co_return;
 }
 
+void discord_voice_connection_impl::close() {
+	is_alive = false;
+	socket.close(1000);
+	shard_ptr->voice_connections.erase(guild_id);
+}
+
 using namespace std::literals;
-
-
 
 /*
 TODO: convert these to C++
@@ -100,16 +105,6 @@ std::vector<std::byte> discord_voice_connection_impl::encrypt_xsalsa20_poly1305(
 		(unsigned char*)nonce.data(),
 		(unsigned char*)m_secret_key.data()
 	);
-	//crypto_secretbox_xsalsa20poly1305();
-	/*
-	crypto_secretbox(
-		(unsigned char*)return_val.data() + header_size_bytes,
-		(unsigned char*)audio_data.data(),
-		audio_data.size(),
-		(unsigned char*)return_val.data(),
-		(unsigned char*)m_secret_key.data()
-	);
-	*/
 	return return_val;
 }
 
