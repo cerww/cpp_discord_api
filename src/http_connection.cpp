@@ -1,7 +1,6 @@
 #include "client.h"
 #include "http_connection.h"
 #include <charconv>
-#include <range/v3/core.hpp>
 #include "../common/task_completion_handler.h"
 #include "../common/executor_binder.h"
 
@@ -19,8 +18,6 @@ struct empty_vector_t{
 		return {};
 	}
 };
-
-static constexpr empty_vector_t empty_vector;
 
 template<typename results_t>
 cerwy::task<boost::system::error_code> async_connect_with_no_delay(boost::asio::ip::tcp::socket& sock, results_t&& results) {
@@ -304,7 +301,8 @@ cerwy::task<boost::beast::error_code> http_connection2::async_connect() {
 }
 
 cerwy::task<void> http_connection2::send_to_discord(discord_request r) {
-	return send_to_discord(r, get_major_param_id(std::string_view(r.req.target().data(), r.req.target().size())));
+	const auto id = get_major_param_id(std::string_view(r.req.target().data(), r.req.target().size()));//can't be inline since it'll be use after move
+	return send_to_discord(std::move(r),id);
 }
 
 cerwy::task<void> http_connection2::send_to_discord(discord_request r, uint64_t major_param_id_) {
@@ -337,8 +335,7 @@ cerwy::task<void> http_connection2::send_to_discord(discord_request r, uint64_t 
 //pre-con: request isn't rate-limited already
 //false => rate limited
 cerwy::task<bool> http_connection2::send_to_discord_(discord_request& r) {
-	//std::lock_guard<std::mutex> locky(r.state->ready_mut);	
-	co_await send_rq(r);	
+	co_await send_rq(r);
 	//this is "while" loop not "if" because of global rate limits
 	//it shuld keep trying to send the same request if it's global rate limited
 	//cuz if i doin't do this, the request will go into the queue, then it'll sleep, then it'll prolyl send the request(it might sned a different request),
@@ -367,15 +364,13 @@ cerwy::task<bool> http_connection2::send_to_discord_(discord_request& r) {
 			r.state->res.body().clear();
 
 			const auto major_param_id_ = get_major_param_id(std::string_view(r.req.target().data(), r.req.target().size()));			
-			//rate_limit_id(major_param_id_, tp, std::move(r));
 			m_rate_limiter.rate_limit(major_param_id_, tp, std::move(r));
 			
 			co_return false;
 		}
-	}
+	}	
 	
-	
-	if (auto it = r.state->res.find("X-RateLimit-Remaining"); it != r.state->res.end() && it->value() == "0") {
+	if (const auto it = r.state->res.find("X-RateLimit-Remaining"); it != r.state->res.end() && it->value() == "0") {
 		
 		const auto time = std::chrono::system_clock::time_point(std::chrono::seconds([&]() {//iife
 			const auto it2 = r.state->res.find("X-RateLimit-Reset");

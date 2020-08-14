@@ -119,7 +119,7 @@ struct discord_obj_map {
 		cursor(it i) :
 			m_it(i) {}
 
-		const T& read() const noexcept {
+		decltype(auto) read() const noexcept {
 			return *m_it;
 		}
 

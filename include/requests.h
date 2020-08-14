@@ -13,6 +13,8 @@
 #include <ranges>
 #include <algorithm>
 #include "audit_log.h"
+#include <fmt/compile.h>
+#include <algorithm>
 
 
 // clang-format off
@@ -43,7 +45,7 @@ struct method_not_allowed final :std::exception {
 struct gateway_unavailable final :std::exception {
 	using exception::exception;
 
-	const char* what() const final {
+	const char* what() const override {
 		return "gateway unavailible try again";
 	}
 };
@@ -51,7 +53,7 @@ struct gateway_unavailable final :std::exception {
 struct server_error final :std::exception {
 	using exception::exception;
 
-	const char* what() const final {
+	const char* what() const override {
 		return "server error";
 	}
 };
@@ -81,7 +83,7 @@ struct shared_state :ref_counted {
 			boost::asio::post(*strand, f);
 		};
 
-		ranges::for_each(all_waiters, execute_on_strand);
+		std::ranges::for_each(all_waiters, execute_on_strand);
 
 	}
 };
@@ -181,7 +183,9 @@ struct request_base :private crtp<reqeust> {
 		return state->done.load(std::memory_order_relaxed);
 	}
 
+	// ReSharper disable CppMemberFunctionMayBeStatic
 	bool await_ready() const noexcept {
+		// ReSharper restore CppMemberFunctionMayBeStatic
 		return false;//await suspend checks instead
 	}
 
@@ -205,7 +209,7 @@ struct request_base :private crtp<reqeust> {
 		if constexpr (has_overload_value<reqeust>::value)
 			return this->self().overload_value();
 		else if constexpr (!std::is_void_v<typename reqeust::return_type>)
-			return nlohmann::json::parse(state->res.body()).template get<typename reqeust::return_type>();
+			return nlohmann::json::parse(state->res.body()).get<typename reqeust::return_type>();
 	}
 		
 	//remove along with wait?
@@ -229,6 +233,7 @@ struct request_base :private crtp<reqeust> {
 				me->await_suspend(h);
 			}
 
+			// ReSharper disable once CppMemberFunctionMayBeStatic
 			decltype(auto) await_resume() {
 				//me->handle_errors();
 				//return me->await_resume();
@@ -238,7 +243,7 @@ struct request_base :private crtp<reqeust> {
 		return r{this};
 	}
 
-	void cancel() {
+	void cancel() const{
 		//don't set to canceled if already finished
 		if (!state->done) {
 			state->is_canceled = true;
@@ -268,7 +273,8 @@ struct send_message :
 	using return_type = partial_message;
 
 	static std::string target(const partial_channel& channel) {
-		return "/channels/{}/messages"_format(channel.id());
+		//return "/channels/{}/messages"_format(channel.id());
+		return fmt::format(FMT_STRING("/channels/{}/messages"),channel.id());
 	}
 };
 

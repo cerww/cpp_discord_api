@@ -106,41 +106,37 @@ public:
 	}
 
 	//template<typename B = int, std::enable_if_t<std::is_same_v<B, int>&& std::is_reference_v<reference>, int> = 0>
-	constexpr std::remove_reference_t<reference> * operator->() & requires std::is_reference_v<reference>{
+	constexpr std::remove_reference_t<reference>* operator->() & requires std::is_reference_v<reference>{
 		return &m_base.read();
 	}
 
 	//template<typename B = int, std::enable_if_t<std::is_same_v<B, int>&& std::is_reference_v<reference>, int> = 0>
-	constexpr std::remove_reference_t<reference> * operator->() const & requires std::is_reference_v<reference>{
+	constexpr std::remove_reference_t<reference>* operator->() const & requires std::is_reference_v<reference>{
 		return &m_base.read();
 	}
 
 	//template<typename B = int, std::enable_if_t<std::is_same_v<B, int>&& std::is_reference_v<reference>, int> = 0>
-	constexpr std::remove_reference_t<reference> * operator->() && requires std::is_reference_v<reference> {
+	constexpr std::remove_reference_t<reference>* operator->() && requires std::is_reference_v<reference> {
 		return &m_base.read();
 	}
 
 	//template<typename B = int, std::enable_if_t<std::is_same_v<B, int>&& std::is_reference_v<reference>, int> = 0>	
-	constexpr std::remove_reference_t<reference> * operator->() const && requires std::is_reference_v<reference>{
+	constexpr std::remove_reference_t<reference>* operator->() const && requires std::is_reference_v<reference>{
 		return &m_base.read();
 	}
 
-	template<typename B = int, std::enable_if_t<std::is_same_v<B, int> && !std::is_reference_v<reference>, int> = 0>
 	constexpr arrow_proxy<reference> operator->() & requires !std::is_reference_v<reference>{
 		return arrow_proxy<reference>{m_base.read()};
 	}
 
-	template<typename B = int, std::enable_if_t<std::is_same_v<B, int> && !std::is_reference_v<reference>, int> = 0>
 	constexpr arrow_proxy<reference> operator->() const & requires !std::is_reference_v<reference>{
 		return arrow_proxy<reference>{m_base.read()};
 	}
 
-	template<typename B = int, std::enable_if_t<std::is_same_v<B, int> && !std::is_reference_v<reference>, int> = 0>
 	constexpr arrow_proxy<reference> operator->() && requires !std::is_reference_v<reference>{
 		return arrow_proxy<reference>{m_base.read()};
 	}
 
-	template<typename B = int, std::enable_if_t<std::is_same_v<B, int> && !std::is_reference_v<reference>, int> = 0>
 	constexpr arrow_proxy<reference> operator->() const && requires !std::is_reference_v<reference>{
 		return arrow_proxy<reference>{m_base.read()};
 	}

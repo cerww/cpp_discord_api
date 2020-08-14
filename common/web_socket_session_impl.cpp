@@ -101,7 +101,7 @@ cerwy::task<web_socket_session> create_session(
 	boost::asio::ssl::context_base::method c
 ) {
 	boost::asio::ip::tcp::resolver resolver(ioc);
-
+		
 	boost::asio::ssl::context ssl_ctx(c);	
 
 	auto sock = co_await wss_from_uri(uri, resolver, ssl_ctx);

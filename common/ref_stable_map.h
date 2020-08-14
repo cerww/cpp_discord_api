@@ -245,7 +245,7 @@ struct ref_stable_map {
 
 	void reserve(size_t n) {
 		m_data.reserve(n);
-	}
+	}	
 
 	bool operator==(const ref_stable_map& other) {
 		return m_data == other.m_data;

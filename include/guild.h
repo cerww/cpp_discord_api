@@ -88,8 +88,7 @@ struct Guild :partial_guild {
 		const auto it = m_status.find(id);
 		if (it == m_status.end()) {
 			return std::nullopt;
-		}
-		else {
+		} else {
 			return it->second;
 		}
 	}
