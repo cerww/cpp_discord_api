@@ -35,10 +35,11 @@ struct opus_encoder {
 		//fmt::print("{},{},{},{}\n",frame.frame_data.size(),frame.frame_size,frame.bit_rate,frame.channel_count);
 		return encode(frame.frame_data, max_size, frame.frame_size);
 	}
+	
 	// ReSharper disable CppMemberFunctionMayBeConst
 	int encode_into_buffer(const audio_frame& frame, std::byte* buffer,int max_size) {
 		// ReSharper restore CppMemberFunctionMayBeConst
-		const auto len = opus_encode(m_me.get(), frame.frame_data.data(), frame.frame_size, (unsigned char*)buffer, max_size);
+		const auto len = opus_encode(m_me.get(), frame.frame_data.data(), frame.frame_size, (unsigned char*)buffer, (int)max_size);
 
 		if (len < 0) {
 			throw std::runtime_error("");
@@ -46,6 +47,11 @@ struct opus_encoder {
 		else {
 			return len;
 		}	
+	}
+
+	// ReSharper disable CppMemberFunctionMayBeConst
+	int encode_into_buffer(const audio_frame& frame, std::span<std::byte> buffer) {
+		return encode_into_buffer(frame, buffer.data(), (int)buffer.size());
 	}
 
 	opus_encoder& set_bit_rate(int bit_rate) {

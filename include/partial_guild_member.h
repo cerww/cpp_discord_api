@@ -50,3 +50,12 @@ inline void from_json(const nlohmann::json& in, partial_guild_member& out) {
 	out.m_deaf = in["deaf"].get<bool>();
 	out.m_mute = in["mute"].get<bool>();
 }
+
+template<typename Char>
+struct fmt::formatter<partial_guild_member, Char> :fmt::formatter<std::string_view, Char> {
+
+	template<typename FormatContext>
+	auto format(const partial_guild_member& person, FormatContext& ctx) {
+		return fmt::formatter<std::string_view, Char>::format(person.to_mentionable_string(), ctx);
+	}
+};

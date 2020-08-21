@@ -33,31 +33,40 @@ parses using n parsers, each after each other, returns results in tuple
 template<typename first_parser, typename ...rest_parsers>
 constexpr auto parse_consecutive(const std::string_view s, first_parser&& f, rest_parsers&& ... rest)
 ->parse_result<std::tuple<parse_result_value_t<first_parser>, parse_result_value_t<rest_parsers>...>> {
+	if constexpr (sizeof...(rest) == 0) {
+		auto t = std::invoke(f, s);
+		if (!t) {
+			return parse_fail(std::move(t));
+		}
+		return parse_result(std::make_tuple(std::move(t.value())), t.rest());
+	}
+	else {
 
-	auto parse_result_ = std::invoke(f, s);
-	if (!parse_result_)
-		return parse_fail(std::move(parse_result_));
+		auto parse_result_ = std::invoke(f, s);
+		if (!parse_result_)
+			return parse_fail(std::move(parse_result_));
 
-	auto parse_result_2 = parse_consecutive(parse_result_.rest(), std::forward<rest_parsers>(rest)...);
-	if (!parse_result_2)
-		return parse_fail(std::move(parse_result_2));
+		auto parse_result_2 = parse_consecutive(parse_result_.rest(), std::forward<rest_parsers>(rest)...);
+		if (!parse_result_2) {
+			return parse_fail(std::move(parse_result_2));
+		}
 
-	return parse_result(
-		std::tuple_cat(
-			std::make_tuple(std::move(parse_result_.value())), std::move(parse_result_2.value())
-		),
-		parse_result_2.rest()
-	);
+		return parse_result(
+			std::tuple_cat(
+				std::make_tuple(std::move(parse_result_.value())), std::move(parse_result_2.value())
+			),
+			parse_result_2.rest()
+		);
+	}
 }
 
+/*
 template<typename first_parser>
 constexpr auto parse_consecutive(const std::string_view s, first_parser&& f)
 ->parse_result<std::tuple<parse_result_value_t<first_parser>>> {
-	auto t = std::invoke(f, s);
-	if (!t)
-		return parse_fail(std::move(t));
-	return parse_result(std::make_tuple(std::move(t.value())), t.rest());
+	
 }
+*/
 
 //parses using 2 parsers, one after each other, then joins them
 template<typename parser1, typename parser2, typename join_fn>
@@ -81,8 +90,7 @@ constexpr auto parse_multi_consecutive2_impl(std::string_view s, std::index_sequ
 			if (pr) {
 				s = pr.rest();
 				return std::move(pr.value());
-			}
-			else {
+			} else {
 				throw 1;
 			}
 		};
@@ -90,8 +98,7 @@ constexpr auto parse_multi_consecutive2_impl(std::string_view s, std::index_sequ
 		std::tuple<std::optional<parse_result_value_t<rest_parsers>>...> hmm;
 		((std::get<i>(hmm) = do_thing(rest)), ...);
 		return parse_result(std::make_tuple(*std::get<i>(hmm)...), s);
-	}
-	catch (...) {
+	} catch (...) {
 		return parse_fail();
 	}
 }
@@ -111,9 +118,8 @@ struct multi_parser {
 
 	constexpr decltype(auto) operator()(std::string_view s) {
 		return std::apply([&](auto&& ...a) {
-			return parse_consecutive(s, std::forward<decltype(a)>(a)...);
-			},
-			m_parsers);
+			return parse_consecutive(s, a...);
+		}, m_parsers);
 	}
 
 private:
@@ -132,9 +138,9 @@ struct try_multi_parser {
 
 	constexpr decltype(auto) operator()(std::string_view s) {
 		return std::apply([&](auto&& ...a) {
-			return try_parse_multiple(s, std::forward<decltype(a)>(a)...);
-			},
-			m_parsers);
+							  return try_parse_multiple(s, std::forward<decltype(a)>(a)...);
+						  },
+						  m_parsers);
 	}
 
 private:

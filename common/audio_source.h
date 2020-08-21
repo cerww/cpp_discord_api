@@ -15,6 +15,14 @@ struct audio_frame {
 	std::vector<int16_t> optional_data_storage = {};
 };
 
+//*
+template<typename T>
+concept audio_source = requires(T a) {
+	{a.frames()}->std::ranges::range;
+}&& std::is_convertible<std::ranges::range_reference_t<T>, audio_frame>;
+
+//*/
+
 inline audio_frame resample_meh(const audio_frame& frame, int new_channel_count, int new_sampling_rate) {
 	if (new_channel_count == frame.channel_count && new_sampling_rate == frame.sampling_rate) {
 		const bool frame_is_using_storage = frame.frame_data.data() == frame.optional_data_storage.data();

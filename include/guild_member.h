@@ -29,3 +29,12 @@ private:
 void from_json(const nlohmann::json& in, guild_member& out);
 
 void to_json(nlohmann::json& out, const guild_member& in);
+
+template<typename Char>
+struct fmt::formatter<guild_member, Char> :fmt::formatter<std::string_view, Char> {
+
+	template<typename FormatContext>
+	auto format(const guild_member& person, FormatContext& ctx) {
+		return fmt::formatter<std::string_view, Char>::format(person.to_mentionable_string(), ctx);
+	}
+};

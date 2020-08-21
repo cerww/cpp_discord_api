@@ -39,7 +39,7 @@ struct Guild :partial_guild {
 		return m_members | ranges::views::values;
 	};
 
-	const guild_member& owner() const noexcept;
+	const guild_member& owner() const;
 
 	auto text_channels() const noexcept {
 		return m_text_channel_ids | ranges::views::transform(hof::map_with(all_text_channels()));
@@ -95,6 +95,15 @@ struct Guild :partial_guild {
 
 	std::optional<Status> status_for(const partial_guild_member& member) const noexcept {
 		return status_for(member.id());
+	}
+
+	optional_ref<const voice_channel> voice_channel_for(const partial_guild_member& member)const {
+		const auto it = ranges::find(m_voice_states, member.id(), &voice_state::user_id);
+		if(it  == m_voice_states.end()) {
+			return std::nullopt;
+		}else {
+			return all_voice_channels()[it->channel_id()];
+		}
 	}
 
 private:

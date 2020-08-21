@@ -87,8 +87,11 @@ concept parser = requires(T p) {
 };
 
 
+//NOTE: shuold support references, don't use make_pair, std::move(T) (moving strings and stuff is fine)
+//don't support references?
 template<typename T>
 struct parse_result {
+	static_assert(!std::is_reference_v<T>);
 	using parse_value = T;
 
 	constexpr parse_result() = default;
@@ -163,7 +166,7 @@ struct parse_result {
 		return !std::holds_alternative<std::pair<T, std::string_view>>(m_self);
 	}
 
-	constexpr T& value() {
+	[[nodiscard]] constexpr T& value() {
 		assert(m_self.index() == 0);
 		return std::get<0>(m_self).first;
 	}
@@ -188,9 +191,9 @@ struct parse_result {
 	}
 
 	//*
-	template<typename U, std::enable_if_t<std::is_convertible_v<T, U>, int> = 0>
+	template<typename U, std::enable_if_t<std::is_convertible_v<T, U> && !std::is_same_v<T, U>, int> = 0>
 	operator parse_result<U>() const& {
-		if (bool(*this)) {
+		if (success()) {
 			return parse_result<U>(U(value()), rest());
 		}
 		else if (std::holds_alternative<std::string>(m_self)) {
@@ -199,14 +202,14 @@ struct parse_result {
 		else if (std::holds_alternative<parse_fail_no_reason>(m_self)) {
 			return parse_fail();
 		}
-		else {
+		else {//default constructed
 			return parse_result<U>();
 		}
 	}
 
-	template<typename U, std::enable_if_t<std::is_convertible_v<T, U>, int> = 0>
+	template<typename U, std::enable_if_t<std::is_convertible_v<T, U> && !std::is_same_v<T, U>, int> = 0>
 	operator parse_result<U>()& {
-		if (bool(*this)) {
+		if (success()) {
 			return parse_result<U>(U(value()), rest());
 		}
 		else if (std::holds_alternative<std::string>(m_self)) {
@@ -220,10 +223,10 @@ struct parse_result {
 		}
 	}
 
-	template<typename U, std::enable_if_t<std::is_convertible_v<T, U>, int> = 0>
+	template<typename U, std::enable_if_t<std::is_convertible_v<T, U> && !std::is_same_v<T,U>, int> = 0>
 	operator parse_result<U>()&& {
-		if (bool(*this)) {
-			return parse_result<U>(U(std::move(value())), rest());
+		if (success()) {
+			return parse_result<U>(U(std::forward<T>(value())), rest());
 		}
 		else if (std::holds_alternative<std::string>(m_self)) {
 			return parse_fail(std::move(std::get<std::string>(m_self)));
@@ -232,13 +235,13 @@ struct parse_result {
 			return parse_fail();
 		}
 		else {
-			return parse_result<U>();
+			return parse_result<U>(U(std::move(value())),rest());
 		}
 	}
 
-	template<typename U, std::enable_if_t<std::is_convertible_v<T, U>, int> = 0>
+	template<typename U, std::enable_if_t<std::is_convertible_v<T, U> && !std::is_same_v<T, U>, int> = 0>
 	operator parse_result<U>() const&& {
-		if (bool(*this)) {
+		if (success()) {
 			return parse_result<U>(U(value()), rest());
 		}
 		else if (std::holds_alternative<std::string>(m_self)) {
@@ -253,12 +256,12 @@ struct parse_result {
 	}
 
 	template<typename Fn> requires std::is_invocable_v<Fn,T>
-	parse_result<std::invoke_result_t<Fn, T>> transform(Fn&& fn) {
+	parse_result<std::remove_cvref_t<std::invoke_result_t<Fn, T>>> transform(Fn&& fn) {
 		if (!success()) {
 			return parse_fail(*this);
 		}
 		else {
-			return parse_result<std::invoke_result_t<Fn, T>>(std::invoke(fn, std::move(value())), rest());
+			return parse_result<std::remove_cvref_t<std::invoke_result_t<Fn, T>>>(std::invoke(fn, std::move(value())), rest());
 		}
 	}
 
@@ -273,7 +276,7 @@ struct parse_result {
 	}
 
 	template<typename Fn>// requires std::is_invocable_v<Fn,T>
-	auto and_then(Fn&& fn)->parse_result<decltype(*std::declval<std::invoke_result_t<Fn, T>>())> {
+	auto and_then(Fn&& fn)->parse_result<std::remove_cvref_t<decltype(*std::declval<std::invoke_result_t<Fn, T>>())>> {
 		if(failed()) {
 			return parse_fail(*this);
 		}else {
@@ -281,7 +284,7 @@ struct parse_result {
 			if(!temp) {
 				return parse_fail(*this);
 			}else {
-				return parse_result<decltype(*std::declval<std::invoke_result_t<Fn, T>>())>(std::move(*temp),rest());
+				return parse_result<std::remove_cvref_t<decltype(*std::declval<std::invoke_result_t<Fn, T>>())>>(std::move(*temp),rest());
 			}
 			
 		}
@@ -289,7 +292,7 @@ struct parse_result {
 
 	template<typename Fn> requires std::is_invocable_v<Fn,T>
 	auto and_then_apply(Fn&& fn)
-		->parse_result<decltype(*std::apply(fn,std::declval<T>()))> {
+		->parse_result<std::decay_t<decltype(*std::apply(fn, std::declval<T>()))>> {
 		if(failed()) {
 			return parse_fail(*this);
 		}else {
@@ -297,17 +300,17 @@ struct parse_result {
 			if(!temp) {
 				return parse_fail(*this);
 			}else {
-				return parse_result<decltype(*std::apply(fn, std::declval<T>()))>(std::move(*temp),rest());
+				return parse_result<std::decay_t<decltype(*std::apply(fn, std::declval<T>()))>>(std::move(*temp),rest());
 			}
 			
 		}
 	}
 
-	template<typename parser>
-	auto then_parse(parser&& p)
+	template<parser parser_t>
+	auto then_parse(parser_t&& p)
 		->parse_result<decltype(std::tuple_cat(
-			std::declval<T>(),
-			std::make_tuple(p(std::string_view()).value())
+			std::tuple(std::declval<T>()),//if T is a tuple, this will just be T, but if it's not, it'll make it a tuple<T>
+			std::make_tuple(parse_result_value_t<parser_t>)
 		))>
 	{		
 		if(failed()) {
@@ -318,7 +321,12 @@ struct parse_result {
 		if(!r) {
 			return parse_fail(r);
 		}
-		return std::tuple_cat(std::move(value()), std::make_tuple(std::move(r.value())));		
+		return parse_result(
+			std::tuple_cat(
+				std::tuple(std::move(value()), 
+				std::make_tuple(std::move(r.value())))
+			), 	r.rest()
+		);
 	}
 
 	

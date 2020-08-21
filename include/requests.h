@@ -216,8 +216,9 @@ struct request_base :private crtp<reqeust> {
 	decltype(auto) get() {
 		wait();
 		handle_errors();
-		if constexpr (!std::is_void_v<typename reqeust::return_type>)
+		if constexpr (!std::is_void_v<typename reqeust::return_type>) {
 			return value();
+		}
 	}
 		
 	//returns awaitable and ignores the value returned from discord's api
@@ -353,7 +354,7 @@ struct kick_member :
 	using request_base::request_base;
 	using return_type = void;
 
-	static std::string target(const partial_guild& g, const guild_member& member) {
+	static std::string target(const partial_guild& g, const partial_guild_member& member) {
 		return "/guilds/{}/members/{}"_format(g.id(), member.id());
 	}
 };

@@ -205,8 +205,7 @@ int main() {
 			s.send_message(msg.channel(), "wat");
 			auto m2 = s.send_message(msg.channel(), "wat");
 			m2.cancel();
-			auto m = co_await m1;
-			
+			auto m = co_await m1;			
 		}
 		//s.change_nick(wat.author(), wat.content());
 

@@ -805,7 +805,32 @@ void internal_shard::procces_event<event_name::GUILD_DELETE>(nlohmann::json& e) 
 	const auto it = m_guilds.find(e["id"].get<snowflake>());
 	if (it != m_guilds.end()) {
 		auto node_handle = m_guilds.extract(it);
-		auto& guild = m_deleted_guilds.emplace_back(std::chrono::steady_clock::now(), std::move(node_handle.mapped_indirect())).second;
+		const auto now = std::chrono::steady_clock::now();
+		auto& guild = m_deleted_guilds.emplace_back(now, std::move(node_handle.mapped_indirect())).second;
+		/*
+		for(auto channel_id:guild->m_text_channel_ids) {
+			auto channel_it = m_text_channel_map.find(channel_id);
+			if(channel_it!=m_text_channel_map.end()) {
+				auto channel_handle = m_text_channel_map.extract(channel_it);
+				m_deleted_text_channels.emplace_back(now,std::move(channel_handle.mapped_indirect()));
+			}
+		}
+		for (auto channel_id : guild->m_voice_channel_ids) {
+			auto channel_it = m_voice_channel_map.find(channel_id);
+			if (channel_it != m_voice_channel_map.end()) {
+				auto channel_handle = m_voice_channel_map.extract(channel_it);
+				m_deleted_voice_channels.emplace_back(now, std::move(channel_handle.mapped_indirect()));
+			}
+		}
+		for (auto channel_id : guild->m_channel_catagory_ids) {
+			auto channel_it = m_channel_catagory_map.find(channel_id);
+			if (channel_it != m_channel_catagory_map.end()) {
+				auto channel_handle = m_channel_catagory_map.extract(channel_it);
+				m_deleted_channel_catagories.emplace_back(now, std::move(channel_handle.mapped_indirect()));
+			}
+		}
+		*/
+		
 		m_parent->on_guild_remove(guild.value(), unavailable, *this);
 	}
 }

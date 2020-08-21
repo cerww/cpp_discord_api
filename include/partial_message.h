@@ -33,6 +33,10 @@ struct partial_message {
 		return m_embeds;
 	}
 
+	void force_heap_allocated() {
+		m_content.reserve(sizeof(m_content) + 1);
+	}
+
 private:
 	snowflake m_author_id;
 	snowflake m_id;

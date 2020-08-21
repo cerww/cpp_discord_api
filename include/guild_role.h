@@ -3,6 +3,7 @@
 #include <nlohmann/json.hpp>
 #include "snowflake.h"
 #include "permission.h"
+#include <fmt/format.h>
 
 
 struct guild_role {
@@ -32,3 +33,12 @@ private:
 void to_json(nlohmann::json& json, const guild_role& r);
 
 void from_json(const nlohmann::json& json, guild_role& other);
+
+template<typename Char>
+struct fmt::formatter<guild_role,Char>:fmt::formatter<std::string_view,Char> {
+	
+	template<typename FormatContext>
+	auto format(const guild_role& role, FormatContext& ctx) {
+		return fmt::formatter<std::string_view, Char>::format(role.to_mentionable_string(), ctx);
+	}
+};

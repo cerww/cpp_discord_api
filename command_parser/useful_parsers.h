@@ -225,6 +225,22 @@ struct int_parser {
 	}
 };
 
+template<typename T> //requires std::is_numeric<T>
+struct integral_parser {
+	parse_result<T> operator()(std::string_view s) const {
+		T r = 0;
+		const auto [ptr, ec] = std::from_chars(s.data(), s.data() + s.size(), r);
+		if (ptr == s.data()) {
+			return parse_fail();
+		}
+		else {
+			const ptrdiff_t used_chars = ptr - s.data();
+			s.remove_prefix(used_chars);
+			return parse_result(r, s);
+		}
+	}
+};
+
 struct uint64_parser {
 	parse_result<uint64_t> operator()(std::string_view s) const {
 		uint64_t r = 0;

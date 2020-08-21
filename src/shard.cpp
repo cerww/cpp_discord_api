@@ -101,7 +101,7 @@ rq::change_my_nick shard::change_my_nick(const partial_guild& g, std::string new
 	return send_request<rq::change_my_nick>(body.dump(), g);
 }
 
-rq::kick_member shard::kick_member(const partial_guild& g, const guild_member& member) {
+rq::kick_member shard::kick_member(const partial_guild& g, const partial_guild_member& member) {
 	return send_request<rq::kick_member>(g, member);
 }
 
@@ -210,7 +210,7 @@ rq::delete_emoji shard::delete_emoji(const partial_guild& g, const partial_emoji
 	return send_request<rq::delete_emoji>(g, e);
 }
 
-rq::modify_emoji shard::modify_emoji(const Guild& g, const partial_emoji& e, std::string s, std::vector<snowflake> v) {
+rq::modify_emoji shard::modify_emoji(const partial_guild& g, const partial_emoji& e, std::string s, std::vector<snowflake> v) {
 	nlohmann::json body;
 	body["name"] = std::move(s);
 	body["roles"] = std::move(v);

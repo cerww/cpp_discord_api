@@ -2,7 +2,7 @@
 #include "snowflake.h"
 #include "guild.h"
 
-const guild_member& Guild::owner() const noexcept {
+const guild_member& Guild::owner() const {
 	return m_members.at(owner_id());
 }
 
@@ -27,7 +27,7 @@ discord_obj_map<channel_catagory> Guild::all_channel_catagories() const noexcept
 }
 
 void from_json(const nlohmann::json& json, Guild& guild) {
-	from_json(json, static_cast<partial_guild&>(guild));
+	json.get_to(static_cast<partial_guild&>(guild));
 	guild.m_large = json["large"].get<bool>();
 	guild.m_unavailable = json["unavailable"].get<bool>();
 	guild.m_member_count = json["member_count"].get<int>();

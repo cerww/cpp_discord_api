@@ -1,5 +1,6 @@
 #pragma once
 #include "parse_result.h"
+#include "useful_parsing_stuff.h"
 
 
 //this might be meh ;-;
@@ -87,30 +88,37 @@ struct list_parser2 {
 	parse_result<std::vector<inner_type>> operator()(std::string_view s) {
 		std::vector<inner_type> ret;
 		{
-			//check if it starts with thingy that ends it
-			auto result1 = terminal_parser(s);
+			//parse 1st item first, then parse (d,i) in pairs
+			auto result1 = inner_parser(s);
 			if(result1) {
-				return parse_result(std::move(ret), result1.rest());
+				ret.push_back(std::move(result1.value()));
+				s = result1.rest();
+			}else {
+				return parse_result(ret, s);
 			}
 		}
 
 		while (true) {
+
+			const auto terminal_parser_result = terminal_parser(s);
+			if(terminal_parser_result) {
+				return parse_result(std::move(ret), terminal_parser_result.rest());
+			}
+			
 			auto result = parse_consecutive(
 				s,
-				inner_parser,
-				first_of_parser(terminal_parser, delimiter_parser)
+				delimiter_parser,
+				inner_parser
 			);
+			
 			if (!result) {
 				return parse_fail();
 			}
 
-			auto& [item, rawr] = result.value();
+			auto& [d, item] = result.value();
 			s = result.rest();
 			ret.push_back(std::move(item));
-
-			if (rawr.index() == 0) {//parsed terminal_parser first
-				return parse_result(std::move(ret), s);
-			}
+		
 		}
 
 	}
@@ -133,17 +141,21 @@ struct list_parser3 {
 	parse_result<std::vector<inner_type>> operator()(std::string_view s) {
 		std::vector<inner_type> ret;
 
+		auto r1 = inner_parser(s);
+		if(!r1) {
+			return parse_result(ret,s);
+		}
+
+		s = r1.rest();
+		ret.push_back(std::move(r1.value()));
+		
 		while (true) {
-			auto result = parse_consecutive(
-				s,
-				inner_parser,
-				delimiter_parser
-			);
+			auto result = parse_consecutive(s, delimiter_parser, inner_parser);
 			if (!result) {
 				break;
 			}
 
-			auto& [item, rawr] = result.value();
+			auto& [_1,item] = result.value();			
 			s = result.rest();
 			ret.push_back(std::move(item));
 		}

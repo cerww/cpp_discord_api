@@ -2,13 +2,11 @@
 #include <boost/asio.hpp>
 #include <boost/beast.hpp>
 #include <boost/beast/websocket.hpp>
-//#include "rename_later_5.h"
-//#include "timed_task_executor.h"
 #include "../common/ref_count_ptr.h"
 #include "snowflake.h"
 #include "../common/web_socket_session_impl.h"
 #include "../common/task_completion_handler.h"
-#include "voice_channel.h"
+#include "guild.h"
 #include "../common/opus_encoder.h"
 #include "../common/resume_on_strand.h"
 
@@ -57,9 +55,9 @@ struct discord_voice_connection_impl :
 		auto last_time_sent_packet = std::chrono::steady_clock::now();
 		
 		for (audio_frame frame : data.frames(time_frame)) {
-			if(std::exchange(is_canceled,false)) {
-				co_await control_speaking(0);
+			if(is_canceled.exchange(false)) {
 				is_playing = false;
+				co_await control_speaking(0);
 				co_await resume_on_strand{ *strand };
 				cancel_promise.set_value();				
 				co_return;
@@ -67,45 +65,85 @@ struct discord_voice_connection_impl :
 			
 			if (frame.channel_count != 2 || frame.sampling_rate != 48000) {
 				frame = resample_meh(frame, 2, 48000);
-			}
-			
-			
-			std::array<std::byte, 12> header{ {} };
-
-			(uint8_t&)header[0] = 0x80;
-			(uint8_t&)header[1] = 0x78;
-
-			(uint16_t&)header[2] = htons(sqeuence_number++);
-
-			(uint32_t&)header[4] = htonl(m_timestamp);
-			(uint32_t&)header[8] = ssrc_big_end;
-
-			std::array<std::byte, 1000> opus_data{};//save 1 memory allocation
-			const int len = m_opus_encoder.encode_into_buffer(frame, opus_data.data(), (int)opus_data.size());
-
-			const auto encrypted_voice_data = encrypt_xsalsa20_poly1305(header, std::span<std::byte>(opus_data.data(),len));
-
-			auto ec = send_voice_data_udp(encrypted_voice_data);
-
-			m_timestamp += frame.frame_size;
+			}			
+			send_frame(frame, sqeuence_number++, ssrc_big_end);
 			
 			last_time_sent_packet += time_frame;
 			const auto next_time_to_send_packet = last_time_sent_packet;
+			
 			co_await wait(duration_cast<std::chrono::milliseconds>(next_time_to_send_packet - std::chrono::steady_clock::now()));
-
 		}
-		co_await control_speaking(0);
-		co_await resume_on_strand{*strand};		
+		
 		is_playing = false;
+		
+		co_await control_speaking(0);
+		co_await resume_on_strand{*strand};
+		
+		if (is_canceled.exchange(false)) {
+			cancel_promise.set_value();
+			co_return;
+		}
 	};
-	
+
+	template<typename T>
+	cerwy::task<void> send_async(T&& async_source) {
+		using namespace std::literals;
+		using std::chrono::duration_cast;
+
+		co_await control_speaking(1);
+		is_playing = true;
+
+		uint16_t sqeuence_number = 0;
+		const auto ssrc_big_end = htonl(ssrc);
+		static constexpr auto time_frame = 20ms;
+
+		auto last_time_sent_packet = std::chrono::steady_clock::now();
+
+		//TODO change with for co_await when that is a thing
+		auto frames = async_source.frames(time_frame);
+		while(true){
+			int ui = 0;
+			std::optional<audio_frame> frame_opt = co_await frames.next();
+			if(!frame_opt) {
+				break;
+			}
+			audio_frame& frame = *frame_opt;
+			if (is_canceled.exchange(false)) {
+				is_playing = false;
+				co_await control_speaking(0);
+				co_await resume_on_strand{ *strand };
+				cancel_promise.set_value();
+				co_return;
+			}
+
+			if (frame.channel_count != 2 || frame.sampling_rate != 48000) {
+				frame = resample_meh(frame, 2, 48000);
+			}
+			send_frame(frame, sqeuence_number++, ssrc_big_end);
+
+			last_time_sent_packet += time_frame;
+			const auto next_time_to_send_packet = last_time_sent_packet;
+
+			co_await wait(duration_cast<std::chrono::milliseconds>(next_time_to_send_packet - std::chrono::steady_clock::now()));
+		}
+
+		is_playing = false;
+
+		co_await control_speaking(0);
+		co_await resume_on_strand{ *strand };
+
+		if (is_canceled.exchange(false)) {
+			cancel_promise.set_value();
+			co_return;
+		}
+	}
 	
 	cerwy::task<void> cancel_current_data() {
 		if(!is_playing || is_canceled) {
-			cerwy::make_ready_void_task();
-		}
+			return cerwy::make_ready_void_task();	
+		}		
 		cancel_promise = cerwy::promise<void>();
-
+		is_canceled = true;
 		return cancel_promise.get_task();		
 	}
 
@@ -141,8 +179,8 @@ struct discord_voice_connection_impl :
 
 	boost::asio::ip::udp::socket voice_socket;
 
-	bool is_playing = false;
-	bool is_canceled = false;
+	std::atomic<bool> is_playing = false;
+	std::atomic<bool> is_canceled = false;
 	cerwy::promise<void> cancel_promise;
 	std::function<audio_frame(const audio_frame&, int, int)> resample_fn = resample_easy;
 private:
@@ -181,6 +219,25 @@ private:
 	[[nodiscard]]cerwy::task<boost::system::error_code> send_voice_data_udp(std::span<const std::byte>);
 
 	[[nodiscard]] cerwy::task<boost::system::error_code> wait(std::chrono::milliseconds);
+
+	void send_frame(const audio_frame& frame,uint16_t sqeuence_number,uint32_t ssrc_big_end) {
+		std::array<std::byte, 12> header{ {} };
+
+		(uint8_t&)header[0] = 0x80;
+		(uint8_t&)header[1] = 0x78;
+
+		(uint16_t&)header[2] = htons(sqeuence_number++);
+
+		(uint32_t&)header[4] = htonl(m_timestamp);
+		(uint32_t&)header[8] = ssrc_big_end;
+
+		std::array<std::byte, 1000> opus_data{};//save 1 memory allocation!!!!!!
+		const int len = m_opus_encoder.encode_into_buffer(frame, opus_data.data(), (int)opus_data.size());
+
+		const auto encrypted_voice_data = encrypt_xsalsa20_poly1305(header, std::span<std::byte>(opus_data.data(), len));
+		(void)send_voice_data_udp(encrypted_voice_data);//don't acually need to check if data was sent?
+		m_timestamp += frame.frame_size;		
+	}
 };
 
 struct voice_connection {
@@ -212,6 +269,11 @@ public:
 		return m_connection->send_voice(data);
 	};
 
+	template<typename T>//audio_source
+	cerwy::task<void> send_async(T&& data) {
+		return m_connection->send_async(std::forward<T>(data));
+	};
+
 	//todo: rename
 	cerwy::task<void> cancel_current_data() {
 		return m_connection->cancel_current_data();
@@ -220,6 +282,28 @@ public:
 	template<typename F>
 	void set_resample_fn(F&& f) {
 		m_connection->resample_fn = std::forward<F>(f);
+	}
+
+	const Guild& guild()const noexcept {
+		return *m_connection->guild;
+	}
+
+	const voice_channel& channel()const {
+		const auto& guild = this->guild();
+		auto it = ranges::find(guild.voice_states(), m_connection->my_id, &voice_state::user_id);
+		if(it == guild.voice_states().end()) {
+			throw std::runtime_error("already disconnected");
+		}
+		const voice_state& v = *it;
+
+		auto a = guild.voice_channels();
+		auto it2 = ranges::find(a, v.channel_id(), &voice_channel::id);
+		if (it2 == a.end()) {
+			throw std::runtime_error("wat");
+		}
+		return *it2;
+		
+		//return guild.voice_channels()[v.channel_id()];
 	}
 
 private:

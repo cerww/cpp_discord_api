@@ -34,15 +34,11 @@ public:
 	//content, embed,attachment
 	//have optional allowed_mentions?
 	rq::send_message send_message(const partial_channel& channel, std::string content);
-
 	rq::send_message send_message(const partial_channel& channel, std::string content, const embed& embed);
-
 	template<int flags>
 	rq::send_message send_message(const partial_channel& channel, std::string content, const allowed_mentions<flags>&);
-
 	template<int flags>
 	rq::send_message send_message(const partial_channel& channel, std::string content, const embed& embed, const allowed_mentions<flags>&);
-
 
 	rq::add_role add_role(const partial_guild&, const guild_member&, const guild_role&);
 	rq::remove_role remove_role(const partial_guild&, const guild_member&, const guild_role&);
@@ -51,10 +47,10 @@ public:
 	rq::create_role create_role(const partial_guild&, std::string, permission, int color = 0xffffff/*white*/, bool hoist = true, bool mentionable = true);
 	rq::delete_role delete_role(const partial_guild&, const guild_role&);
 
-	rq::modify_member change_nick(const guild_member&, std::string);
-	rq::modify_member change_nick(const partial_guild&, const user&, std::string);
-	rq::change_my_nick change_my_nick(const partial_guild&, std::string);
-	rq::kick_member kick_member(const partial_guild&, const guild_member&);
+	rq::modify_member change_nick(const guild_member&, std::string new_nick);
+	rq::modify_member change_nick(const partial_guild&, const user&, std::string new_nick);
+	rq::change_my_nick change_my_nick(const partial_guild&, std::string new_nick);
+	rq::kick_member kick_member(const partial_guild&, const partial_guild_member&);
 	rq::ban_member ban_member(const partial_guild& g, const guild_member& member, std::string reason = "", int days_to_delete_msg = 0);
 	rq::unban_member unban_member(const Guild&, snowflake id);
 	//max 100 messages
@@ -65,12 +61,12 @@ public:
 	rq::get_messages get_messages_after(const partial_channel&, const partial_message&, int = 100);
 	rq::get_messages get_messages_around(const partial_channel&, snowflake, int = 100);
 	rq::get_messages get_messages_around(const partial_channel&, const partial_message&, int = 100);
-	rq::create_text_channel create_text_channel(const Guild&, std::string, std::vector<permission_overwrite>  = {}, bool = false);
-	rq::edit_message edit_message(const partial_message&, std::string);
-	rq::create_voice_channel create_voice_channel(const Guild&, std::string, std::vector<permission_overwrite>  = {}, bool = false, int = 96);
-	rq::create_channel_catagory create_channel_catagory(const Guild&, std::string, std::vector<permission_overwrite>  = {}, bool = false);
+	rq::create_text_channel create_text_channel(const Guild&, std::string name, std::vector<permission_overwrite>  = {}, bool nsfw = false);
+	rq::edit_message edit_message(const partial_message&, std::string name);
+	rq::create_voice_channel create_voice_channel(const Guild&, std::string name, std::vector<permission_overwrite>  = {}, bool nsfw = false, int bitrate = 96);
+	rq::create_channel_catagory create_channel_catagory(const Guild&, std::string name, std::vector<permission_overwrite>  = {}, bool nsfw = false);
 	rq::delete_emoji delete_emoji(const partial_guild&, const partial_emoji&);
-	rq::modify_emoji modify_emoji(const Guild&, const partial_emoji&, std::string, std::vector<snowflake>);
+	rq::modify_emoji modify_emoji(const partial_guild&, const partial_emoji&, std::string, std::vector<snowflake>);
 	rq::delete_message delete_message(const partial_message&);
 
 	template<typename rng>
@@ -118,7 +114,6 @@ public:
 	requires is_range_of<rng, snowflake>
 	rq::add_guild_member add_guild_member(const Guild& guild, snowflake id, std::string access_token, rng&& roles, std::string nick = "", bool deaf = false, bool mute = false);
 
-
 	template<typename rng>
 	requires is_range_of<rng, guild_role>
 	rq::add_guild_member add_guild_member(const Guild& guild, snowflake id, std::string access_token, rng&& roles, std::string nick = "", bool deaf = false, bool mute = false);
@@ -145,17 +140,11 @@ public:
 	rq::modify_role modify_role(const guild_role&, modify_role_settings<settings...>);
 
 	rq::create_webhook create_webhook(const partial_channel& channel, std::string name);
-
-	rq::get_guild_webhooks get_guild_webhooks(const partial_guild&);
-
+	rq::get_guild_webhooks get_guild_webhooks(const partial_guild&);\
 	rq::get_channel_webhooks get_channel_webhooks(const partial_channel&);
-
 	rq::get_webhook get_webhook(snowflake, std::string token);
-
 	rq::get_webhook get_webhook(const webhook&);
-
 	rq::execute_webhook send_with_webhook(const webhook&, std::string s);
-
 
 	template<typename ...settings>
 	rq::modify_webhook modify_webhook(const webhook&, modify_webhook_settings<settings...>);
@@ -179,15 +168,25 @@ public:
 		return m_strand;
 	}
 
-	discord_obj_map<Guild> guilds() const noexcept { return m_guilds; }
+	discord_obj_map<Guild> guilds() const noexcept {
+		return m_guilds;
+	}
 
-	discord_obj_map<text_channel> text_channels() const noexcept { return m_text_channel_map; }
+	discord_obj_map<text_channel> text_channels() const noexcept {
+		return m_text_channel_map;
+	}
 
-	discord_obj_map<dm_channel> dm_channels() const noexcept { return m_dm_channels; }
+	discord_obj_map<dm_channel> dm_channels() const noexcept {
+		return m_dm_channels;
+	}
 
-	discord_obj_map<voice_channel> voice_channels() const noexcept { return m_voice_channel_map; }
+	discord_obj_map<voice_channel> voice_channels() const noexcept {
+		return m_voice_channel_map;
+	}
 
-	discord_obj_map<channel_catagory> channel_catagories() const noexcept { return m_channel_catagory_map; }
+	discord_obj_map<channel_catagory> channel_catagories() const noexcept {
+		return m_channel_catagory_map;
+	}
 
 	webhook_client make_webhook_client(const webhook& wh) {
 		if (!wh.token()) {
@@ -200,9 +199,14 @@ public:
 	template<typename fn>
 	void clear_deleted_data_if(fn&& pred) {
 		if constexpr (std::is_invocable_v<fn, std::chrono::steady_clock::time_point, const Guild&>) {
-			auto it = std::remove_if(m_deleted_guilds.begin(), m_deleted_guilds.end(), [&](const auto& thing) {
-				return std::invoke(pred, thing.first, thing.second.value());
+			auto it = std::partition(m_deleted_guilds.begin(), m_deleted_guilds.end(), [&](const auto& thing) {				
+				return !std::invoke(pred, thing.first, thing.second.value());
 			});
+
+			for (auto it2 = it; it2 != m_deleted_guilds.end(); ++it2) {
+				delete_guild_channels((*it).first,(*it2).second.value());
+			}
+			
 			m_deleted_guilds.erase(it, m_deleted_guilds.end());
 		}
 		if constexpr (std::is_invocable_v<fn, std::chrono::steady_clock::time_point, const text_channel&>) {
@@ -238,6 +242,32 @@ public:
 	}
 
 protected:
+
+	void delete_guild_channels(std::chrono::steady_clock::time_point tp,const Guild& guild) {
+		auto now = std::chrono::steady_clock::now();//use now or tp?
+		for (auto channel_id : guild.text_channel_ids()) {
+			auto channel_it = m_text_channel_map.find(channel_id);
+			if (channel_it != m_text_channel_map.end()) {
+				auto channel_handle = m_text_channel_map.extract(channel_it);
+				m_deleted_text_channels.emplace_back(tp, std::move(channel_handle.mapped_indirect()));
+			}
+		}
+		for (auto channel_id : guild.voice_channel_ids()) {
+			auto channel_it = m_voice_channel_map.find(channel_id);
+			if (channel_it != m_voice_channel_map.end()) {
+				auto channel_handle = m_voice_channel_map.extract(channel_it);
+				m_deleted_voice_channels.emplace_back(tp, std::move(channel_handle.mapped_indirect()));
+			}
+		}
+		for (auto channel_id : guild.channel_catagories_ids()) {
+			auto channel_it = m_channel_catagory_map.find(channel_id);
+			if (channel_it != m_channel_catagory_map.end()) {
+				auto channel_handle = m_channel_catagory_map.extract(channel_it);
+				m_deleted_channel_catagories.emplace_back(tp, std::move(channel_handle.mapped_indirect()));
+			}
+		}
+		
+	}
 	using wsClient = rename_later_5;
 
 	cerwy::task<boost::beast::error_code> connect_http_connection();
@@ -295,7 +325,6 @@ std::pair<fut_type, discord_request> get_default_stuffs_for_request(Args&&... ar
 }
 
 }
-
 
 template<typename T, typename ... args>
 std::enable_if_t<rq::has_content_type_v<T>, T> shard::send_request(std::string&& body, args&&... Args) {
