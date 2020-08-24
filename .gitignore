@@ -1,0 +1,15 @@
+*.txt
+*.filters
+*.vcxproj
+*.sln
+*.user
+*.dll
+*.obj
+*.tlog
+*.lib
+*.exe
+*.log
+*/x64/
+*/x64/*
+x64/
+.vs/

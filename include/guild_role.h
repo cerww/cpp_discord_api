@@ -42,3 +42,5 @@ struct fmt::formatter<guild_role,Char>:fmt::formatter<std::string_view,Char> {
 		return fmt::formatter<std::string_view, Char>::format(role.to_mentionable_string(), ctx);
 	}
 };
+
+constexpr static int asddjktasduksadasdsuhkasda = sizeof(guild_role);

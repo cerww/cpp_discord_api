@@ -51,7 +51,7 @@ std::optional<std::string_view> msg_update::content() const noexcept {
 	if (m_content.empty()) {
 		return std::nullopt;
 	} else {
-		return m_content;
+		return std::string_view(m_content);
 	}
 }
 

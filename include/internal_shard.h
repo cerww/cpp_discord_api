@@ -47,7 +47,7 @@ struct internal_shard: shard {
 	internal_shard(internal_shard&&) = delete;
 
 	~internal_shard() noexcept {
-		m_client->close(4000);
+		m_web_socket->close(4000);
 	}
 	
 	bool is_disconnected() const noexcept {
@@ -82,18 +82,18 @@ struct internal_shard: shard {
 	}
 
 	client& parent_client() {
-		return *m_parent;
+		return *m_parent_client;
 	}
 
 	const client& parent_client() const {
-		return *m_parent;
+		return *m_parent_client;
 	}
 
 	void reconnect();
 	
 	std::atomic<uint64_t> m_seq_num = 0;
 
-	std::unique_ptr<wsClient> m_client = nullptr;
+	std::unique_ptr<wsClient> m_web_socket = nullptr;
 
 	ska::bytell_hash_map<snowflake, discord_voice_connection_impl*> voice_connections;
 	

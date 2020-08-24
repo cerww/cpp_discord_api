@@ -24,7 +24,7 @@ struct discord_voice_connection_impl :
 	discord_voice_connection_impl& operator=(const discord_voice_connection_impl&) = delete;
 
 	~discord_voice_connection_impl() = default;
-	
+
 	void start() {
 		send_identify();
 		socket.start_reads();
@@ -41,44 +41,44 @@ struct discord_voice_connection_impl :
 	void close();
 
 	template<typename T>
-	cerwy::task<void> send_voice(const T& data) {		
+	cerwy::task<void> send_voice(const T& data) {
 		using namespace std::literals;
 		using std::chrono::duration_cast;
 
 		co_await control_speaking(1);
 		is_playing = true;
 
-		uint16_t sqeuence_number = 0;		
-		const auto ssrc_big_end = htonl(ssrc);		
+		uint16_t sqeuence_number = 0;
+		const auto ssrc_big_end = htonl(ssrc);
 		static constexpr auto time_frame = 20ms;
-		
+
 		auto last_time_sent_packet = std::chrono::steady_clock::now();
-		
+
 		for (audio_frame frame : data.frames(time_frame)) {
-			if(is_canceled.exchange(false)) {
+			if (is_canceled.exchange(false)) {
 				is_playing = false;
 				co_await control_speaking(0);
-				co_await resume_on_strand{ *strand };
-				cancel_promise.set_value();				
+				co_await resume_on_strand{*strand};
+				cancel_promise.set_value();
 				co_return;
 			}
-			
+
 			if (frame.channel_count != 2 || frame.sampling_rate != 48000) {
 				frame = resample_meh(frame, 2, 48000);
-			}			
+			}
 			send_frame(frame, sqeuence_number++, ssrc_big_end);
-			
+
 			last_time_sent_packet += time_frame;
 			const auto next_time_to_send_packet = last_time_sent_packet;
-			
+
 			co_await wait(duration_cast<std::chrono::milliseconds>(next_time_to_send_packet - std::chrono::steady_clock::now()));
 		}
-		
+
 		is_playing = false;
-		
+
 		co_await control_speaking(0);
 		co_await resume_on_strand{*strand};
-		
+
 		if (is_canceled.exchange(false)) {
 			cancel_promise.set_value();
 			co_return;
@@ -101,17 +101,17 @@ struct discord_voice_connection_impl :
 
 		//TODO change with for co_await when that is a thing
 		auto frames = async_source.frames(time_frame);
-		while(true){
+		while (true) {
 			int ui = 0;
 			std::optional<audio_frame> frame_opt = co_await frames.next();
-			if(!frame_opt) {
+			if (!frame_opt) {
 				break;
 			}
 			audio_frame& frame = *frame_opt;
 			if (is_canceled.exchange(false)) {
 				is_playing = false;
 				co_await control_speaking(0);
-				co_await resume_on_strand{ *strand };
+				co_await resume_on_strand{*strand};
 				cancel_promise.set_value();
 				co_return;
 			}
@@ -130,21 +130,21 @@ struct discord_voice_connection_impl :
 		is_playing = false;
 
 		co_await control_speaking(0);
-		co_await resume_on_strand{ *strand };
+		co_await resume_on_strand{*strand};
 
 		if (is_canceled.exchange(false)) {
 			cancel_promise.set_value();
 			co_return;
 		}
 	}
-	
+
 	cerwy::task<void> cancel_current_data() {
-		if(!is_playing || is_canceled) {
-			return cerwy::make_ready_void_task();	
-		}		
+		if (!is_playing || is_canceled) {
+			return cerwy::make_ready_void_task();
+		}
 		cancel_promise = cerwy::promise<void>();
 		is_canceled = true;
-		return cancel_promise.get_task();		
+		return cancel_promise.get_task();
 	}
 
 	snowflake channel_id;
@@ -188,40 +188,34 @@ private:
 	int m_port = 0;
 	int m_hb_number = 1;
 	std::vector<std::string> m_modes;
-	opus_encoder m_opus_encoder = opus_encoder(48000, 2, OPUS_APPLICATION_AUDIO);	
+	opus_encoder m_opus_encoder = opus_encoder(48000, 2, OPUS_APPLICATION_AUDIO);
 	uint32_t m_timestamp = 0;
 	boost::asio::ip::udp::endpoint m_my_endpoint;
 
 	std::vector<std::byte> m_secret_key;
 
 	//header is nonce
-	std::vector<std::byte> encrypt_xsalsa20_poly1305(std::array<std::byte,12> header, std::span<const std::byte> audio_data);
+	std::vector<std::byte> encrypt_xsalsa20_poly1305(std::array<std::byte, 12> header, std::span<const std::byte> audio_data);
 
 	cerwy::task<void> send_heartbeat();
 
 	void on_msg_recv(nlohmann::json data, int opcode);
-
 	void on_hello(nlohmann::json d);
-
 	void send_identify();
-
 	void on_ready(nlohmann::json data);
-
 	void send_op1_select_protocol() const;
-
 	void on_session_discription(nlohmann::json data);
 
 	cerwy::task<void> connect_udp();
-
 	cerwy::task<void> do_ip_discovery();
 
 	//TODO remove these once i get modules
-	[[nodiscard]]cerwy::task<boost::system::error_code> send_voice_data_udp(std::span<const std::byte>);
+	[[nodiscard]] cerwy::task<boost::system::error_code> send_voice_data_udp(std::span<const std::byte>);
 
 	[[nodiscard]] cerwy::task<boost::system::error_code> wait(std::chrono::milliseconds);
 
-	void send_frame(const audio_frame& frame,uint16_t sqeuence_number,uint32_t ssrc_big_end) {
-		std::array<std::byte, 12> header{ {} };
+	void send_frame(const audio_frame& frame, uint16_t sqeuence_number, uint32_t ssrc_big_end) {
+		std::array<std::byte, 12> header{{}};
 
 		(uint8_t&)header[0] = 0x80;
 		(uint8_t&)header[1] = 0x78;
@@ -236,7 +230,7 @@ private:
 
 		const auto encrypted_voice_data = encrypt_xsalsa20_poly1305(header, std::span<std::byte>(opus_data.data(), len));
 		(void)send_voice_data_udp(encrypted_voice_data);//don't acually need to check if data was sent?
-		m_timestamp += frame.frame_size;		
+		m_timestamp += frame.frame_size;
 	}
 };
 
@@ -252,9 +246,11 @@ struct voice_connection {
 	~voice_connection() {
 		disconnect();
 	};
+
 private:
 	explicit voice_connection(ref_count_ptr<discord_voice_connection_impl> connection):
 		m_connection(std::move(connection)) {}
+
 public:
 	void disconnect() {
 		if (m_connection) {
@@ -284,14 +280,14 @@ public:
 		m_connection->resample_fn = std::forward<F>(f);
 	}
 
-	const Guild& guild()const noexcept {
+	const Guild& guild() const noexcept {
 		return *m_connection->guild;
 	}
 
-	const voice_channel& channel()const {
+	const voice_channel& channel() const {
 		const auto& guild = this->guild();
 		auto it = ranges::find(guild.voice_states(), m_connection->my_id, &voice_state::user_id);
-		if(it == guild.voice_states().end()) {
+		if (it == guild.voice_states().end()) {
 			throw std::runtime_error("already disconnected");
 		}
 		const voice_state& v = *it;

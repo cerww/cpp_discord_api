@@ -59,7 +59,6 @@ int main() {
 	//test_transform_audio_thingy();
 	//thingy_to_debugy();
 
-
 	//std::cin.get();
 	//try {
 	client c;
@@ -259,9 +258,7 @@ int main() {
 		boost::asio::steady_timer timer(s.strand());
 		timer.expires_after(5s);
 		co_await timer.async_wait(use_task);
-
 		co_await s.delete_all_reactions(msg);
-
 		co_return;
 	};
 

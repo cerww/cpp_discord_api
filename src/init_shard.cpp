@@ -28,8 +28,8 @@ cerwy::task<void> init_shard(const int shard_number, internal_shard& me, boost::
 
 		auto& m_socket = me.m_socket;
 
-		me.m_client = std::make_unique<rename_later_5>(m_socket);
-		rename_later_5& m_client = *me.m_client;
+		me.m_web_socket = std::make_unique<rename_later_5>(m_socket);
+		rename_later_5& m_client = *me.m_web_socket;
 
 		auto ec = co_await me.connect_http_connection();
 		if(ec) {
@@ -37,7 +37,6 @@ cerwy::task<void> init_shard(const int shard_number, internal_shard& me, boost::
 		}
 
 		boost::beast::multi_buffer buffer = {};
-
 
 		while (true) {
 			std::cerr << "recieving stuffs\n";

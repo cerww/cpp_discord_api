@@ -5,7 +5,7 @@
 using namespace fmt::literals;
 
 void heartbeat_context::start() {
-	m_socket = m_shard.m_client.get();
+	m_socket = m_shard.m_web_socket.get();
 	
 	std::string msg =
 		R"({ "op": 1, "d" : null })";

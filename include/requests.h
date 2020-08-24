@@ -277,6 +277,11 @@ struct send_message :
 		//return "/channels/{}/messages"_format(channel.id());
 		return fmt::format(FMT_STRING("/channels/{}/messages"),channel.id());
 	}
+
+	static std::string target(const partial_message& msg) {
+		//return "/channels/{}/messages"_format(channel.id());
+		return fmt::format(FMT_STRING("/channels/{}/messages"), msg.channel_id());
+	}
 };
 
 struct send_message_with_file :

@@ -7,7 +7,7 @@ shard::shard(int shard_number, client* t_parent, boost::asio::io_context& ioc,st
 	m_shard_number(shard_number),
 	m_http_connection(t_parent, ioc),
 	m_strand(ioc),
-	m_parent(t_parent),
+	m_parent_client(t_parent),
 	m_auth_token(std::move(auth_token)){ }
 
 cerwy::task<voice_connection> shard::connect_voice(const voice_channel& ch) {
@@ -19,7 +19,7 @@ cerwy::task<voice_connection> shard::connect_voice(const voice_channel& ch) {
 }
 
 bool shard::will_have_guild(snowflake guild_id) const noexcept{
-	return (guild_id.val >> 22) % m_parent->num_shards() == m_shard_number;
+	return (guild_id.val >> 22) % m_parent_client->num_shards() == m_shard_number;
 }
 
 cerwy::task<boost::beast::error_code> shard::connect_http_connection() {
@@ -45,16 +45,34 @@ void shard::set_up_request(boost::beast::http::request<boost::beast::http::strin
 }
 
 rq::send_message shard::send_message(const partial_channel& channel, std::string content) {
-	nlohmann::json body;
-	body["content"] = std::move(content);
-	return send_request<rq::send_message>(body.dump(), channel);
+	//nlohmann::json body;
+	//body["content"] = std::move(content);
+	//auto body2 = fmt::format(R"( {{"content":{} }} )",std::move(content));
+	//return send_request<rq::send_message>(body.dump(), channel);
+	//
+	std::string body = "{\"content\":\"" + std::move(content) + "\"}";
+	return send_request<rq::send_message>(std::move(body), channel);
+	
 }
 
 rq::send_message shard::send_message(const partial_channel& channel, std::string content, const embed& embed) {
 	nlohmann::json body;
 	body["content"] = std::move(content);
-	body["embed"] = embed;
+	body["embed"] = embed;	
+	
 	return send_request<rq::send_message>(body.dump(), channel);
+}
+
+rq::send_message shard::reply(const partial_message& msg, std::string content) {
+	std::string body = "{\"content\":\"" + std::move(content) + "\"}";
+	return send_request<rq::send_message>(std::move(body), msg);
+}
+
+rq::send_message shard::reply(const partial_message& msg, std::string content, const embed& embed) {
+	nlohmann::json body;
+	body["content"] = std::move(content);
+	body["embed"] = embed;
+	return send_request<rq::send_message>(body.dump(), msg);
 }
 
 rq::add_role shard::add_role(const partial_guild& guild, const guild_member& member, const guild_role& role) {

@@ -248,7 +248,7 @@ void discord_voice_connection_impl::on_session_discription(nlohmann::json data) 
 }
 
 cerwy::task<void> discord_voice_connection_impl::connect_udp() {
-	std::cout << m_ip << ' ' << m_port << std::endl;
+	//std::cout << m_ip << ' ' << m_port << std::endl;
 
 	
 	
@@ -257,9 +257,9 @@ cerwy::task<void> discord_voice_connection_impl::connect_udp() {
 	auto [ec,results] = co_await resolver.async_resolve(m_ip, port, use_task_return_tuple2);
 	
 	if (ec) {
-		//die?
+		//die? never happens?
 		int u = 0;
-		std::cout << "failed connecting udp 1" << ec << std::endl;
+		std::cout << "failed 'connecting' udp 1" << ec << std::endl;
 	}
 
 	auto [ec2,ep] = co_await boost::asio::async_connect(voice_socket, results, use_task_return_tuple2);

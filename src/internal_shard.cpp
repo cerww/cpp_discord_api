@@ -136,7 +136,7 @@ void internal_shard::rate_limit(std::chrono::system_clock::time_point tp) {
 
 void internal_shard::close_connection(int code) {
 	m_is_disconnected = true;
-	m_client->close(boost::beast::websocket::close_reason(code));
+	m_web_socket->close(boost::beast::websocket::close_reason(code));
 }
 
 
@@ -240,7 +240,7 @@ void internal_shard::m_opcode1_send_heartbeat() const {
 	"op": 1,
 	"d" : null
 })";
-	m_client->send_thing(std::move(t));
+	m_web_socket->send_thing(std::move(t));
 }
 
 void internal_shard::m_opcode2_send_identity() const {
@@ -251,7 +251,7 @@ void internal_shard::m_opcode3_send_presence() const {
 	nlohmann::json val;
 	val["op"] = 3;
 	val["data"] = presence();
-	m_client->send_thing(val.dump());
+	m_web_socket->send_thing(val.dump());
 }
 
 std::pair<cerwy::task<nlohmann::json>, cerwy::task<std::string>> internal_shard::m_opcode4(const voice_channel& channel) {
@@ -264,7 +264,7 @@ std::pair<cerwy::task<nlohmann::json>, cerwy::task<std::string>> internal_shard:
 	m_things_waiting_for_voice_endpoint.insert(std::make_pair(channel.guild_id(), std::move(name_promise)));
 	m_things_waiting_for_voice_endpoint2.insert(std::make_pair(channel.guild_id(), std::move(session_id_promise)));
 
-	m_client->send_thing(
+	m_web_socket->send_thing(
 		R"(
 {{
     "op": 4,
@@ -296,7 +296,7 @@ void internal_shard::m_opcode8_guild_member_chunk(snowflake id) const {
 	s["d"]["query"] = "";
 	s["d"]["limit"] = 0;
 	std::cout << s << std::endl;
-	m_client->send_thing(s.dump());
+	m_web_socket->send_thing(s.dump());
 }
 
 cerwy::task<void> internal_shard::m_opcode9_on_invalid_session(nlohmann::json d) {
@@ -342,13 +342,13 @@ void internal_shard::send_resume() const {
 	std::string temp(R"({
 		"op":6,
 		"d":{
-			"token":)"s + std::string(m_parent->token()) + R"(
+			"token":)"s + std::string(m_parent_client->token()) + R"(
 			"session_id:)"s + m_session_id + R"(
 			"seq:")" + std::to_string(m_seq_num) + R"(
 		}
 	}
 	)"s);
-	m_client->send_thing(std::move(temp));
+	m_web_socket->send_thing(std::move(temp));
 }
 
 void internal_shard::apply_presences(const nlohmann::json& presences, Guild& guild) {
@@ -393,12 +393,12 @@ void internal_shard::m_send_identity() const {
 	"intents":{}
 }}
 }}
-)", m_parent->token(), s_os, large_threshold, m_shard_number, m_parent->num_shards(), presence().dump(), m_intents.int_value());
+)", m_parent_client->token(), s_os, large_threshold, m_shard_number, m_parent_client->num_shards(), presence().dump(), m_intents.int_value());
 
 	auto timer = std::make_unique<boost::asio::steady_timer>(m_ioc);
-	timer->expires_at(m_parent->get_time_point_for_identifying());
+	timer->expires_at(m_parent_client->get_time_point_for_identifying());
 	timer->async_wait([pin = std::move(timer), str = std::move(identity),this](auto ec)mutable {
-		m_client->send_thing(std::move(str));
+		m_web_socket->send_thing(std::move(str));
 	});
 }
 
@@ -417,8 +417,9 @@ void internal_shard::procces_event<event_name::READY>(nlohmann::json& event) {
 
 	m_dm_channels = private_channels | ranges::views::transform(&get_then_return_id<dm_channel>) | ranges::to<ref_stable_map<snowflake,dm_channel>>();
 	*/
-
-	m_parent->on_ready(*this);
+	if (m_parent_client->on_ready.has_value()) {
+		m_parent_client->on_ready.value()(*this);
+	}
 
 }
 
@@ -493,7 +494,9 @@ void internal_shard::procces_event<event_name::GUILD_CREATE>(nlohmann::json& dat
 	}
 	guild.m_shard = this;
 	if (guild.m_is_ready) {
-		m_parent->on_guild_ready(guild, *this);
+		if (m_parent_client->on_guild_ready.has_value()) {
+			m_parent_client->on_guild_ready.value()(guild, *this);
+		}
 	}
 }
 
@@ -524,8 +527,10 @@ void internal_shard::procces_event<event_name::GUILD_MEMBERS_CHUNK>(nlohmann::js
 		m_chunks_left_for_guild.erase(g.id());
 		g.m_is_ready = true;
 		apply_presences(g.m_presences, g);
-
-		m_parent->on_guild_ready(g, *this);
+		
+		if (m_parent_client->on_guild_ready.has_value()) {
+			m_parent_client->on_guild_ready.value()(g, *this);
+		}
 
 		replay_events_for(g.id());
 		
@@ -606,12 +611,15 @@ void internal_shard::procces_event<event_name::MESSAGE_CREATE>(nlohmann::json& e
 		}
 
 		auto msg = create_msg<guild_text_message>(ch, e, m_guilds[ch.m_guild_id].m_members);
-
-		m_parent->on_guild_text_msg(std::move(msg), *this);
+		if (m_parent_client->on_guild_text_msg) {
+			m_parent_client->on_guild_text_msg.value()(std::move(msg), *this);
+		}
 	} else {//dm msg		
 		dm_channel& ch = m_dm_channels[channel_id];
 		auto msg = create_msg<dm_message>(ch, e, ch.m_recipients);
-		m_parent->on_dm_msg(std::move(msg), *this);
+		if (m_parent_client->on_dm_msg.has_value()) {
+			m_parent_client->on_dm_msg.value()(std::move(msg), *this);
+		}
 	}
 }
 
@@ -638,23 +646,31 @@ void internal_shard::procces_event<event_name::CHANNEL_CREATE>(nlohmann::json& c
 			channel.m_channel_type = text_channel_type::store;
 		}
 
-		m_parent->on_guild_text_channel_create(channel, *this);
+		if (m_parent_client->on_guild_text_channel_create.has_value()) {
+			m_parent_client->on_guild_text_channel_create.value()(channel, *this);
+		}
 	} else if (type == 1 || type == 3) {//DM
 		auto& channel = m_dm_channels.insert(std::make_pair(id, channel_json.get<dm_channel>())).first->second;
-		m_parent->on_dm_channel_create(channel, *this);
+		if (m_parent_client->on_dm_channel_create.has_value()) {
+			m_parent_client->on_dm_channel_create.value()(channel, *this);
+		}
 	} else if (type == 2) {//voice
 		auto& channel = m_voice_channel_map.insert(std::make_pair(id, channel_json.get<voice_channel>())).first->second;
 		m_guilds[channel.m_guild_id].m_voice_channel_ids.push_back(id);
 		channel.m_guild = &m_guilds[channel.m_guild_id];
 
 		channel.m_parent = ptr_or_null(m_channel_catagory_map, channel.m_parent_id);
-		m_parent->on_guild_voice_channel_create(channel, *this);
+		if (m_parent_client->on_guild_voice_channel_create.has_value()) {
+			m_parent_client->on_guild_voice_channel_create.value()(channel, *this);
+		}
 	} else if (type == 4) {//guild catagory
 		auto& channel = m_channel_catagory_map.insert(std::make_pair(id, channel_json.get<channel_catagory>())).first->second;
 		m_guilds[channel.m_guild_id].m_channel_catagory_ids.push_back(id);
 
 		channel.m_guild = &m_guilds[channel.m_guild_id];
-		m_parent->on_guild_channel_catagory_create(channel, *this);
+		if (m_parent_client->on_guild_channel_catagory_create.has_value()) {
+			m_parent_client->on_guild_channel_catagory_create.value()(channel, *this);
+		}
 	}
 }
 
@@ -674,20 +690,23 @@ void internal_shard::procces_event<event_name::CHANNEL_DELETE>(nlohmann::json& e
 			const auto channel_it = m_text_channel_map.find(channel_id);
 			auto node_handle = m_text_channel_map.extract(channel_it);
 			const auto& channel = m_deleted_text_channels.emplace_back(std::chrono::steady_clock::now(), std::move(node_handle.mapped_indirect())).second;
-
-			m_parent->on_text_channel_delete(channel.value(), *this);
+			if (m_parent_client->on_text_channel_delete.has_value()) {
+				m_parent_client->on_text_channel_delete.value()(channel.value(), *this);
+			}
 		} else if (erase_first_quick(guild.m_voice_channel_ids, channel_id)) {
 			const auto channel_it = m_voice_channel_map.find(channel_id);
 			auto node_handle = m_voice_channel_map.extract(channel_it);
 			const auto& channel = m_deleted_voice_channels.emplace_back(std::chrono::steady_clock::now(), std::move(node_handle.mapped_indirect())).second;
-
-			m_parent->on_voice_channel_delete(channel.value(), *this);
+			if (m_parent_client->on_voice_channel_delete.has_value()) {
+				m_parent_client->on_voice_channel_delete.value()(channel.value(), *this);
+			}
 		} else if (erase_first_quick(guild.m_channel_catagory_ids, channel_id)) {
 			const auto channel_it = m_channel_catagory_map.find(channel_id);
 			auto node_handle = m_channel_catagory_map.extract(channel_it);
 			const auto& channel = m_deleted_channel_catagories.emplace_back(std::chrono::steady_clock::now(), std::move(node_handle.mapped_indirect())).second;
-
-			m_parent->on_channel_catagory_delete(channel.value(), *this);
+			if (m_parent_client->on_channel_catagory_delete.has_value()) {
+				m_parent_client->on_channel_catagory_delete.value()(channel.value(), *this);
+			}
 		} else {
 			//unimplemented channel
 		}
@@ -699,14 +718,20 @@ void internal_shard::procces_event<event_name::CHANNEL_DELETE>(nlohmann::json& e
 		}
 		auto node_handle = m_dm_channels.extract(it2);
 		auto& channel = m_deleted_dm_channels.emplace_back(std::chrono::steady_clock::now(), std::move(node_handle.mapped_indirect())).second;
-		m_parent->on_dm_channel_delete(channel, *this);
+		if (m_parent_client->on_dm_channel_delete.has_value()) {
+			m_parent_client->on_dm_channel_delete.value()(channel, *this);
+		}
 	}
 }
 
 template<>
 void internal_shard::procces_event<event_name::GUILD_MEMBER_ADD>(nlohmann::json& e) {
 	const auto guild_id = e["guild_id"].get<snowflake>();
-	Guild& guild = m_guilds[guild_id];
+	auto guild_it = m_guilds.find(guild_id);
+	if(guild_it == m_guilds.end()) {
+		return;
+	}
+	Guild& guild = guild_it->second;
 	if (!guild.m_is_ready) {
 		m_backed_up_events[guild_id].emplace_back(std::move(e), event_name::GUILD_MEMBER_ADD);
 		return;
@@ -720,12 +745,19 @@ void internal_shard::procces_event<event_name::GUILD_MEMBER_ADD>(nlohmann::json&
 
 	auto& member_ref = guild.m_members.insert(std::pair{member_id, std::move(member)}).first->second;
 	member_ref.m_guild = &guild;
-	m_parent->on_guild_member_add(member_ref, *this);
+	if (m_parent_client->on_guild_member_add.has_value()) {
+		m_parent_client->on_guild_member_add.value()(member_ref, *this);
+	}
 }
 
 template<>
 void internal_shard::procces_event<event_name::GUILD_MEMBER_REMOVE>(nlohmann::json& e) {
-	Guild& guild = m_guilds[e["guild_id"].get<snowflake>()];
+	const auto guild_id = e["guild_id"].get<snowflake>();
+	auto guild_it = m_guilds.find(guild_id);
+	if (guild_it == m_guilds.end()) {
+		return;
+	}
+	Guild& guild = guild_it->second;
 	if (!guild.m_is_ready) {
 		m_backed_up_events[guild.m_id].emplace_back(std::move(e), event_name::GUILD_MEMBER_ADD);
 		return;
@@ -742,8 +774,9 @@ void internal_shard::procces_event<event_name::GUILD_MEMBER_REMOVE>(nlohmann::js
 		--guild.m_member_count;
 		auto node_handle = guild.m_members.extract(it);
 		const auto& member = m_deleted_guild_members.emplace_back(std::chrono::steady_clock::now(), std::move(node_handle.mapped_indirect())).second;
-
-		m_parent->on_guild_member_remove(member, *this);
+		if (m_parent_client->on_guild_member_remove.has_value()) {
+			m_parent_client->on_guild_member_remove.value()(member, *this);
+		}
 	}
 }
 
@@ -788,13 +821,19 @@ void internal_shard::procces_event<event_name::CHANNEL_PINS_UPDATE>(nlohmann::js
 template<>
 void internal_shard::procces_event<event_name::GUILD_UPDATE>(nlohmann::json& e) {
 	const auto guild_id = e["id"].get<snowflake>();
-	Guild& g = m_guilds[guild_id];
+	auto guild_it = m_guilds.find(guild_id);
+	if (guild_it == m_guilds.end()) {
+		return;
+	}
+	Guild& g = guild_it->second;
 	if (!g.m_is_ready) {
 		m_backed_up_events[guild_id].emplace_back(std::move(e), event_name::GUILD_UPDATE);
 		return;
 	}
 	from_json(e, static_cast<partial_guild&>(g));
-	m_parent->on_guild_update(g, *this);
+	if (m_parent_client->on_guild_update.has_value()) {
+		m_parent_client->on_guild_update.value()(g, *this);
+	}
 };
 
 template<>
@@ -805,8 +844,7 @@ void internal_shard::procces_event<event_name::GUILD_DELETE>(nlohmann::json& e) 
 	const auto it = m_guilds.find(e["id"].get<snowflake>());
 	if (it != m_guilds.end()) {
 		auto node_handle = m_guilds.extract(it);
-		const auto now = std::chrono::steady_clock::now();
-		auto& guild = m_deleted_guilds.emplace_back(now, std::move(node_handle.mapped_indirect())).second;
+		auto& guild = m_deleted_guilds.emplace_back(std::chrono::steady_clock::now(), std::move(node_handle.mapped_indirect())).second;
 		/*
 		for(auto channel_id:guild->m_text_channel_ids) {
 			auto channel_it = m_text_channel_map.find(channel_id);
@@ -830,8 +868,9 @@ void internal_shard::procces_event<event_name::GUILD_DELETE>(nlohmann::json& e) 
 			}
 		}
 		*/
-		
-		m_parent->on_guild_remove(guild.value(), unavailable, *this);
+		if (m_parent_client->on_guild_remove.has_value()) {
+			m_parent_client->on_guild_remove.value()(guild.value(), unavailable, *this);
+		}
 	}
 }
 
@@ -843,7 +882,9 @@ void internal_shard::procces_event<event_name::GUILD_BAN_ADD>(nlohmann::json& e)
 		return;
 	}
 	const Guild& g = it->second;
-	m_parent->on_ban_add(g, std::move(member), *this);
+	if (m_parent_client->on_ban_add.has_value()) {
+		m_parent_client->on_ban_add.value()(g, std::move(member), *this);
+	}
 };
 
 template<>
@@ -854,7 +895,9 @@ void internal_shard::procces_event<event_name::GUILD_BAN_REMOVE>(nlohmann::json&
 		return;
 	}
 	const Guild& g = it->second;
-	m_parent->on_ban_remove(g, std::move(member), *this);
+	if (m_parent_client->on_ban_remove.has_value()) {
+		m_parent_client->on_ban_remove.value()(g, std::move(member), *this);
+	}
 }
 
 template<>
@@ -871,7 +914,12 @@ void internal_shard::procces_event<event_name::GUILD_INTEGRATIONS_UPDATE>(nlohma
 
 template<>
 void internal_shard::procces_event<event_name::GUILD_MEMBER_UPDATE>(nlohmann::json& e) {
-	auto& guild = m_guilds[e["guild_id"].get<snowflake>()];
+	const auto guild_id = e["guild_id"].get<snowflake>();
+	auto guild_it = m_guilds.find(guild_id);
+	if (guild_it == m_guilds.end()) {
+		return;
+	}
+	auto& guild = guild_it->second;
 	if (!guild.m_is_ready) {
 		m_backed_up_events[guild.m_id].emplace_back(std::move(e), event_name::GUILD_MEMBER_UPDATE);
 		return;
@@ -892,7 +940,9 @@ void internal_shard::procces_event<event_name::GUILD_MEMBER_UPDATE>(nlohmann::js
 
 		const auto id = member.id();
 		auto& member_in_map = guild.m_members.insert(std::pair(id, std::move(member))).first->second;
-		m_parent->on_guild_member_update(member_in_map, *this);
+		if (m_parent_client->on_guild_member_update.has_value()) {
+			m_parent_client->on_guild_member_update.value()(member_in_map, *this);
+		}
 	} else {
 		auto& member = (*it).second;
 		from_json(user_json, static_cast<user&>(member));
@@ -900,37 +950,54 @@ void internal_shard::procces_event<event_name::GUILD_MEMBER_UPDATE>(nlohmann::js
 		member.m_roles = e["roles"] | ranges::views::transform(&nlohmann::json::get<snowflake>) | ranges::to<boost::container::small_vector<snowflake, 5>>();
 		if (const auto it2 = e.find("nick"); it2 != e.end())
 			member.m_nick = e["nick"].is_null() ? member.m_nick : e["nick"].get<std::string>();
-		m_parent->on_guild_member_update(member, *this);
+		if (m_parent_client->on_guild_member_update.has_value()) {
+			m_parent_client->on_guild_member_update.value()(member, *this);
+		}
 	}
 
 };
 
 template<>
 void internal_shard::procces_event<event_name::GUILD_ROLE_CREATE>(nlohmann::json& e) {
-	Guild& guild = m_guilds[e["guild_id"].get<snowflake>()];
+	const auto guild_id = e["guild_id"].get<snowflake>();
+	auto guild_it = m_guilds.find(guild_id);
+	if (guild_it == m_guilds.end()) {
+		return;
+	}
+	Guild& guild = guild_it->second;
 	if (!guild.m_is_ready) {
 		m_backed_up_events[guild.m_id].emplace_back(std::move(e), event_name::GUILD_ROLE_CREATE);
 		return;
 	}
-	m_parent->on_role_create(guild, guild.m_roles.insert(std::make_pair(e["role"]["id"].get<snowflake>(), e["role"].get<guild_role>())).first->second, *this);
+	if (m_parent_client->on_role_create.has_value()) {
+		m_parent_client->on_role_create.value()(guild, guild.m_roles.insert(std::make_pair(e["role"]["id"].get<snowflake>(), e["role"].get<guild_role>())).first->second, *this);
+	}
 };
 
 template<>
 void internal_shard::procces_event<event_name::GUILD_ROLE_UPDATE>(nlohmann::json& e) {
-	Guild& guild = m_guilds[e["guild_id"].get<snowflake>()];
+	const auto guild_id = e["guild_id"].get<snowflake>();
+	auto guild_it = m_guilds.find(guild_id);
+	if (guild_it == m_guilds.end()) {
+		return;
+	}
+	Guild& guild = guild_it->second;
 	if (!guild.m_is_ready) {
 		m_backed_up_events[guild.m_id].emplace_back(std::move(e), event_name::GUILD_ROLE_UPDATE);
 		return;
 	}
 	auto new_role = e["role"].get<guild_role>();
-	guild_role& old_role = guild.m_roles[new_role.id()];
+	auto& old_role = guild.m_roles[new_role.id()];
 	std::swap(old_role, new_role);
 	//old_role is now new_role
-	m_parent->on_role_update(guild, std::move(new_role), old_role, *this);
+	if (m_parent_client->on_role_update.has_value()) {
+		m_parent_client->on_role_update.value()(guild, std::move(new_role), old_role, *this);
+	}
 };
 
 template<>
 void internal_shard::procces_event<event_name::GUILD_ROLE_DELETE>(nlohmann::json& e) {
+	//if(!m_guilds.contains(e["guild_id"].get<snowflake>())){return;}
 	Guild& guild = m_guilds[e["guild_id"].get<snowflake>()];
 	if (!guild.m_is_ready) {
 		m_backed_up_events[guild.m_id].emplace_back(std::move(e), event_name::GUILD_ROLE_DELETE);
@@ -944,7 +1011,9 @@ void internal_shard::procces_event<event_name::GUILD_ROLE_DELETE>(nlohmann::json
 			erase_first_quick(member.m_roles, old_role.id());
 		}
 	}
-	m_parent->on_role_delete(guild, old_role, *this);
+	if (m_parent_client->on_role_delete.has_value()) {
+		m_parent_client->on_role_delete.value()(guild, old_role, *this);
+	}
 };
 
 template<>
@@ -959,11 +1028,20 @@ void internal_shard::procces_event<event_name::MESSAGE_UPDATE>(nlohmann::json& e
 		}
 
 		auto msg = createMsgUpdate<guild_msg_update>(ch, e, guild.m_members);
-		m_parent->on_guild_msg_update(std::move(msg), *this);
+		if (m_parent_client->on_guild_msg_update.has_value()) {
+			m_parent_client->on_guild_msg_update.value()(std::move(msg), *this);
+		}
 	} else {//dm msg
-		dm_channel& ch = m_dm_channels[channel_id];
+		const auto dm_channel_it = m_dm_channels.find(channel_id);
+		if(dm_channel_it == m_dm_channels.end()) {
+			return;
+		}
+		
+		dm_channel& ch = dm_channel_it->second;
 		auto msg = createMsgUpdate<dm_msg_update>(ch, e, ch.m_recipients);
-		m_parent->on_dm_msg_update(std::move(msg), *this);
+		if (m_parent_client->on_dm_msg_update.has_value()) {
+			m_parent_client->on_dm_msg_update.value()(std::move(msg), *this);
+		}
 	}
 }
 
@@ -978,19 +1056,28 @@ void internal_shard::procces_event<event_name::MESSAGE_DELETE>(nlohmann::json& e
 			m_backed_up_events[guild.id()].emplace_back(std::move(e), event_name::MESSAGE_DELETE);
 			return;
 		}
-		m_parent->on_guild_msg_delete(msg_id, ch, *this);
+		if (m_parent_client->on_guild_msg_delete.has_value()) {
+			m_parent_client->on_guild_msg_delete.value()(msg_id, ch, *this);
+		}
 	} else {//dm msg
 		dm_channel& ch = m_dm_channels[channel_id];
-		m_parent->on_dm_msg_delete(msg_id, ch, *this);
+		if (m_parent_client->on_dm_msg_delete.has_value()) {
+			m_parent_client->on_dm_msg_delete.value()(msg_id, ch, *this);
+		}
 	}
 };
 
 template<>
 void internal_shard::procces_event<event_name::MESSAGE_DELETE_BULK>(nlohmann::json& e) {
-	try {
-		m_parent->on_message_bulk(e["ids"].get<std::vector<snowflake>>(), m_text_channel_map.at(e["channel_id"].get<snowflake>()), *this);
-	} catch (...) {//;-;		
-		m_parent->on_dm_message_bulk(e["ids"].get<std::vector<snowflake>>(), m_dm_channels[e["channel_id"].get<snowflake>()], *this);
+	const auto it = m_text_channel_map.find(e["channel_id"]);
+	if (it != m_text_channel_map.end()) {
+		if (m_parent_client->on_message_bulk.has_value()) {
+			m_parent_client->on_message_bulk.value()(e["ids"].get<std::vector<snowflake>>(), it->second, *this);
+		}
+	} else {
+		if (m_parent_client->on_dm_message_bulk.has_value() && m_dm_channels.contains(e["channel_id"].get<snowflake>())) {
+			m_parent_client->on_dm_message_bulk.value()(e["ids"].get<std::vector<snowflake>>(), m_dm_channels[e["channel_id"].get<snowflake>()], *this);
+		}
 	}
 };
 
@@ -1009,11 +1096,15 @@ void internal_shard::procces_event<event_name::MESSAGE_REACTION_ADD>(nlohmann::j
 		}
 		auto member = e["member"].get<guild_member>();
 		member.m_guild = channel.m_guild;
-		m_parent->on_guild_reaction_add(member, channel, e["message_id"].get<snowflake>(), std::move(emojiy), *this);
+		if (m_parent_client->on_guild_reaction_add) {
+			m_parent_client->on_guild_reaction_add.value()(member, channel, e["message_id"].get<snowflake>(), std::move(emojiy), *this);
+		}
 	} else {
 		auto& channel = m_dm_channels[channel_id];
 		auto& person = channel.m_recipients[e["user_id"].get<snowflake>()];//user is always in recipients?
-		m_parent->on_dm_reaction_add(person, channel, e["message_id"].get<snowflake>(), std::move(emojiy), *this);
+		if (m_parent_client->on_dm_reaction_add) {
+			m_parent_client->on_dm_reaction_add.value()(person, channel, e["message_id"].get<snowflake>(), std::move(emojiy), *this);
+		}
 	}
 };
 
@@ -1029,17 +1120,21 @@ void internal_shard::procces_event<event_name::MESSAGE_REACTION_REMOVE>(nlohmann
 			m_backed_up_events[guild.id()].emplace_back(std::move(e), event_name::MESSAGE_REACTION_REMOVE);
 			return;
 		}
-		m_parent->on_guild_reaction_remove(
-			e["user_id"].get<snowflake>(),
-			channel,
-			e["message_id"].get<snowflake>(),
-			std::move(emojiy),
-			*this);
+		if (m_parent_client->on_guild_reaction_remove.has_value()) {
+			m_parent_client->on_guild_reaction_remove.value()(
+				e["user_id"].get<snowflake>(),
+				channel,
+				e["message_id"].get<snowflake>(),
+				std::move(emojiy),
+				*this);
+		}
 	} else {
 		auto& channel = m_dm_channels[channel_id];
 		auto& person = channel.m_recipients[e["user_id"].get<snowflake>()];
 
-		m_parent->on_dm_reaction_remove(person, channel, e["message_id"].get<snowflake>(), std::move(emojiy), *this);
+		if (m_parent_client->on_dm_reaction_remove.has_value()) {
+			m_parent_client->on_dm_reaction_remove.value()(person, channel, e["message_id"].get<snowflake>(), std::move(emojiy), *this);
+		}
 	}
 
 };
@@ -1054,10 +1149,14 @@ void internal_shard::procces_event<event_name::MESSAGE_REACTION_REMOVE_ALL>(nloh
 			m_backed_up_events[guild.id()].emplace_back(std::move(e), event_name::MESSAGE_REACTION_REMOVE_ALL);
 			return;
 		}
-		m_parent->on_guild_reaction_remove_all(channel, e["message_id"].get<snowflake>(), *this);
+		if (m_parent_client->on_guild_reaction_remove_all.has_value()) {
+			m_parent_client->on_guild_reaction_remove_all.value()(channel, e["message_id"].get<snowflake>(), *this);
+		}
 	} else {
 		auto& channel = m_dm_channels[e["channel_id"].get<snowflake>()];
-		m_parent->on_dm_reaction_remove_all(channel, e["message_id"].get<snowflake>(), *this);
+		if (m_parent_client->on_dm_reaction_remove_all.has_value()) {
+			m_parent_client->on_dm_reaction_remove_all.value()(channel, e["message_id"].get<snowflake>(), *this);
+		}
 	}
 
 };
@@ -1091,30 +1190,48 @@ void internal_shard::procces_event<event_name::PRESENCE_UPDATE>(nlohmann::json& 
 				guild.m_activities[id] = game.get<activity>();
 			}
 		}
-		m_parent->on_presence_update(user, *this);
+		if (m_parent_client->on_presence_update.has_value()) {
+			m_parent_client->on_presence_update.value()(user, *this);
+		}
 	}
 };
 
 template<>
 void internal_shard::procces_event<event_name::TYPING_START>(nlohmann::json& e) {
+	if(!m_parent_client->on_guild_text_msg.has_value() && !m_parent_client->on_dm_typing_start.has_value()) {
+		//don't bother doing anything if tnere isn't a callback to do
+		return;
+	}
 	//e now has optional member field
 	const auto channel_id = e["channel_id"].get<snowflake>();
 	const auto user_id = e["user_id"].get<snowflake>();
+	
 	const auto it = m_text_channel_map.find(channel_id);
+	const auto guild_id = e.value("guild_id",snowflake());
+	
 	if (it != m_text_channel_map.end()) {
-		Guild& guild = *(it->second.m_guild);
-		if (!guild.m_is_ready) {
-			m_backed_up_events[guild.id()].emplace_back(std::move(e), event_name::TYPING_START);
-			return;
-		}
+		if (m_parent_client->on_guild_typing_start.has_value()) {
+			Guild& guild = *(it->second.m_guild);
+			if (!guild.m_is_ready) {
+				m_backed_up_events[guild.id()].emplace_back(std::move(e), event_name::TYPING_START);
+				return;
+			}
 
-		auto member = e["member"].get<guild_member>();//if we have GUILD_MEMBER intent, just copy from guild.m_members[id]?
-		member.m_guild = &guild;
-		m_parent->on_guild_typing_start(std::move(member), it->second, *this);
+			auto member = e["member"].get<guild_member>();//if we have GUILD_MEMBER intent, just copy from guild.m_members[id]?
+			member.m_guild = &guild;
+
+			m_parent_client->on_guild_typing_start.value()(std::move(member), it->second, *this);
+		}
 	} else {
-		dm_channel& channel = m_dm_channels[channel_id];
-		auto& member = channel.m_recipients[user_id];
-		m_parent->on_dm_typing_start(member, channel, *this);
+		if (m_parent_client->on_dm_typing_start.has_value()) {
+			const auto it_dm_channel = m_dm_channels.find(channel_id);
+			if(it_dm_channel == m_dm_channels.end()) {
+				return;
+			}
+			dm_channel& channel = it_dm_channel->second;
+			auto& member = channel.m_recipients[user_id];
+			m_parent_client->on_dm_typing_start.value()(member, channel, *this);
+		}
 	}
 };
 

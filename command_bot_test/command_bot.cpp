@@ -5,6 +5,7 @@
 #include <boost/process.hpp>
 
 using namespace std::literals;
+using namespace fmt::literals;
 
 std::string getFileContents(const std::string& filePath, decltype(std::ios::in) mode = std::ios::in) {
 	std::string fileContents;
@@ -19,14 +20,6 @@ std::string getFileContents(const std::string& filePath, decltype(std::ios::in) 
 	return fileContents;
 }
 
-template<typename T>
-struct like_async_generator_but_bad { };
-
-
-
-struct ytdl_audio_source1 { };
-
-using namespace fmt::literals;
 
 int main() {
 	client c;

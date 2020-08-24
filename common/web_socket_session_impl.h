@@ -65,7 +65,6 @@ struct web_socket_session_impl :ref_counted {
 	}
 
 private:
-
 	boost::beast::websocket::stream<boost::beast::ssl_stream<boost::asio::ip::tcp::socket>> m_socket;
 	boost::beast::multi_buffer m_buffer;
 

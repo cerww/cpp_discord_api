@@ -3,6 +3,8 @@
 #include <range/v3/all.hpp>
 
 
+//switch to std::find and swap->pop_back for removing, push_back for adding?
+
 template<typename bucket_t, typename obj_t, typename clock_t = std::chrono::steady_clock>
 struct rate_limiter {
 	explicit rate_limiter(boost::asio::io_context& ioc):
@@ -19,7 +21,8 @@ struct rate_limiter {
 			return true;
 		}
 	}
-
+	
+	//pre: not bucket isn't already rate-limited
 	void rate_limit(const bucket_t& bucket, typename clock_t::time_point until) {
 		std::lock_guard lock(m_mut);
 		auto where = ranges::upper_bound(m_entries, bucket, std::less{}, &rate_limit_entry::bucket);

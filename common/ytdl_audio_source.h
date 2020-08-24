@@ -18,15 +18,15 @@ struct ytdl_async_audio {
 			ioc_(ioc),
 			ytdl_pipe(std::make_unique<boost::process::async_pipe>(ioc)),
 			ffmpeg_pipe(std::make_unique<boost::process::async_pipe>(ioc)),
-			ytdl_child(std::make_unique<boost::process::child>(
+			ytdl_child(
 				fmt::format("youtube-dl -f bestaudio  \"{}\" -o - --buffer-size 16384", url), boost::process::std_out > *ytdl_pipe,
-				boost::process::std_err > stderr, ioc)),
-			ffmpeg_child(std::make_unique<boost::process::child>(
+				boost::process::std_err > stderr, ioc),
+			ffmpeg_child(
 				"ffmpeg -re -i - -f s16le -ac 2 -ar 48000 -acodec pcm_s16le -",
-				boost::process::std_out > *ffmpeg_pipe, boost::process::std_in < *ytdl_pipe, boost::process::std_err > stderr, ioc)) { }
+				boost::process::std_out > *ffmpeg_pipe, boost::process::std_in < *ytdl_pipe, boost::process::std_err > stderr, ioc) { }
 
 		cerwy::task<std::optional<audio_frame>> next() {
-			//samples needed = 1920 = frame_time * 48000/1000 * 2 /sizeof(int16_t)
+			//samples needed = 1920 = frame_time * 48000n * 20/1000 * 2 /sizeof(int16_t) 
 
 
 			std::vector<int16_t> buffer(1920);
@@ -51,18 +51,14 @@ struct ytdl_async_audio {
 			frame.frame_size = 960;
 			frame.frame_data = frame.optional_data_storage;
 
-			co_return std::optional<audio_frame>(std::move(frame));
+			co_return std::optional(std::move(frame));
 		}
 
 		boost::asio::io_context& ioc_;
 		std::unique_ptr<boost::process::async_pipe> ytdl_pipe;
 		std::unique_ptr<boost::process::async_pipe> ffmpeg_pipe;
-		std::unique_ptr<boost::process::child> ytdl_child;
-		std::unique_ptr<boost::process::child> ffmpeg_child;
-		//std::vector<int16_t> excess;
-
-		std::array<std::byte, 4096> buffer2 = {};
-		int number_of_bytes = 0;
+		boost::process::child ytdl_child;
+		boost::process::child ffmpeg_child;
 	};
 
 	async_thingy frames(std::chrono::milliseconds) {
