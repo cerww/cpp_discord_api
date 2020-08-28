@@ -45,21 +45,14 @@ void shard::set_up_request(boost::beast::http::request<boost::beast::http::strin
 }
 
 rq::send_message shard::send_message(const partial_channel& channel, std::string content) {
-	//nlohmann::json body;
-	//body["content"] = std::move(content);
-	//auto body2 = fmt::format(R"( {{"content":{} }} )",std::move(content));
-	//return send_request<rq::send_message>(body.dump(), channel);
-	//
 	std::string body = "{\"content\":\"" + std::move(content) + "\"}";
-	return send_request<rq::send_message>(std::move(body), channel);
-	
+	return send_request<rq::send_message>(std::move(body), channel);	
 }
 
 rq::send_message shard::send_message(const partial_channel& channel, std::string content, const embed& embed) {
 	nlohmann::json body;
 	body["content"] = std::move(content);
 	body["embed"] = embed;	
-	
 	return send_request<rq::send_message>(body.dump(), channel);
 }
 
@@ -75,12 +68,20 @@ rq::send_message shard::reply(const partial_message& msg, std::string content, c
 	return send_request<rq::send_message>(body.dump(), msg);
 }
 
-rq::add_role shard::add_role(const partial_guild& guild, const guild_member& member, const guild_role& role) {
+rq::add_role shard::add_role(const partial_guild& guild, const partial_guild_member& member, const guild_role& role) {
 	return send_request<rq::add_role>(guild, member, role);
 }
 
-rq::remove_role shard::remove_role(const partial_guild& guild, const guild_member& member, const guild_role& role) {
+rq::remove_role shard::remove_role(const partial_guild& guild, const partial_guild_member& member, const guild_role& role) {
 	return send_request<rq::remove_role>(guild, member, role);
+}
+
+rq::add_role shard::add_role(const guild_member& member, const guild_role& role) {
+	return add_role(member.guild(), member, role);
+}
+
+rq::remove_role shard::remove_role(const guild_member& member, const guild_role& role) {
+	return remove_role(member.guild(), member, role);
 }
 
 rq::modify_member shard::remove_all_roles(const partial_guild& guild, const guild_member& member) {
@@ -113,6 +114,12 @@ rq::modify_member shard::change_nick(const partial_guild& g, const user& member,
 	return send_request<rq::modify_member>(body.dump(), g, member);
 }
 
+rq::modify_member shard::assign_roles(const guild_member& member, const std::vector<snowflake>& roles_ids) {
+	nlohmann::json body;
+	body["roles"] = std::move(roles_ids);
+	return send_request<rq::modify_member>(body.dump(), member.guild(), member);
+}
+
 rq::change_my_nick shard::change_my_nick(const partial_guild& g, std::string new_nick) {
 	nlohmann::json body;
 	body["nick"] = std::move(new_nick);
@@ -123,7 +130,7 @@ rq::kick_member shard::kick_member(const partial_guild& g, const partial_guild_m
 	return send_request<rq::kick_member>(g, member);
 }
 
-rq::ban_member shard::ban_member(const partial_guild& g, const guild_member& member, std::string reason, int days_to_delete_msg) {
+rq::ban_member shard::ban_member(const partial_guild& g, const partial_guild_member& member, std::string reason, int days_to_delete_msg) {
 	nlohmann::json body;
 	body["delete-message-days"] = days_to_delete_msg;
 	body["reason"] = std::move(reason);

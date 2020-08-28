@@ -39,8 +39,9 @@ constexpr bool erase_first_quick(rng& range, U&& val) {
 
 template<typename T>
 T* ptr_or_null(ref_stable_map<snowflake, T>& in, snowflake key) {
-	if (key.val)
+	if (key.val) {
 		return &in[key];
+	}
 	return nullptr;
 }
 
@@ -70,8 +71,13 @@ nlohmann::json internal_shard::presence() const {
 cerwy::task<voice_connection> internal_shard::connect_voice(const voice_channel& channel) {
 	const auto channel_id = channel.id();
 	const auto guild_id = channel.guild_id();
-	auto [endpoint, session_id_task] = m_opcode4(channel);
-	auto ep_json = co_await endpoint;
+	
+	if(voice_connections.count(guild_id)) {
+		throw std::runtime_error("");
+	}
+	voice_connections.insert(std::make_pair(guild_id, nullptr));//nullptr is temp to make the above condition true
+	auto [endpoint_task, session_id_task] = m_opcode4(channel);
+	auto ep_json = co_await endpoint_task;
 	auto session_id = co_await session_id_task;
 	std::cout << ep_json.dump(1);
 	std::string gateway = "wss://"s + ep_json["endpoint"].get<std::string>() + "/?v=4"s;
@@ -645,7 +651,7 @@ void internal_shard::procces_event<event_name::CHANNEL_CREATE>(nlohmann::json& c
 		if (type == 6) {
 			channel.m_channel_type = text_channel_type::store;
 		}
-
+		
 		if (m_parent_client->on_guild_text_channel_create.has_value()) {
 			m_parent_client->on_guild_text_channel_create.value()(channel, *this);
 		}
@@ -704,11 +710,26 @@ void internal_shard::procces_event<event_name::CHANNEL_DELETE>(nlohmann::json& e
 			const auto channel_it = m_channel_catagory_map.find(channel_id);
 			auto node_handle = m_channel_catagory_map.extract(channel_it);
 			const auto& channel = m_deleted_channel_catagories.emplace_back(std::chrono::steady_clock::now(), std::move(node_handle.mapped_indirect())).second;
+
+			for(text_channel& t_channel:guild.m_text_channel_ids | ranges::views::transform(hof::map_with(m_text_channel_map))) {
+				if(t_channel.m_parent_id == channel_id) {
+					t_channel.m_parent = nullptr;
+					t_channel.m_parent_id = snowflake();
+				}
+			}
+
+			for (voice_channel& t_channel : guild.m_voice_channel_ids | ranges::views::transform(hof::map_with(m_voice_channel_map))) {
+				if (t_channel.m_parent_id == channel_id) {
+					t_channel.m_parent = nullptr;
+					t_channel.m_parent_id = snowflake();
+				}
+			}
+			
 			if (m_parent_client->on_channel_catagory_delete.has_value()) {
 				m_parent_client->on_channel_catagory_delete.value()(channel.value(), *this);
 			}
 		} else {
-			//unimplemented channel
+			//unimplemented channel or channel that wasn't recieved
 		}
 
 	} else {
@@ -798,10 +819,18 @@ template<>
 void internal_shard::procces_event<event_name::CHANNEL_UPDATE>(nlohmann::json& e) {
 	const auto channel_id = e["id"].get<snowflake>();
 	const auto type = e["type"].get<int>();
-	if (type == 0) {
+	if (type == 0 || type == 5 || type == 6) {
 		auto& channel = m_text_channel_map[channel_id];
 		channel = e.get<text_channel>();
 		channel.m_parent = ptr_or_null(m_channel_catagory_map, channel.m_parent_id);
+		if (type == 5) {
+			channel.m_channel_type = text_channel_type::news;
+		}
+
+		if (type == 6) {
+			channel.m_channel_type = text_channel_type::store;
+		}
+		
 	} else if (type == 1) {
 		m_dm_channels[channel_id] = e.get<dm_channel>();
 	} else if (type == 2) {

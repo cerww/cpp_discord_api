@@ -26,9 +26,7 @@ struct guild_channel :partial_guild_channel {
 	}
 
 private:
-
 	channel_catagory* m_parent = nullptr;
-
 	Guild* m_guild = nullptr;
 
 	friend struct internal_shard;

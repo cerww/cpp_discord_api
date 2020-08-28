@@ -14,7 +14,7 @@ struct ytdl_async_audio {
 		m_ioc(ioc) { }
 
 	struct async_thingy {
-		explicit async_thingy(std::string url, boost::asio::io_context& ioc) :
+		explicit async_thingy(std::string url, boost::asio::io_context& ioc,std::chrono::milliseconds t_time_frame) :
 			ioc_(ioc),
 			ytdl_pipe(std::make_unique<boost::process::async_pipe>(ioc)),
 			ffmpeg_pipe(std::make_unique<boost::process::async_pipe>(ioc)),
@@ -23,17 +23,20 @@ struct ytdl_async_audio {
 				boost::process::std_err > stderr, ioc),
 			ffmpeg_child(
 				"ffmpeg -re -i - -f s16le -ac 2 -ar 48000 -acodec pcm_s16le -",
-				boost::process::std_out > *ffmpeg_pipe, boost::process::std_in < *ytdl_pipe, boost::process::std_err > stderr, ioc) { }
+				boost::process::std_out > *ffmpeg_pipe, boost::process::std_in < *ytdl_pipe, boost::process::std_err > stderr, ioc),
+			time_frame(t_time_frame){ }
 
 		cerwy::task<std::optional<audio_frame>> next() {
 			//samples needed = 1920 = frame_time * 48000n * 20/1000 * 2 /sizeof(int16_t) 
+			constexpr int channel_count = 2;
+			constexpr int sampling_rate = 48000;
+			const int samples = sampling_rate * (int)time_frame.count() / 1000;
 
-
-			std::vector<int16_t> buffer(1920);
+			std::vector<int16_t> buffer(samples * channel_count);
 
 			auto [ec, n] = co_await boost::asio::async_read(
 				*ffmpeg_pipe,
-				boost::asio::buffer((char*)buffer.data(), 1920 * 2),
+				boost::asio::buffer(buffer),
 				use_task_return_tuple2);
 
 			if (ec) {
@@ -46,9 +49,9 @@ struct ytdl_async_audio {
 
 			audio_frame frame;
 			frame.optional_data_storage = std::move(buffer);
-			frame.channel_count = 2;
-			frame.sampling_rate = 48000;
-			frame.frame_size = 960;
+			frame.channel_count = channel_count;
+			frame.sampling_rate = sampling_rate;
+			frame.frame_size = samples;
 			frame.frame_data = frame.optional_data_storage;
 
 			co_return std::optional(std::move(frame));
@@ -59,10 +62,11 @@ struct ytdl_async_audio {
 		std::unique_ptr<boost::process::async_pipe> ffmpeg_pipe;
 		boost::process::child ytdl_child;
 		boost::process::child ffmpeg_child;
+		std::chrono::milliseconds time_frame;
 	};
 
-	async_thingy frames(std::chrono::milliseconds) {
-		return async_thingy(m_url, m_ioc);
+	async_thingy frames(std::chrono::milliseconds a) {
+		return async_thingy(m_url, m_ioc,a);
 	}
 
 private:

@@ -3,9 +3,9 @@
 #include "permission.h"
 #include "guild_member.h"
 #include "guild_channel.h"
-#include "range-like-stuffs.h"
+#include "../common/range-like-stuffs.h"
 #include <range/v3/view/filter.hpp>
-#include "higher_order_functions.h"
+#include "../common/higher_order_functions.h"
 
 constexpr permission combined_permissions(permission p1, permission p2) {
 	return p1 | p2;
@@ -21,10 +21,13 @@ std::enable_if_t<is_range_of_v<range, permission_overwrite>, permission> combine
 }
 
 inline permission combined_permissions(const guild_member& member) {
-	permission retVal;
-	for (auto&& role : member.roles())
-		retVal = combined_permissions(retVal, role.permissions());
-	return retVal;
+	//permission retVal;
+	//for (auto&& role : member.roles()) {
+	//	retVal = combined_permissions(retVal, role.permissions());
+	//}
+	auto perms = member.roles() | ranges::views::transform(&guild_role::permissions);
+	return std::accumulate(perms.begin(), perms.end(), permission());
+	//return retVal;
 }
 
 template<typename rng>
@@ -47,4 +50,8 @@ std::enable_if_t<is_range_of_v<rng, permission_overwrite>, permission> combined_
 
 inline permission combined_permissions(const guild_member& member, const guild_channel& channel) {
 	return combined_permissions(combined_permissions(member), channel.permission_overwrites());
+}
+
+inline permission permissions_in_channel(const guild_member& member,const guild_channel& channel) {
+	return combined_permissions(member, channel);
 }

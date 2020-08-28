@@ -320,10 +320,6 @@ msg_t internal_shard::create_msg(channel_t& ch, const nlohmann::json& stuffs, ma
 
 	if constexpr (std::is_same_v<msg_t, guild_text_message>) {
 		retVal.m_mention_roles_ids = stuffs["mention_roles"].get<std::vector<snowflake>>();
-		const Guild& guild = *ch.m_guild;
-		retVal.m_mention_roles.reserve(retVal.m_mention_roles_ids.size());
-		for (const auto& role_id : retVal.m_mention_roles_ids)
-			retVal.m_mention_roles.push_back(&guild.m_roles.at(role_id));
 	}
 	return retVal;
 }

@@ -39,7 +39,6 @@ struct rate_limiter {
 		auto where = ranges::upper_bound(m_entries, bucket, std::less{}, &rate_limit_entry::bucket);
 		m_entries.insert(where, rate_limit_entry{bucket, until, v});
 		make_timer_for_bucket(bucket, until);
-
 	}
 
 	std::function<void(std::vector<obj_t>)> on_rate_limit_finish = [](auto&&...) {};

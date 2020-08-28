@@ -10,15 +10,13 @@ std::string getFileContents(const std::string& filePath, decltype(std::ios::in) 
 	std::string fileContents;
 	std::ifstream file(filePath, mode);
 	file.seekg(0, std::ios::end);
-	int filesize = (int)file.tellg();
+	const int filesize = (int)file.tellg();
 	file.seekg(0, std::ios::beg);
-	filesize -= (int)file.tellg();
 	fileContents.resize(filesize);
 	file.read((char*)fileContents.data(), filesize);
 	file.close();
 	return fileContents;
 }
-
 
 cerwy::task<void> do_audio_thingy(cerwy::task<voice_connection> vc_task) {
 	voice_connection channel = co_await vc_task;
@@ -93,7 +91,7 @@ int main() {
 			//s.delete_message(msgs.back()).get();
 			//msgs.pop_back();
 		} else if (msg.content() == "make new channel") {
-			auto ch = s.create_text_channel(msg.guild(), "blargylandy").get();
+			auto ch = co_await s.create_text_channel(msg.guild(), "blargylandy");
 		} else if (msg.content() == "rolesy") {
 			std::cout << "rolesy" << std::endl;
 			std::string stuff =

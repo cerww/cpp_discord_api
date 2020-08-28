@@ -8,13 +8,15 @@
 #include <range/v3/all.hpp>
 #include <span>
 #include "embed.h"
+#include "guild.h"
+#include "dm_channel.h"
+#include "../common/higher_order_functions.h"
 
-struct dm_channel;
-struct text_channel;
-struct Guild;
 
 struct partial_message {
+
 	std::string_view content() const noexcept { return m_content; }
+
 	snowflake id() const noexcept;
 	snowflake author_id() const noexcept;
 	snowflake channel_id() const noexcept;
@@ -28,8 +30,8 @@ struct partial_message {
 	std::span<const attachment> attachments() const noexcept {
 		return m_attachments;
 	};
-	
-	std::span<const embed> embeds()const noexcept {
+
+	std::span<const embed> embeds() const noexcept {
 		return m_embeds;
 	}
 
@@ -45,7 +47,7 @@ private:
 	std::vector<attachment> m_attachments;
 	std::vector<reaction> m_reactions;
 	std::string m_content;
-	std::optional<timestamp> m_edited_timestamp;
+	//std::optional<timestamp> m_edited_timestamp;
 	timestamp m_timestamp;
 	bool m_tts = false;
 	bool m_mention_everyone = false;
@@ -57,7 +59,7 @@ private:
 
 constexpr int asudhgasdasd = sizeof(partial_message);
 
-struct guild_text_message :partial_message {	
+struct guild_text_message :partial_message {
 	const text_channel& channel() const noexcept;;
 	const Guild& guild() const noexcept;
 	const guild_member& author() const noexcept;
@@ -68,19 +70,18 @@ struct guild_text_message :partial_message {
 
 	std::span<const guild_member> mentions() const noexcept {
 		return m_mentions;
-	}	
+	}
 
 	auto mention_roles() const noexcept {
-		return m_mention_roles | ranges::views::indirect;
+		return m_mention_roles_ids | ranges::views::transform(hof::map_with(guild().roles()));
 	}
 
 private:
 	guild_member m_author;
 	std::vector<snowflake> m_mention_roles_ids;
 	std::vector<guild_member> m_mentions;
-	std::vector<const guild_role*> m_mention_roles;
 	text_channel* m_channel = nullptr;
-	
+
 	friend struct internal_shard;
 	friend struct msg_update_access;
 };
@@ -114,11 +115,11 @@ struct msg_update {
 	snowflake id() const noexcept;
 	snowflake channel_id() const noexcept;
 	std::optional<std::string_view> content() const noexcept;
-	
-	std::optional<bool> mention_everyone()const noexcept {
+
+	std::optional<bool> mention_everyone() const noexcept {
 		return m_mention_everyone;
 	}
-	
+
 private:
 	snowflake m_author_id;
 	snowflake m_id;
@@ -146,24 +147,22 @@ struct guild_msg_update :msg_update {
 		return m_mentions;
 	};
 
-	auto mention_roles() const noexcept
-			
-	{
+	auto mention_roles() const noexcept {
 		//these could've been done with monanadic interface
 		using return_type = decltype(std::optional(m_mention_roles.value() | ranges::views::indirect));
-		if(m_mention_roles.has_value()) {
+		if (m_mention_roles.has_value()) {
 			return std::optional(m_mention_roles.value() | ranges::views::indirect);
-		}else {
+		} else {
 			return return_type(std::nullopt);
 		}
 	};
 
 	const text_channel& channel() const noexcept;
 
-	const Guild& guild()const noexcept {
+	const Guild& guild() const noexcept {
 		return *m_guild;
 	}
-	
+
 private:
 	std::optional<guild_member> m_author;
 	std::optional<std::vector<snowflake>> m_mention_role_ids;
@@ -177,7 +176,7 @@ private:
 struct dm_msg_update :msg_update {
 	const std::optional<user>& author() const;
 
-	std::optional<std::span<const user>> mentions() const noexcept {		
+	std::optional<std::span<const user>> mentions() const noexcept {
 		return m_mentions;
 	};
 

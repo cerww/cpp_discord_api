@@ -24,6 +24,8 @@ struct Guild :partial_guild {
 	Guild& operator=(const Guild&) = delete;
 	Guild& operator=(Guild&&) = default;
 
+	~Guild() = default;
+
 	timestamp joined_at() const noexcept;
 	bool large() const noexcept;
 	bool unavailable() const noexcept;

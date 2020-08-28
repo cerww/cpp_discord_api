@@ -51,9 +51,6 @@ struct client {//<(^.^)>
 
 	void set_token(std::string token, token_type type = token_type::BOT);
 
-	
-	//void set_up_request(boost::beast::http::request<boost::beast::http::string_body>& req) const;
-
 	std::string_view token() const { return m_token; }
 
 	std::string_view auth_token() const { return m_authToken; }

@@ -11,8 +11,6 @@ std::string_view partial_guild::icon() const noexcept { return m_icon; }
 
 snowflake partial_guild::owner_id() const noexcept { return m_owner_id; }
 
-//std::vector<emoji>& partial_guild::emojis() noexcept { return m_emojis; }
-
 snowflake partial_guild::system_channel_id() const noexcept { return m_system_channel_id; }
 
 std::string_view partial_guild::region() const noexcept { return m_region; }
@@ -28,7 +26,6 @@ snowflake partial_guild::embed_channel_id() const noexcept { return m_embed_chan
 int partial_guild::verification_level() const noexcept { return m_verification_level; }
 
 bool partial_guild::explicit_content_filter() const noexcept { return m_explicit_content_filter; }
-
 
 void from_json(const nlohmann::json& json, partial_guild& guild) {
 	guild.m_id = json["id"].get<snowflake>();

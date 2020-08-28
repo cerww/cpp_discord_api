@@ -5,9 +5,10 @@
 
 
 client::client(int threads, intents intents):
+	m_intents(intents),
 	m_ioc(std::in_place_type<boost::asio::io_context>,threads),
-	m_threads(std::max(threads-1,0)),
-	m_intents(intents){
+	m_threads(std::max(threads-1,0))
+{
 	
 }
 
@@ -38,7 +39,7 @@ void client::stop() {
 	context().stop();
 }
 
-void client:: set_token(std::string token, const token_type type) {
+void client::set_token(std::string token, const token_type type) {
 	m_token = token;
 	switch (type) {
 	case token_type::BOT: m_authToken = "Bot " + std::move(token);
@@ -62,7 +63,7 @@ void client:: set_token(std::string token, const token_type type) {
 
 
 void client::rate_limit_global(const std::chrono::system_clock::time_point tp) {
-	std::unique_lock<std::mutex> locky(m_global_rate_limit_mut,std::try_to_lock);
+	const std::unique_lock<std::mutex> locky(m_global_rate_limit_mut,std::try_to_lock);
 	//only 1 shard needs to call this to rate limit every shard
 	if(!locky) {
 		return;
@@ -78,13 +79,13 @@ void client::rate_limit_global(const std::chrono::system_clock::time_point tp) {
 
 void client::do_gateway_stuff() {
 	m_getGateway();
-	for (int i = 0; i < m_num_shards; ++i) {
-		m_shards.emplace_back(std::make_unique<internal_shard>(i, this, context(), m_gateway, m_intents));
+	for (size_t i = 0; i < m_num_shards; ++i) {
+		m_shards.emplace_back(std::make_unique<internal_shard>((int)i, this, context(), m_gateway, m_intents));
 	}
 }
 
 void client::m_getGateway() {
-	boost::asio::io_context ioc;//m_ioc.run is called after this finishes, so need a different ioc
+	boost::asio::io_context ioc;
 	boost::asio::ip::tcp::resolver resolver{ ioc };
 
 	boost::asio::ssl::context ssl_context{ boost::asio::ssl::context::tlsv12_client };

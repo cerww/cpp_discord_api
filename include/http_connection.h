@@ -217,7 +217,6 @@ private:
 
 	boost::asio::ssl::context m_ssl_ctx{ boost::asio::ssl::context::tlsv12_client };
 	boost::asio::ssl::stream<boost::asio::ip::tcp::socket> m_socket{ m_ioc, m_ssl_ctx };
-
 	
 	boost::beast::flat_buffer m_buffer{};
 	mpsc_concurrent_async_queue<discord_request> m_request_queue = {};
@@ -240,23 +239,6 @@ private:
 
 	cerwy::task<void> send_rq(discord_request&);
 
-	
-	//sorted by order of coming off the queue
-	//not a queue/deque since it's size shuold be small
-	//can be a priority queue?
-	//can't be priority queue since i need to look at things inside
-	//Q: sort by id or time?
-	
-	struct rate_limit_entry {
-		uint64_t id;
-		std::chrono::system_clock::time_point until;
-		std::vector<discord_request> requests;
-	};
-	
-	std::vector<rate_limit_entry> m_rate_limited_requests{};
-	std::mutex m_rate_limit_mut;
-	
 	rate_limiter<uint64_t, discord_request, std::chrono::system_clock> m_rate_limiter;
-	
 };
 

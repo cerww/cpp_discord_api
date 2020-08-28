@@ -47,8 +47,11 @@ public:
 	template<int flags>
 	rq::send_message reply(const partial_message& msg, std::string content, const embed& embed, const allowed_mentions<flags>&);
 
-	rq::add_role add_role(const partial_guild&, const guild_member&, const guild_role&);
-	rq::remove_role remove_role(const partial_guild&, const guild_member&, const guild_role&);
+	rq::add_role add_role(const partial_guild&, const partial_guild_member&, const guild_role&);
+	rq::remove_role remove_role(const partial_guild&, const partial_guild_member&, const guild_role&);
+
+	rq::add_role add_role(const guild_member&, const guild_role&);
+	rq::remove_role remove_role(const guild_member&, const guild_role&);
 	rq::modify_member remove_all_roles(const partial_guild&, const guild_member&);
 
 	rq::create_role create_role(const partial_guild&, std::string, permission, int color = 0xffffff/*white*/, bool hoist = true, bool mentionable = true);
@@ -56,9 +59,11 @@ public:
 
 	rq::modify_member change_nick(const guild_member&, std::string new_nick);
 	rq::modify_member change_nick(const partial_guild&, const user&, std::string new_nick);
+	
+	rq::modify_member assign_roles(const guild_member&, const std::vector<snowflake>& roles_ids);
 	rq::change_my_nick change_my_nick(const partial_guild&, std::string new_nick);
 	rq::kick_member kick_member(const partial_guild&, const partial_guild_member&);
-	rq::ban_member ban_member(const partial_guild& g, const guild_member& member, std::string reason = "", int days_to_delete_msg = 0);
+	rq::ban_member ban_member(const partial_guild& g, const partial_guild_member& member, std::string reason = "", int days_to_delete_msg = 0);
 	rq::unban_member unban_member(const Guild&, snowflake id);
 	//max 100 messages
 	rq::get_messages get_messages(const partial_channel&, int = 100);
@@ -69,11 +74,11 @@ public:
 	rq::get_messages get_messages_around(const partial_channel&, snowflake, int = 100);
 	rq::get_messages get_messages_around(const partial_channel&, const partial_message&, int = 100);
 	rq::create_text_channel create_text_channel(const Guild&, std::string name, std::vector<permission_overwrite>  = {}, bool nsfw = false);
-	rq::edit_message edit_message(const partial_message&, std::string name);
-	rq::create_voice_channel create_voice_channel(const Guild&, std::string name, std::vector<permission_overwrite>  = {}, bool nsfw = false, int bitrate = 96);
+	rq::edit_message edit_message(const partial_message&, std::string new_content);
+	rq::create_voice_channel create_voice_channel(const Guild&, std::string name, std::vector<permission_overwrite>  = {}, bool nsfw = false, int bit_rate = 96);
 	rq::create_channel_catagory create_channel_catagory(const Guild&, std::string name, std::vector<permission_overwrite>  = {}, bool nsfw = false);
 	rq::delete_emoji delete_emoji(const partial_guild&, const partial_emoji&);
-	rq::modify_emoji modify_emoji(const partial_guild&, const partial_emoji&, std::string, std::vector<snowflake>);
+	rq::modify_emoji modify_emoji(const partial_guild&, const partial_emoji&, std::string name, std::vector<snowflake> role_ids);
 	rq::delete_message delete_message(const partial_message&);
 
 	template<typename rng>
@@ -111,7 +116,6 @@ public:
 	rq::get_guild_integrations get_guild_integrations(const partial_guild& guild);
 
 	rq::create_guild_integration create_guild_integration(const partial_guild& guild, std::string type, snowflake id);
-
 
 	template<typename range>
 	requires is_range_of<range, std::string>
@@ -161,9 +165,7 @@ public:
 
 	rq::get_message fetch_message(const partial_channel& ch, snowflake msg_id);
 
-	rq::get_audit_log get_audit_log(
-		const partial_guild&
-	);
+	rq::get_audit_log get_audit_log(const partial_guild&);
 
 	const user& self_user() const noexcept {
 		return m_self_user;

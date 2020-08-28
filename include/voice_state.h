@@ -1,6 +1,8 @@
 #pragma once
 #include <nlohmann/json.hpp>
 #include "snowflake.h"
+#include "guild_member.h"
+#include "../common/common/optional_from_json.h"
 
 struct voice_state {
 	snowflake channel_id() const noexcept { return m_channel_id; }

@@ -370,7 +370,8 @@ cerwy::task<bool> http_connection2::send_to_discord_(discord_request& r) {
 		}
 	}	
 	
-	if (const auto it = r.state->res.find("X-RateLimit-Remaining"); it != r.state->res.end() && it->value() == "0") {
+	if (const auto it = r.state->res.find("X-RateLimit-Remaining"); it != r.state->res.end() 
+		&& it->value() == "0") 	{
 		
 		const auto time = std::chrono::system_clock::time_point(std::chrono::seconds([&]() {//iife
 			const auto it2 = r.state->res.find("X-RateLimit-Reset");
@@ -378,10 +379,8 @@ cerwy::task<bool> http_connection2::send_to_discord_(discord_request& r) {
 			std::from_chars(it2->value().begin(), it2->value().end(), seconds);
 			return seconds;
 		}()));
-
 		
 		const auto major_param_id_ = get_major_param_id(std::string_view(r.req.target().data(), r.req.target().size()));
-		//rate_limit_id(major_param_id_,time,std::nullopt);
 		m_rate_limiter.rate_limit(major_param_id_, time);
 	}
 
@@ -448,14 +447,6 @@ cerwy::task<void> http_connection2::start_sending() {
 // 		return false;
 // 	}
 // }
-
-/*
-void http_connection2::connect() {
-	auto results = m_resolver.resolve("discord.com", "https");
-	connect_with_no_delay(m_socket.next_layer(), results);
-	m_socket.handshake(boost::asio::ssl::stream_base::client);
-}
-*/
 
 cerwy::task<void> http_connection2::reconnect() {
 	while (true) {

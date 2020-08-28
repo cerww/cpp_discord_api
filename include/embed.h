@@ -467,7 +467,7 @@ struct embed {
 		return *this;
 	}
 
-	template<typename ...fields>
+	template<typename /*std::convertible_to<embed_field>*/...fields>
 	embed& add_fields(fields... s) {
 		if(!m_fields.has_value()) {
 			m_fields.emplace();

@@ -53,10 +53,7 @@ struct ref_or_inplace {
 		else {
 			throw std::runtime_error(";-;");
 		}
-	}
-
-	
-	
+	}	
 
 private:
 	std::variant<T, T*> m_data;

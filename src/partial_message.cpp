@@ -3,9 +3,6 @@
 #include "text_channel.h"
 #include "guild.h"
 
-
-
-
 snowflake partial_message::id() const noexcept { return m_id; }
 
 snowflake partial_message::author_id() const noexcept { return m_author_id; }

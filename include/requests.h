@@ -15,6 +15,9 @@
 #include "audit_log.h"
 #include <fmt/compile.h>
 #include <algorithm>
+#include "dm_channel.h"
+#include "partial_message.h"
+#include "text_channel.h"
 
 
 // clang-format off
@@ -59,7 +62,7 @@ struct server_error final :std::exception {
 };
 
 struct shared_state :ref_counted {
-	//rename some of these.
+	//rename some of these?
 	std::atomic<bool> done = false;
 	boost::asio::io_context::strand* strand = nullptr;
 	std::vector<std::experimental::coroutine_handle<>> waiters{};
@@ -209,7 +212,7 @@ struct request_base :private crtp<reqeust> {
 		if constexpr (has_overload_value<reqeust>::value)
 			return this->self().overload_value();
 		else if constexpr (!std::is_void_v<typename reqeust::return_type>)
-			return nlohmann::json::parse(state->res.body()).get<typename reqeust::return_type>();
+			return nlohmann::json::parse(state->res.body()).template get<typename reqeust::return_type>();
 	}
 		
 	//remove along with wait?
@@ -227,7 +230,7 @@ struct request_base :private crtp<reqeust> {
 			request_base* me = nullptr;
 
 			bool await_ready() {
-				return me->await_ready();
+				return false;
 			}
 
 			decltype(auto) await_suspend(std::experimental::coroutine_handle<> h) {
@@ -273,13 +276,11 @@ struct send_message :
 	using request_base::request_base;
 	using return_type = partial_message;
 
-	static std::string target(const partial_channel& channel) {
-		//return "/channels/{}/messages"_format(channel.id());
+	static std::string target(const partial_channel& channel) {		
 		return fmt::format(FMT_STRING("/channels/{}/messages"),channel.id());
 	}
 
-	static std::string target(const partial_message& msg) {
-		//return "/channels/{}/messages"_format(channel.id());
+	static std::string target(const partial_message& msg) {		
 		return fmt::format(FMT_STRING("/channels/{}/messages"), msg.channel_id());
 	}
 };
@@ -302,7 +303,7 @@ struct add_role :
 	using request_base::request_base;
 	using return_type = void;
 
-	static std::string target(const partial_guild& g, const guild_member& m, const guild_role& r) {
+	static std::string target(const partial_guild& g, const partial_guild_member& m, const guild_role& r) {
 		return "/guilds/{}/members/{}/roles/{}"_format(g.id(), m.id(), r.id());
 	}
 };
@@ -313,7 +314,7 @@ struct remove_role :
 	using request_base::request_base;
 	using return_type = void;
 
-	static std::string target(const partial_guild& g, const guild_member& m, const guild_role& r) {
+	static std::string target(const partial_guild& g, const partial_guild_member& m, const guild_role& r) {
 		return "/guilds/{}/members/{}/roles/{}"_format(g.id(), m.id(), r.id());
 	}
 };
@@ -371,7 +372,7 @@ struct ban_member :
 	using request_base::request_base;
 	using return_type = void;
 
-	static std::string target(const partial_guild& g, const guild_member& member) {
+	static std::string target(const partial_guild& g, const partial_guild_member& member) {
 		return "/guilds/{}/bans/{}"_format(g.id(), member.id());
 	}
 };
@@ -470,7 +471,6 @@ struct create_voice_channel :
 		post_verb,
 		json_content_type {
 	using request_base::request_base;
-	//using return_type = snowflake;
 	using return_type = partial_guild_channel;
 
 	static std::string target(const partial_guild& guild) {

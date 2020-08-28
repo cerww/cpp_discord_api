@@ -33,11 +33,10 @@ int main() {
 	c2.send("aaa");
 	std::thread t([&]() {
 		c2.run();
-	});	
-
-	
+	});		
 	
 	client c;
+	
 	c.on_guild_text_msg = [](const guild_text_message& msg, shard& s)-> cerwy::task<void> {
 		if (msg.content() == "rawrly") {
 			const auto hook = co_await s.create_webhook(msg.channel(), "bester_hook");
@@ -47,6 +46,8 @@ int main() {
 			co_await wh_client.send("potatoland2");
 			
 			co_await s.modify_webhook(hook,modify_webhook_settings().name("charizard"));
+
+			co_await wh_client.send("aaa");
 			
 		}
 	};
