@@ -286,7 +286,7 @@ inline guild_member internal_shard::make_member_from_msg(const nlohmann::json& u
 }
 
 template<typename msg_t, typename channel_t, typename map_t>
-msg_t internal_shard::create_msg(channel_t& ch, const nlohmann::json& stuffs, map_t&& members_in_channel) {
+msg_t internal_shard::create_msg(channel_t& ch, const nlohmann::json& stuffs, map_t&&) {
 	msg_t retVal;
 	stuffs.get_to(static_cast<partial_message&>(retVal));
 	retVal.m_channel = &ch;

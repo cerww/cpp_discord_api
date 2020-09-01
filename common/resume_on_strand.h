@@ -18,6 +18,7 @@ struct resume_on_strand {
 
 	void await_suspend(std::experimental::coroutine_handle<> h) {
 		boost::asio::post(strand, h);
+		//boost::asio::defer(strand, h);
 	}
 
 	void await_resume() {

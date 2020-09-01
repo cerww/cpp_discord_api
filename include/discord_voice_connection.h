@@ -64,7 +64,7 @@ struct discord_voice_connection_impl :
 			}
 
 			if (frame.channel_count != 2 || frame.sampling_rate != 48000) {
-				frame = resample_meh(frame, 2, 48000);
+				frame = resample_fn(frame, 2, 48000);
 			}
 			send_frame(frame, sqeuence_number++, ssrc_big_end);
 
@@ -300,6 +300,18 @@ public:
 		return *it2;
 		
 		//return guild.voice_channels()[v.channel_id()];
+	}
+
+	boost::asio::io_context::strand& strand() {
+		return *m_connection->strand;
+	}
+
+	const boost::asio::io_context::strand& strand() const {
+		return *m_connection->strand;
+	}
+
+	bool is_connected() const noexcept{
+		return m_connection != nullptr;
 	}
 
 private:

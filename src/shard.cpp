@@ -18,6 +18,27 @@ cerwy::task<voice_connection> shard::connect_voice(const voice_channel& ch) {
 	return me.connect_voice(ch);
 }
 
+constexpr bool is_char_that_needs_escaping(char c)noexcept {
+	return c == '\n' || c == '\t' || c == '\r';
+}
+
+std::string escape_stuffs(std::string s) {
+	size_t idx = s.find_first_of("\n\t\r");
+	while (idx != std::string::npos) {
+		const auto thing = s[idx];
+		if(thing == '\n') {
+			s[idx] = 'n';
+		}else if(thing == '\t') {
+			s[idx] = 't';
+		}else if(thing == '\r') {
+			s[idx] = 'r';
+		}
+		s.insert(idx,"\\");
+		idx = s.find_first_of("\n\t\r", idx + 2);//+1 to skip current char, +1 to skip '\'
+	}
+	return s;
+}
+
 bool shard::will_have_guild(snowflake guild_id) const noexcept{
 	return (guild_id.val >> 22) % m_parent_client->num_shards() == m_shard_number;
 }
@@ -46,7 +67,7 @@ void shard::set_up_request(boost::beast::http::request<boost::beast::http::strin
 
 rq::send_message shard::send_message(const partial_channel& channel, std::string content) {
 	std::string body = "{\"content\":\"" + std::move(content) + "\"}";
-	return send_request<rq::send_message>(std::move(body), channel);	
+	return send_request<rq::send_message>(escape_stuffs(std::move(body)), channel);	
 }
 
 rq::send_message shard::send_message(const partial_channel& channel, std::string content, const embed& embed) {
@@ -58,7 +79,10 @@ rq::send_message shard::send_message(const partial_channel& channel, std::string
 
 rq::send_message shard::reply(const partial_message& msg, std::string content) {
 	std::string body = "{\"content\":\"" + std::move(content) + "\"}";
-	return send_request<rq::send_message>(std::move(body), msg);
+	//nlohmann::json body;
+	//body["content"] = std::move(content);
+	return send_request<rq::send_message>(escape_stuffs(std::move(body)), msg);
+	//return send_request<rq::send_message>(body.dump(), msg);
 }
 
 rq::send_message shard::reply(const partial_message& msg, std::string content, const embed& embed) {

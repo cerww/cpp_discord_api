@@ -450,8 +450,12 @@ cerwy::task<void> http_connection2::start_sending() {
 
 cerwy::task<void> http_connection2::reconnect() {
 	while (true) {
-		if (m_socket.next_layer().is_open()) {
-			co_await m_socket.async_shutdown(use_task);
+		if (m_socket.next_layer().is_open()) {			
+			auto [ec] = co_await m_socket.async_shutdown(use_task_return_tuple2);
+			if(ec) {
+				//ignore, might be open but hasn't done handshake yet
+			}			
+			m_socket.next_layer().close(ec);			
 		}
 		const auto [ec, results] = co_await m_resolver.async_resolve("discord.com", "https", use_task_return_tuple2);
 		if(ec) {
@@ -465,7 +469,7 @@ cerwy::task<void> http_connection2::reconnect() {
 		if(ec2) {
 			continue;
 		}
-		break;
+		co_return;
 	}
 }
 
@@ -475,19 +479,16 @@ redo:
 	auto [ec, n] = co_await boost::beast::http::async_write(m_socket, request.req, use_task_return_tuple2);
 
 	if (ec) {
-		std::cout << "send_rq " << ec << std::endl;
-		if (ec.value() == 10053) {
-			co_await reconnect();
-			goto redo;
-		}
+		std::cout << request.req << std::endl;
+		std::cout << "send_rq " << ec << std::endl;		
+		co_await reconnect();
+		goto redo;
 	}
 	auto[ec2,n2] = co_await boost::beast::http::async_read(m_socket, m_buffer, request.state->res, use_task_return_tuple2);
 	if (ec2) {
 		std::cout << "recieve_rq " << ec << std::endl;
-		if (ec.value() == 1) {
-			co_await reconnect();
-			goto redo;
-		}
+		co_await reconnect();
+		goto redo;
 	}
 	
 }

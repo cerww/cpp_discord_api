@@ -109,7 +109,7 @@ struct Guild :partial_guild {
 	}
 
 private:
-	//following is used for conveniance only
+	//the following is used for conveniance only
 	discord_obj_map<text_channel> all_text_channels() const noexcept;
 	discord_obj_map<voice_channel> all_voice_channels() const noexcept;
 	discord_obj_map<channel_catagory> all_channel_catagories() const noexcept;
@@ -143,5 +143,7 @@ private:
 	friend void from_json(const nlohmann::json& json, Guild& guild);
 	friend struct internal_shard;
 };
+
+constexpr int ausdhasdasdasd = sizeof(Guild);
 
 void from_json(const nlohmann::json& json, Guild& guild);

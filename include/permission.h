@@ -4,9 +4,9 @@
 //needs to be own class so i can use | and & and add functions to it
 struct permission {
 	constexpr permission() = default;
-	constexpr explicit permission(const size_t t):m_permission(t){}
+	constexpr explicit permission(const uint64_t t):m_permission(t){}
 
-	constexpr permission& add_permissions(size_t p) {
+	constexpr permission& add_permissions(uint64_t p) {
 		m_permission |= p;
 		return *this;
 	};
@@ -69,7 +69,7 @@ struct permission {
 	
 	constexpr size_t data()const noexcept { return m_permission; }
 private:
-	size_t m_permission = 0;
+	uint64_t m_permission = 0;	
 };
 
 inline void to_json(nlohmann::json& json, const permission& p) {

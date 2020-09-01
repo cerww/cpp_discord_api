@@ -57,6 +57,10 @@ struct more_bad_vector {
 		m_data(std::exchange(other.m_data, nullptr)) { }
 
 	more_bad_vector& operator=(more_bad_vector&& other) noexcept {
+		if(&other == this) {
+			return *this;
+		}
+		clear();
 		m_data = std::exchange(other.m_data, nullptr);
 		return *this;
 	}
@@ -67,7 +71,7 @@ struct more_bad_vector {
 
 	T* begin() {
 		if (m_data) {
-			return m_data + 16;
+			return (T*)(m_data + 16);
 		} else {
 			return nullptr;
 		}
@@ -75,7 +79,7 @@ struct more_bad_vector {
 
 	T* end() {
 		if (m_data) {
-			return (m_data + 16) + size();
+			return (T*)((m_data + 16) + size());
 		} else {
 			return nullptr;
 		}
@@ -83,7 +87,7 @@ struct more_bad_vector {
 
 	const T* begin() const{
 		if (m_data) {
-			return m_data + 16;
+			return (T*)(m_data + 16);
 		}
 		else {
 			return nullptr;
@@ -92,7 +96,7 @@ struct more_bad_vector {
 
 	const T* end()const {
 		if (m_data) {
-			return (m_data + 16) + size();
+			return (T*)((m_data + 16) + size());
 		}
 		else {
 			return nullptr;

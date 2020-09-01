@@ -2,6 +2,7 @@
 #include <fstream>
 #include "include/modify_guild_settings.h"
 #include "common/mp3_audio_source.h"
+#include "common/more_bad_vector.h"
 
 
 using namespace std::literals;
@@ -49,7 +50,22 @@ void test_transform_audio_thingy() {
 }
 
 void aujsdhasdasd() {
-	//std::apply([](int, int) {}, std::pair<int, int>());
+	std::vector<int> aaa = { 12,3,4,5,67,7,8 };
+	more_bad_vector<int> y = aaa | ranges::to<more_bad_vector<int>>();
+	assert(y[1] == aaa[1]);
+	auto x = std::move(y);
+	assert(y.size() == 0);
+	more_bad_vector<int> asdasd;
+	assert(asdasd.size() == 0);
+	assert(asdasd.empty());
+
+	asdasd = more_bad_vector<int>(aaa.begin(), aaa.end());
+	//assert(ranges::equal(aaa, asdasd));
+	
+	std::span<int> wat = x;
+	std::vector<int> c = wat | ranges::to<std::vector>();
+	std::cout << (aaa == c) << std::endl;;
+	
 }
 
 //spam bot
@@ -59,6 +75,8 @@ int main() {
 
 	//std::cin.get();
 	//try {
+	//aujsdhasdasd();
+	//std::cin.get();
 	client c;
 
 	boost::asio::io_context::strand* shard_of_guild = nullptr;
@@ -76,16 +94,7 @@ int main() {
 	//c.on_guild_ready = &thingy;
 
 	c.on_guild_text_msg = [&](guild_text_message msg, shard& s)->cerwy::task<void> {
-		if (msg.content() == "rawrmander") {
-			//int i = 0;
-			/*
-			for (auto&& a : s.voice_channels()) {
-				std::cout << a.first.val << ' ' << a.second.guild_id().val << std::endl;;
-			}
-			*/
-			for (auto&& a : msg.guild().voice_channel_ids()) {
-				std::cout << a.val << ' ' << std::endl;
-			}
+		if (msg.content() == "rawrmander") {			
 			do_audio_thingy(s.connect_voice(msg.guild().voice_channels()[0]));
 		} else if (msg.content() == "watland") {
 			//s.delete_message(msgs.back()).get();
@@ -93,16 +102,16 @@ int main() {
 		} else if (msg.content() == "make new channel") {
 			auto ch = co_await s.create_text_channel(msg.guild(), "blargylandy");
 		} else if (msg.content() == "rolesy") {
-			std::cout << "rolesy" << std::endl;
+			//std::cout << "rolesy" << std::endl;
 			std::string stuff =
 					msg.author().roles() |
 					ranges::views::transform(&guild_role::name) |
 					ranges::views::join(" "sv) |
 					ranges::to<std::string>();
 
-			s.send_message(msg.channel(), stuff);
+			s.reply(msg, stuff);
 		} else if (msg.content() == "invite") {
-			s.create_channel_invite(msg.channel()).wait();
+			co_await s.create_channel_invite(msg.channel()).async_wait();
 		} else if (msg.content() == "namey") {
 			s.send_message(msg.channel(), std::string(msg.author().nick()));
 		} else if (msg.content() == ";-;worldlandasdasdasd") {

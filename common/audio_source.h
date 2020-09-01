@@ -47,7 +47,6 @@ inline audio_frame resample_meh(const audio_frame& frame, int new_channel_count,
 
 	auto& new_frame = return_val.optional_data_storage;
 
-	const double size_ratio = (double)needed_size / (double)frame.frame_data.size();
 	const double sampling_rate_ratio = (double)new_sampling_rate / (double)frame.sampling_rate;
 
 	int last_idx_used = -1;
@@ -157,22 +156,22 @@ struct audio_data :audio_source_base {
 
 	audio_data() = default;
 
-	explicit audio_data(std::vector<int16_t> data, int sampling_rate, int channels, int bit_rate):
+	explicit audio_data(std::vector<int16_t> pcm, int sampling_rate, int channels, int bit_rate):
 		audio_source_base(sampling_rate, channels),
-		m_audio_data(std::move(data)),
+		m_audio_pcm(std::move(pcm)),
 		m_bit_rate(bit_rate) {}
 
 
 	auto frames(std::chrono::milliseconds frame_length) const {
 		//assert frame_length == allowed frame lengths 
 		
-		const int sample_size = ((sizeof(int16_t)) * m_channel_count) / sizeof(int16_t);
+		const int sample_size = int(((sizeof(int16_t)) * m_channel_count) / sizeof(int16_t));
 		const int samples_per_frame = int(m_sampling_rate * frame_length.count()) / 1000;
 		const int frame_size = samples_per_frame * sample_size;
 
 		return
-				m_audio_data
-				| ranges::views::take(m_audio_data.size() / frame_size * frame_size)//this ensures the size is a multiple of frame_size,so it doesn't read beyond the buffer, 
+				m_audio_pcm
+				| ranges::views::take(m_audio_pcm.size() / frame_size * frame_size)//this ensures the size is a multiple of frame_size,so it doesn't read beyond the buffer, 
 				| ranges::views::chunk(frame_size)
 				| ranges::views::transform([=/*vars go out of scope, only copying ints*/](auto a) {
 					return audio_frame{
@@ -186,7 +185,7 @@ struct audio_data :audio_source_base {
 	}
 
 private:
-	std::vector<int16_t> m_audio_data;
+	std::vector<int16_t> m_audio_pcm;
 	int m_bit_rate = 0;
 };
 

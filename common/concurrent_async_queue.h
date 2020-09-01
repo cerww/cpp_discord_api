@@ -80,6 +80,7 @@ private:
 	//has waiter => no data
 };
 
+//give access to items somehow?
 template<typename T>
 struct mpsc_concurrent_async_queue {
 
@@ -145,6 +146,21 @@ struct mpsc_concurrent_async_queue {
 	std::vector<T> pop_all() {
 		std::lock_guard lock(m_mut);
 		return std::move(m_data);
+	}
+
+	std::vector<T> get_data_copy() {
+		std::lock_guard lock(m_mut);
+		return m_data;
+	}
+
+	std::optional<T> pop_idx(size_t idx) {
+		std::lock_guard lock(m_mut);
+		if(idx>=m_data.size()) {
+			return std::nullopt;
+		}
+		auto thing = std::move(m_data[idx]);
+		m_data.erase(m_data.begin() + idx);
+		return thing;		
 	}
 
 private:

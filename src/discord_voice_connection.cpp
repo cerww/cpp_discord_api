@@ -48,6 +48,7 @@ cerwy::task<void> discord_voice_connection_impl::send_silent_frames() {
 void discord_voice_connection_impl::close() {
 	is_alive = false;
 	socket.close(1000);
+	cancel_current_data();
 	shard_ptr->voice_connections.erase(guild_id);
 }
 

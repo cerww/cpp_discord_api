@@ -6,15 +6,15 @@
 
 client::client(int threads, intents intents):
 	m_intents(intents),
-	m_ioc(std::in_place_type<boost::asio::io_context>,threads),
-	m_threads(std::max(threads-1,0))
+	m_extra_threads(std::max(threads-1,0)),
+	m_ioc(std::in_place_type<boost::asio::io_context>,threads)
 {
 	
 }
 
 client::client(boost::asio::io_context& ioc, intents intents):
-m_ioc(std::in_place_type<boost::asio::io_context*>,&ioc),
-m_intents(intents){
+m_intents(intents),
+m_ioc(std::in_place_type<boost::asio::io_context*>,&ioc){
 	
 }
 
@@ -24,7 +24,7 @@ void client::run() {
 	//m_th
 
 	boost::asio::executor_work_guard work_guard(context().get_executor());
-	ranges::generate(m_threads, [&]() {
+	ranges::generate(m_extra_threads, [&]() {
 		return std::thread([&]() {
 			context().run();
 		});
@@ -39,7 +39,7 @@ void client::stop() {
 	context().stop();
 }
 
-void client::set_token(std::string token, const token_type type) {
+void client::set_token(std::string token, const token_type type/* = token_type::BOT*/) {
 	m_token = token;
 	switch (type) {
 	case token_type::BOT: m_authToken = "Bot " + std::move(token);

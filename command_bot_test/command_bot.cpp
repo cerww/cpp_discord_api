@@ -43,7 +43,7 @@ int main() {
 			co_await s.send_message(m.channel(), "not connected");
 		} else {
 			auto connection = co_await s.connect_voice(channel_opt.value());
-			co_await connection.send_async(ytdl_async_audio("https://www.youtube.com/watch?v=5lfLO3ZWfAg", s.strand().context()));
+			co_await connection.send_async(ytdl_source("https://www.youtube.com/watch?v=5lfLO3ZWfAg", s.strand().context()));
 		}
 	});
 

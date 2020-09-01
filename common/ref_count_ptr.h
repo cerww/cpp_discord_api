@@ -115,6 +115,14 @@ struct ref_count_ptr {
 		return m_self;
 
 	}
+	
+	bool operator==(nullptr_t) const noexcept{
+		return m_self == nullptr;
+	}
+
+	bool operator!=(nullptr_t) const noexcept {
+		return m_self != nullptr;
+	}
 
 private:
 	T* m_self = nullptr;
