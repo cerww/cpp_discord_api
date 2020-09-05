@@ -181,22 +181,6 @@ public:
 		return m_guilds;
 	}
 
-	discord_obj_map<text_channel> text_channels() const noexcept {
-		return m_text_channel_map;
-	}
-
-	discord_obj_map<dm_channel> dm_channels() const noexcept {
-		return m_dm_channels;
-	}
-
-	discord_obj_map<voice_channel> voice_channels() const noexcept {
-		return m_voice_channel_map;
-	}
-
-	discord_obj_map<channel_catagory> channel_catagories() const noexcept {
-		return m_channel_catagory_map;
-	}
-
 	webhook_client make_webhook_client(const webhook& wh) {
 		if (!wh.token()) {
 			throw std::runtime_error(";-;");
@@ -211,10 +195,6 @@ public:
 			const auto it = std::partition(m_deleted_guilds.begin(), m_deleted_guilds.end(), [&](const auto& thing) {
 				return !std::invoke(pred, thing.first, thing.second.value());
 			});
-
-			for (auto it2 = it; it2 != m_deleted_guilds.end(); ++it2) {
-				delete_guild_channels((*it).first,(*it2).second.value());
-			}
 			
 			m_deleted_guilds.erase(it, m_deleted_guilds.end());
 		}
@@ -253,31 +233,7 @@ public:
 
 protected:
 
-	void delete_guild_channels(std::chrono::steady_clock::time_point tp,const Guild& guild) {
-		auto now = std::chrono::steady_clock::now();//use now or tp?
-		for (auto channel_id : guild.text_channel_ids()) {
-			auto channel_it = m_text_channel_map.find(channel_id);
-			if (channel_it != m_text_channel_map.end()) {
-				auto channel_handle = m_text_channel_map.extract(channel_it);
-				m_deleted_text_channels.emplace_back(tp, std::move(channel_handle.mapped_indirect()));
-			}
-		}
-		for (auto channel_id : guild.voice_channel_ids()) {
-			auto channel_it = m_voice_channel_map.find(channel_id);
-			if (channel_it != m_voice_channel_map.end()) {
-				auto channel_handle = m_voice_channel_map.extract(channel_it);
-				m_deleted_voice_channels.emplace_back(tp, std::move(channel_handle.mapped_indirect()));
-			}
-		}
-		for (auto channel_id : guild.channel_catagories_ids()) {
-			auto channel_it = m_channel_catagory_map.find(channel_id);
-			if (channel_it != m_channel_catagory_map.end()) {
-				auto channel_handle = m_channel_catagory_map.extract(channel_it);
-				m_deleted_channel_catagories.emplace_back(tp, std::move(channel_handle.mapped_indirect()));
-			}
-		}
-		
-	}
+	
 	using wsClient = rename_later_5;
 
 	cerwy::task<boost::beast::error_code> connect_http_connection();
@@ -299,15 +255,15 @@ protected:
 	async_mutex m_events_mut;
 
 	ref_stable_map<snowflake, Guild> m_guilds;
-	ref_stable_map<snowflake, text_channel> m_text_channel_map;
-	ref_stable_map<snowflake, voice_channel> m_voice_channel_map;
-	ref_stable_map<snowflake, channel_catagory> m_channel_catagory_map;
+	// ref_stable_map<snowflake, text_channel> m_text_channel_map;
+	// ref_stable_map<snowflake, voice_channel> m_voice_channel_map;
+	// ref_stable_map<snowflake, channel_catagory> m_channel_catagory_map;
 	ref_stable_map<snowflake, dm_channel> m_dm_channels;
 
 	std::vector<std::pair<std::chrono::steady_clock::time_point, indirect<Guild>>> m_deleted_guilds;
-	std::vector<std::pair<std::chrono::steady_clock::time_point, indirect<text_channel>>> m_deleted_text_channels;
-	std::vector<std::pair<std::chrono::steady_clock::time_point, indirect<voice_channel>>> m_deleted_voice_channels;
-	std::vector<std::pair<std::chrono::steady_clock::time_point, indirect<channel_catagory>>> m_deleted_channel_catagories;
+	std::vector<std::pair<std::chrono::steady_clock::time_point, ref_count_ptr<text_channel>>> m_deleted_text_channels;
+	std::vector<std::pair<std::chrono::steady_clock::time_point, ref_count_ptr<voice_channel>>> m_deleted_voice_channels;
+	std::vector<std::pair<std::chrono::steady_clock::time_point, ref_count_ptr<channel_catagory>>> m_deleted_channel_catagories;
 	std::vector<std::pair<std::chrono::steady_clock::time_point, indirect<dm_channel>>> m_deleted_dm_channels;
 	std::vector<std::pair<std::chrono::steady_clock::time_point, indirect<guild_member>>> m_deleted_guild_members;
 

@@ -99,6 +99,16 @@ struct mpsc_concurrent_async_queue {
 		}
 	}
 
+	std::optional<T> try_pop() {
+		std::lock_guard lock(m_mut);
+		if(m_data.empty()) {
+			return std::nullopt;
+		}
+		auto first = std::move(m_data.front());
+		m_data.erase(m_data.begin());
+		return first;
+	}
+
 	void push(T val) {
 		std::unique_lock lock(m_mut);
 
@@ -155,7 +165,7 @@ struct mpsc_concurrent_async_queue {
 
 	std::optional<T> pop_idx(size_t idx) {
 		std::lock_guard lock(m_mut);
-		if(idx>=m_data.size()) {
+		if (idx >= m_data.size()) {
 			return std::nullopt;
 		}
 		auto thing = std::move(m_data[idx]);
@@ -171,3 +181,30 @@ private:
 	//has waiter => no data
 };
 
+template<typename T,size_t ring_size = 16> //requires ring_size %2 == 0
+struct async_ring_buffer_queue {
+
+	bool is_full()const noexcept {
+		return m_head == m_tail;
+	}
+
+	bool is_empty()const noexcept {
+		return (m_head + 1) % ring_size == m_tail;
+	}
+private:
+	std::array<T, ring_size> m_data;
+	int m_head = ring_size-1;
+	int m_tail = 0;
+};
+//size = 8
+//________ tail = 0, head = 7
+//aaaaaaaa tail = s - 1, head = s - 1
+//________ tail = 0, head = s-1 empty
+//________ tail = 1, head = 0 head+1 == tail
+//________ tail = 5, head = 4 empty
+//________ tail = 4, head = 4 full
+//
+//
+//_aaa___
+//es_____ full
+//s=e empty?

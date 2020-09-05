@@ -466,7 +466,7 @@ constexpr decltype(auto) logical_negate(logical_negate_t<F>& a) {
 	return logical_negate_t<logical_negate_t<F>&>(a);
 }
 
-template<typename map_type>
+template<typename map_type> 
 struct map_with {
 
 	template<typename map_type_t>

@@ -75,7 +75,7 @@ struct guild_text_message :partial_message {
 	auto mention_roles() const noexcept {
 		return m_mention_roles_ids | ranges::views::transform(hof::map_with(guild().roles()));
 	}
-
+	
 private:
 	guild_member m_author;
 	std::vector<snowflake> m_mention_roles_ids;

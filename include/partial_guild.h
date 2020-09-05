@@ -38,13 +38,13 @@ struct partial_guild {
 		return m_roles | ranges::views::values;
 	};
 
-	optional_ref<const guild_role> role_by_name(std::string_view name)const noexcept {
+	std::optional<guild_role> role_by_name(std::string_view name)const noexcept {
 		auto it = ranges::find(roles_list(), name, &guild_role::name);
 		
 		if(it == roles_list().end()) {
 			return std::nullopt;
 		}else {
-			return optional_ref(*it);
+			return *it;
 		}		
 	}
 	

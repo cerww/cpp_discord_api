@@ -35,7 +35,9 @@ struct connection_stuffs {
 	mpsc_concurrent_async_queue<std::string> queue;
 	cerwy::task<void> thingy;
 };
+
 //wat is asio.ssl.337690831
+
 int main() {
 	client c;
 	c.set_token(getFileContents("token.txt"));
@@ -56,7 +58,7 @@ int main() {
 		}
 	});
 
-	command_thingy["quit"] += shiny::make_command([&](guild_text_message m,shard& s) ->cerwy::task<void>{
+	command_thingy["quit"] += shiny::make_command([&](guild_text_message m,shard& s) ->cerwy::unawaitable_action{
 		if (connections.contains(m.guild().id())) {
 			auto& thing = connections[m.guild().id()];
 			thing.queue.cancel_all();
@@ -79,11 +81,7 @@ int main() {
 	command_thingy["show_queue"] += shiny::make_command([&](guild_text_message m,shard& s) {
 		if (connections.contains(m.guild().id())) {
 			auto stuff = connections[m.guild().id()].queue.get_data_copy();
-			try {
-				s.reply(m, stuff | ranges::views::join('\n') | ranges::to<std::string>());
-			} catch (...) {
-				int adsadasdas = 0;
-			}
+			s.reply(m, stuff | ranges::views::join('\n') | ranges::to<std::string>());
 		} else {
 			s.reply(m, "not connected");
 		}

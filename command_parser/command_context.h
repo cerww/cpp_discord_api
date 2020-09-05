@@ -234,7 +234,22 @@ struct parser<std::vector<T>> {
 	parser<T> lower_parser;
 };
 
-
+//hmmm
+// template<typename... Ts>
+// struct parser<std::variant<Ts...>> {
+// 	explicit parser(const guild_text_message& t_m):m(t_m) {
+// 		
+// 	}
+//
+// 	parse_result<std::variant<parse_result_value_t<parser<Ts>>...>> operator()(std::string_view s) const {
+// 		auto p = parse_first_of(s, parser<Ts>(m)...);
+//
+// 		
+// 		return parse_fail();
+// 	}
+//
+// 	const guild_text_message& m;
+// };
 
 struct command {
 	std::function<bool(std::string_view, guild_text_message&, shard&)> try_invoke_with;
@@ -257,6 +272,7 @@ struct command_group :std::vector<command> {
 	//std::vector<command> commands;
 };
 
+//rename?
 struct command_context {
 
 	std::string prefix = "";

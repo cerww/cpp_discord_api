@@ -12,17 +12,18 @@
 #include <range/v3/view/all.hpp>
 #include "../common/higher_order_functions.h"
 #include "channel_catagory.h"
+#include "ref_stable2.h"
 
 struct internal_shard;
 
-struct Guild :partial_guild {
+struct Guild :partial_guild/*,thread_unsafe_ref_counted_but_different<Guild>*/ {
 
 	Guild() = default;
 	Guild(const Guild&) = delete;
-	Guild(Guild&&) = default;
+	Guild(Guild&&) = delete;
 
 	Guild& operator=(const Guild&) = delete;
-	Guild& operator=(Guild&&) = default;
+	Guild& operator=(Guild&&) = delete;
 
 	~Guild() = default;
 
@@ -31,7 +32,7 @@ struct Guild :partial_guild {
 	bool unavailable() const noexcept;
 	int member_count() const noexcept;
 
-	const text_channel& system_channel() const noexcept;
+	const text_channel& system_channel() const;
 
 	const auto& members() const noexcept {
 		return m_members;
@@ -42,17 +43,33 @@ struct Guild :partial_guild {
 	};
 
 	const guild_member& owner() const;
-
-	auto text_channels() const noexcept {
-		return m_text_channel_ids | ranges::views::transform(hof::map_with(all_text_channels()));
+	
+	//TODO remove const_casts
+	auto text_channels_list() const noexcept {
+		return m_text_channel_ids | ranges::views::transform(hof::map_with(text_channels()));
+		//return m_text_channels | ranges::views::values;
 	}
 
-	auto voice_channels() const noexcept {
-		return m_voice_channel_ids | ranges::views::transform(hof::map_with(all_voice_channels()));
+	auto voice_channels_list() const noexcept {
+		return m_voice_channel_ids | ranges::views::transform(hof::map_with(voice_channels()));
+		//return m_voice_channels | ranges::views::values;
 	}
 
-	auto channel_catagories() const noexcept {
-		return m_channel_catagory_ids | ranges::views::transform(hof::map_with(all_channel_catagories()));
+	auto channel_catagories_list() const noexcept {
+		return m_channel_catagory_ids | ranges::views::transform(hof::map_with(channel_catagories()));
+		//return m_channel_catagories | ranges::views::values;
+	}
+
+	discord_obj_map2<text_channel> text_channels()const noexcept {
+		return m_text_channels;
+	}
+
+	discord_obj_map2<voice_channel> voice_channels()const noexcept {
+		return m_voice_channels;
+	}
+
+	discord_obj_map2<channel_catagory> channel_catagories()const noexcept {
+		return m_channel_catagories;
 	}
 
 	std::span<const snowflake> text_channel_ids() const noexcept {
@@ -67,7 +84,7 @@ struct Guild :partial_guild {
 		return m_voice_channel_ids;
 	};
 
-	optional_ref<const voice_channel> afk_channel() const noexcept;
+	optional_ref<const voice_channel> afk_channel() const;
 
 	std::span<const voice_state> voice_states() const noexcept {
 		return m_voice_states;
@@ -86,7 +103,7 @@ struct Guild :partial_guild {
 		return activity_for(member.id());
 	}
 
-	std::optional<Status> status_for(snowflake id) const noexcept{
+	std::optional<Status> status_for(const snowflake id) const noexcept{
 		const auto it = m_status.find(id);
 		if (it == m_status.end()) {
 			return std::nullopt;
@@ -104,15 +121,12 @@ struct Guild :partial_guild {
 		if(it  == m_voice_states.end()) {
 			return std::nullopt;
 		}else {
-			return all_voice_channels()[it->channel_id()];
+			return m_voice_channels.at(it->channel_id());
 		}
 	}
 
 private:
 	//the following is used for conveniance only
-	discord_obj_map<text_channel> all_text_channels() const noexcept;
-	discord_obj_map<voice_channel> all_voice_channels() const noexcept;
-	discord_obj_map<channel_catagory> all_channel_catagories() const noexcept;
 
 
 	timestamp m_joined_at = {};
@@ -120,9 +134,13 @@ private:
 	bool m_unavailable = false;
 	int m_member_count = 0;
 
-	ref_stable_map<snowflake, guild_member> m_members{};
-	ref_stable_map<snowflake, std::optional<activity>> m_activities;//no optional<activity&> ;-;
+	ref_stable_map<snowflake, guild_member> m_members{};//keep ref stable?
+	ska::bytell_hash_map<snowflake, std::optional<activity>> m_activities;
 	ska::bytell_hash_map<snowflake, Status> m_status;
+	
+	ref_stable_map2<snowflake,text_channel> m_text_channels;
+	ref_stable_map2<snowflake,voice_channel> m_voice_channels;
+	ref_stable_map2<snowflake,channel_catagory> m_channel_catagories;
 
 	//non-const version used for conveniance in shard.cpp
 	//returns mutable members so it has to be private

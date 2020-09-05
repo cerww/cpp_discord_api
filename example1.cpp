@@ -32,7 +32,7 @@ cerwy::task<void> thingy(const Guild& g, shard& s) {
 		timer.expires_after(20s);
 		co_await timer.async_wait(use_task);
 		auto& role = g.roles()[snowflake(725880768659980330)];
-		s.send_message(s.text_channels().at(snowflake(504562059279728640)), role.to_mentionable_string() + " flag starts soon");
+		//s.send_message(s.text_channels().at(snowflake(504562059279728640)), role.to_mentionable_string() + " flag starts soon");
 	}
 }
 
@@ -95,7 +95,7 @@ int main() {
 
 	c.on_guild_text_msg = [&](guild_text_message msg, shard& s)->cerwy::task<void> {
 		if (msg.content() == "rawrmander") {			
-			do_audio_thingy(s.connect_voice(msg.guild().voice_channels()[0]));
+			do_audio_thingy(s.connect_voice(msg.guild().voice_channels_list()[0]));
 		} else if (msg.content() == "watland") {
 			//s.delete_message(msgs.back()).get();
 			//msgs.pop_back();
@@ -115,9 +115,9 @@ int main() {
 		} else if (msg.content() == "namey") {
 			s.send_message(msg.channel(), std::string(msg.author().nick()));
 		} else if (msg.content() == ";-;worldlandasdasdasd") {
-			const optional_ref<const guild_role> role = msg.guild().role_by_name("Prophets of Milktea-ism");
+			const auto role = msg.guild().role_by_name("Prophets of Milktea-ism");
 			if (role.has_value()) {
-				s.send_message(msg.channel(), role->to_mentionable_string());
+				s.send_message(msg.channel(), role->to_mentionable_string(),disable_mentions);
 			}
 		} else if (msg.content() == "potatoland_world") {
 			s.send_message(msg.channel(), "rawr",
@@ -240,6 +240,7 @@ int main() {
 		member.guild().roles();
 		*/
 	};
+	
 	c.on_guild_member_add = [&](const guild_member& member, shard& s) {
 		s.send_message(member.guild().system_channel(), "rawr");
 		//s.modify_guild(member.guild(), guild_settings::default_message_notifications{1});
@@ -269,6 +270,13 @@ int main() {
 		co_return;
 	};
 
+	c.on_guild_reaction_remove = [](auto&&...) {
+		std::cout << "reaction_removed" << std::endl;
+	};
+
+	c.on_guild_text_channel_create = [](const text_channel& channel,shard& s) ->cerwy::task<void>{
+		co_await s.send_message(channel, "wat");
+	};
 
 	c.set_token(getFileContents("token.txt"));
 	c.run();

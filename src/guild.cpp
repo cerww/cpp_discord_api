@@ -14,17 +14,7 @@ bool Guild::unavailable() const noexcept { return m_unavailable; }
 
 int Guild::member_count() const noexcept { return m_member_count; }
 
-discord_obj_map<text_channel> Guild::all_text_channels() const noexcept {
-	return m_shard->text_channels();
-}
 
-discord_obj_map<voice_channel> Guild::all_voice_channels() const noexcept {
-	return m_shard->voice_channels();
-}
-
-discord_obj_map<channel_catagory> Guild::all_channel_catagories() const noexcept {
-	return m_shard->channel_catagories();
-}
 
 void from_json(const nlohmann::json& json, Guild& guild) {
 	json.get_to(static_cast<partial_guild&>(guild));
@@ -35,12 +25,13 @@ void from_json(const nlohmann::json& json, Guild& guild) {
 	guild.m_voice_states = json["voice_states"].get<std::vector<voice_state>>();
 }
 
-const text_channel& Guild::system_channel() const noexcept {
-	return m_shard->text_channels().at(system_channel_id());
+const text_channel& Guild::system_channel() const {
+	return m_text_channels.at(system_channel_id());
 }
 
-optional_ref<const voice_channel> Guild::afk_channel() const noexcept {
-	if (afk_channel_id().val)
-		return m_shard->voice_channels().at(afk_channel_id());
+optional_ref<const voice_channel> Guild::afk_channel() const {
+	if (afk_channel_id().val) {
+		return m_voice_channels.at(afk_channel_id());
+	}
 	return std::nullopt;
 }

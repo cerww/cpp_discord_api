@@ -292,14 +292,7 @@ public:
 		}
 		const voice_state& v = *it;
 
-		auto a = guild.voice_channels();
-		auto it2 = ranges::find(a, v.channel_id(), &voice_channel::id);
-		if (it2 == a.end()) {
-			throw std::runtime_error("wat");
-		}
-		return *it2;
-		
-		//return guild.voice_channels()[v.channel_id()];
+		return guild.voice_channels()[v.channel_id()];
 	}
 
 	boost::asio::io_context::strand& strand() {

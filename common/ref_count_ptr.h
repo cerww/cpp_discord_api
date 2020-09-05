@@ -2,6 +2,7 @@
 #include <atomic>
 
 struct ref_counted {
+private:
 	void increment_ref_count() const noexcept {
 		m_ref_count.fetch_add(1, std::memory_order_relaxed);
 	}
@@ -15,11 +16,14 @@ struct ref_counted {
 		return m_ref_count;
 	}
 
-private:
 	mutable std::atomic<int> m_ref_count = 0;//so i can have ref_count_ptr<const T>
+	
+	template<typename>
+	friend struct ref_count_ptr;
 };
 
 struct ref_counted_thread_unsafe {
+private:
 	void increment_ref_count() const noexcept {
 		++m_ref_count;
 	}
@@ -33,8 +37,10 @@ struct ref_counted_thread_unsafe {
 		return m_ref_count;
 	}
 
-private:
 	mutable int m_ref_count = 0;//so i can have ref_count_ptr<const T>
+	
+	template<typename>
+	friend struct ref_count_ptr;
 };
 
 /// @brief intrusive ptr
@@ -107,9 +113,13 @@ struct ref_count_ptr {
 		return m_self;
 	}
 
-	T* operator->() const noexcept { return m_self; }
+	T* operator->() const noexcept {
+		return m_self;
+	}
 
-	T& operator*() const noexcept { return *m_self; }
+	T& operator*() const noexcept {
+		return *m_self;
+	}
 
 	operator bool() const noexcept {
 		return m_self;

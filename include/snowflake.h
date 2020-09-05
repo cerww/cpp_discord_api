@@ -8,6 +8,7 @@
 #include <compare>
 #include <fmt/core.h>
 #include <fmt/format.h>
+#include "ref_stable2.h"
 
 struct snowflake {
 	constexpr bool operator==(const snowflake& other) const noexcept = default;
@@ -181,100 +182,80 @@ private:
 	const ref_stable_map<snowflake, T>* m_data;
 };
 
+template<typename T>
+struct discord_obj_map2 {
+	discord_obj_map2() = default;
 
-//just use auto, basically a transform_view
-template<typename T, typename snowflake_range>
-struct discord_obj_list {
-	discord_obj_list() = default;
+	discord_obj_map2(const ref_stable_map2<snowflake, T>& data) :
+		m_data(&data) {}
 
-	explicit discord_obj_list(discord_obj_map<T> a, snowflake_range b):
-		m_map(a),
-		m_keys(std::move(b)) {};
-
-	using underlying_iterator = decltype(std::declval<std::add_const_t<snowflake_range>>().begin());
-
-
-	template<typename value_type_, ptrdiff_t stride>
+	template<typename it>
 	struct cursor {
 		cursor() = default;
 
-		explicit cursor(discord_obj_list* t_parent, const underlying_iterator t_it) :
-			m_parent(t_parent),
-			m_it(t_it) {}
+		cursor(it i) :
+			m_it(i) {}
+
+		decltype(auto) read() const noexcept {
+			return *m_it;
+		}
 
 		void next() noexcept {
-			m_it += stride;
+			++m_it;
 		}
 
-		void prev() noexcept {
-			m_it -= stride;
-		}
-
-		std::add_const_t<value_type_>& read() const noexcept {
-			return m_parent->m_map.at(*m_it);
-		}
-
-		ptrdiff_t distance_to(const cursor& other) const noexcept {
-			return m_it - other.m_it;
-		}
-
-		void advance(ptrdiff_t i) noexcept {
-			m_it += i;
-		}
-
-		template<typename O, int N>
-		bool operator==(const cursor<O, N>& other) const {
+		bool operator==(const cursor& other) const {
 			return m_it == other.m_it;
 		}
 
-	private:
-		const discord_obj_list* m_parent;
-		underlying_iterator m_it{};
+		it m_it;
 	};
 
-	using iterator = iterator_facade<cursor<T, 1>>;
-	using const_iterator = iterator_facade<cursor<const T, 1>>;
+	using iterator = iterator_facade<cursor<typename ref_stable_map2<snowflake, T>::const_iterator>>;
+	using const_iterator = iterator;
 
-	using reverse_iterator = iterator_facade<cursor<T, -1>>;
-	using const_reverse_iterator = iterator_facade<cursor<const T, -1>>;
-
-	iterator begin() {
-		return iterator{this, const_ids().begin()};
+	const T& operator[](snowflake s) const {
+		return m_data->at(s);
 	}
 
-	iterator end() {
-		return iterator{this, const_ids().end()};
+	const T& at(snowflake s) const {
+		return m_data->at(s);
 	}
 
-	const_iterator begin() const {
-		return const_iterator{this, const_ids().begin()};
+	iterator begin() const noexcept {
+		return m_data->begin();
 	}
 
-	const_iterator end() const {
-		return const_iterator{this, const_ids().end()};
+	iterator end() const noexcept {
+		return m_data->end();
 	}
 
-	T& operator[](size_t i) {
-		return m_map[m_keys[i]];
+	const_iterator cbegin() const noexcept {
+		return m_data->begin();
 	}
 
-	const T& operator[](size_t i) const {
-		return m_map.at(m_keys[i]);
+	const_iterator cend() const noexcept {
+		return m_data->end();
 	}
 
-	size_t size() const noexcept { return m_keys.size(); }
+	iterator find(snowflake s) const noexcept {
+		return m_data->find(s);
+	}
+
+	bool contains(snowflake s) const noexcept {
+		return m_data->find(s) != m_data->end();
+	}
+
+	size_t size() const noexcept {
+		return m_data->size();
+	}
 
 	bool empty() const noexcept {
 		return size() == 0;
 	}
 
 private:
-	std::add_rvalue_reference_t<std::add_const_t<snowflake_range>> const_ids() const noexcept {
-		return m_keys;
-	}
-
-	discord_obj_map<T> m_map;
-	snowflake_range m_keys{};
+	const ref_stable_map2<snowflake, T>* m_data;
 };
 
 static inline constexpr auto transform_to_pair = [](auto&& a, auto&& fn1,auto&& fn2) {

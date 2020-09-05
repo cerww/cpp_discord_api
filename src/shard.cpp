@@ -66,7 +66,7 @@ void shard::set_up_request(boost::beast::http::request<boost::beast::http::strin
 }
 
 rq::send_message shard::send_message(const partial_channel& channel, std::string content) {
-	std::string body = "{\"content\":\"" + std::move(content) + "\"}";
+	std::string body = R"({"content":")" + std::move(content) + "\"}";
 	return send_request<rq::send_message>(escape_stuffs(std::move(body)), channel);	
 }
 
@@ -140,7 +140,7 @@ rq::modify_member shard::change_nick(const partial_guild& g, const user& member,
 
 rq::modify_member shard::assign_roles(const guild_member& member, const std::vector<snowflake>& roles_ids) {
 	nlohmann::json body;
-	body["roles"] = std::move(roles_ids);
+	body["roles"] = roles_ids;
 	return send_request<rq::modify_member>(body.dump(), member.guild(), member);
 }
 
