@@ -3,12 +3,12 @@
 #include "internal_shard.h"
 
 
-shard::shard(int shard_number, client* t_parent, boost::asio::io_context& ioc,std::string auth_token) :
+shard::shard(int shard_number, client* t_parent, boost::asio::io_context& ioc, std::string auth_token) :
 	m_shard_number(shard_number),
 	m_http_connection(t_parent, ioc),
 	m_strand(ioc),
 	m_parent_client(t_parent),
-	m_auth_token(std::move(auth_token)){ }
+	m_auth_token(std::move(auth_token)) { }
 
 cerwy::task<voice_connection> shard::connect_voice(const voice_channel& ch) {
 	//;-;
@@ -18,7 +18,7 @@ cerwy::task<voice_connection> shard::connect_voice(const voice_channel& ch) {
 	return me.connect_voice(ch);
 }
 
-constexpr bool is_char_that_needs_escaping(char c)noexcept {
+constexpr bool is_char_that_needs_escaping(char c) noexcept {
 	return c == '\n' || c == '\t' || c == '\r';
 }
 
@@ -26,20 +26,20 @@ std::string escape_stuffs(std::string s) {
 	size_t idx = s.find_first_of("\n\t\r");
 	while (idx != std::string::npos) {
 		const auto thing = s[idx];
-		if(thing == '\n') {
+		if (thing == '\n') {
 			s[idx] = 'n';
-		}else if(thing == '\t') {
+		} else if (thing == '\t') {
 			s[idx] = 't';
-		}else if(thing == '\r') {
+		} else if (thing == '\r') {
 			s[idx] = 'r';
 		}
-		s.insert(idx,"\\");
+		s.insert(idx, "\\");
 		idx = s.find_first_of("\n\t\r", idx + 2);//+1 to skip current char, +1 to skip '\'
 	}
 	return s;
 }
 
-bool shard::will_have_guild(snowflake guild_id) const noexcept{
+bool shard::will_have_guild(snowflake guild_id) const noexcept {
 	return (guild_id.val >> 22) % m_parent_client->num_shards() == m_shard_number;
 }
 
@@ -67,13 +67,13 @@ void shard::set_up_request(boost::beast::http::request<boost::beast::http::strin
 
 rq::send_message shard::send_message(const partial_channel& channel, std::string content) {
 	std::string body = R"({"content":")" + std::move(content) + "\"}";
-	return send_request<rq::send_message>(escape_stuffs(std::move(body)), channel);	
+	return send_request<rq::send_message>(escape_stuffs(std::move(body)), channel);
 }
 
 rq::send_message shard::send_message(const partial_channel& channel, std::string content, const embed& embed) {
 	nlohmann::json body;
 	body["content"] = std::move(content);
-	body["embed"] = embed;	
+	body["embed"] = embed;
 	return send_request<rq::send_message>(body.dump(), channel);
 }
 
@@ -161,8 +161,8 @@ rq::ban_member shard::ban_member(const partial_guild& g, const partial_guild_mem
 	return send_request<rq::ban_member>(body.dump(), g, member);
 }
 
-rq::unban_member shard::unban_member(const Guild& g, snowflake id) {
-	return send_request<rq::unban_member>(g, id);
+rq::unban_member shard::unban_member(const partial_guild& g, snowflake user_id) {
+	return send_request<rq::unban_member>(g, user_id);
 }
 
 rq::get_messages shard::get_messages(const partial_channel& channel, int n) {
@@ -279,7 +279,7 @@ rq::delete_own_reaction shard::delete_own_reaction(const partial_message& msg, c
 }
 
 rq::delete_own_reaction shard::delete_own_reaction(const partial_message& msg, const reaction& rc) {
-	return send_request<rq::delete_own_reaction>(msg,rc);
+	return send_request<rq::delete_own_reaction>(msg, rc);
 }
 
 rq::delete_user_reaction shard::delete_user_reaction(const partial_message& msg, const partial_emoji& emoji, const user& user) {
@@ -303,11 +303,11 @@ rq::delete_all_reactions shard::delete_all_reactions(const partial_message& msg)
 }
 
 rq::delete_all_reactions_emoji shard::delete_all_reactions_emoji(const partial_message& msg, const partial_emoji& emoji) {
-	return send_request<rq::delete_all_reactions_emoji >(msg, emoji);
+	return send_request<rq::delete_all_reactions_emoji>(msg, emoji);
 }
 
 rq::delete_all_reactions_emoji shard::delete_all_reactions_emoji(const partial_message& msg, const reaction& rc) {
-	return send_request<rq::delete_all_reactions_emoji >(msg, rc);
+	return send_request<rq::delete_all_reactions_emoji>(msg, rc);
 }
 
 rq::typing_start shard::typing_start(const partial_channel& ch) {
@@ -326,7 +326,7 @@ rq::list_guild_members shard::list_guild_members(const partial_guild& g, int n, 
 }
 
 rq::edit_channel_permissions shard::edit_channel_permissions(const partial_guild_channel& ch, const permission_overwrite& overwrite) {
-	nlohmann::json body = {{"allow", overwrite.allow()}, {"deny", overwrite.deny()}, {"type", overwrite_type_to_string(overwrite.type())}};
+	const nlohmann::json body = {{"allow", overwrite.allow()}, {"deny", overwrite.deny()}, {"type", overwrite_type_to_string(overwrite.type())}};
 	return send_request<rq::edit_channel_permissions>(body.dump(), ch, overwrite);
 }
 
@@ -410,16 +410,13 @@ rq::get_webhook shard::get_webhook(const webhook& wh) {
 rq::execute_webhook shard::send_with_webhook(const webhook& wh, std::string s) {
 	nlohmann::json json;
 	json["content"] = std::move(s);
-	return send_request<rq::execute_webhook>(json.dump(),wh);
+	return send_request<rq::execute_webhook>(json.dump(), wh);
 }
 
 rq::get_message shard::fetch_message(const partial_channel& ch, snowflake msg_id) {
 	return send_request<rq::get_message>(ch, msg_id);
 }
 
-rq::get_audit_log shard::get_audit_log(const partial_guild& guild) {	
+rq::get_audit_log shard::get_audit_log(const partial_guild& guild) {
 	return send_request<rq::get_audit_log>(guild);
 }
-
-
-

@@ -80,7 +80,7 @@ private:
 	guild_member m_author;
 	std::vector<snowflake> m_mention_roles_ids;
 	std::vector<guild_member> m_mentions;
-	text_channel* m_channel = nullptr;
+	ref_count_ptr<text_channel> m_channel = nullptr;
 
 	friend struct internal_shard;
 	friend struct msg_update_access;
@@ -168,8 +168,8 @@ private:
 	std::optional<std::vector<snowflake>> m_mention_role_ids;
 	std::optional<std::vector<guild_member>> m_mentions;
 	std::optional<std::vector<const guild_role*>> m_mention_roles;
-	text_channel* m_channel = nullptr;
-	Guild* m_guild = nullptr;
+	ref_count_ptr<text_channel> m_channel = nullptr;
+	ref_count_ptr<Guild> m_guild = nullptr;
 	friend struct internal_shard;
 };
 

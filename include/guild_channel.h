@@ -9,7 +9,7 @@ struct channel_catagory;
 
 struct Guild;
 
-struct guild_channel :partial_guild_channel/*,thread_unsafe_ref_counted_but_different<guild_channel>*/, ref_counted_thread_unsafe {
+struct guild_channel :partial_guild_channel, ref_counted {
 
 	const Guild& guild() const noexcept;
 
@@ -26,11 +26,9 @@ struct guild_channel :partial_guild_channel/*,thread_unsafe_ref_counted_but_diff
 	}
 
 private:
-	channel_catagory* m_parent = nullptr;
-	Guild* m_guild = nullptr;
-	bool m_is_still_in_guild = true;
-	
-	//ref_count_ptr<Guild> m_guild = nullptr;
+	ref_count_ptr<channel_catagory> m_parent = nullptr;
+	//Guild* m_guild = nullptr;
+	ref_count_ptr<Guild> m_guild = nullptr;	
 
 	friend struct internal_shard;
 	friend void from_json(const nlohmann::json&, guild_channel& g);

@@ -8,14 +8,13 @@
 #include <compare>
 #include <fmt/core.h>
 #include <fmt/format.h>
-#include "ref_stable2.h"
+#include "../common/ref_stable2.h"
 
 struct snowflake {
 	constexpr bool operator==(const snowflake& other) const noexcept = default;
 	//constexpr std::strong_ordering operator<=>(const snowflake& other) const noexcept = default;
 
 	constexpr snowflake() = default;
-	~snowflake() = default;
 
 	constexpr snowflake& operator=(snowflake&& other) noexcept {
 		std::swap(val,other.val);
@@ -28,6 +27,8 @@ struct snowflake {
 		val(std::exchange(other.val, 0)) {}
 
 	constexpr snowflake(const snowflake& other) = default;
+	
+	~snowflake() = default;
 	
 	constexpr explicit snowflake(const uint64_t a):	
 		val(a) {}

@@ -11,13 +11,12 @@ cerwy::task<voice_connection> voice_connect_impl(internal_shard& me, const voice
 	const auto channel_id = ch.id();
 	const auto guild_id = ch.guild_id();
 	const auto my_id = me.self_user().id();
+	ref_count_ptr<const Guild> pin_guild = &ch.guild();
 	//runs on strand until here
 	auto web_socket = co_await create_session(endpoint, me.strand().context(), ssl::context_base::method::sslv23);
 	//doesn't run on strand
 	auto vc = make_ref_count_ptr<discord_voice_connection_impl>(std::move(web_socket),me.parent_client().context());
 	
-	me.voice_connections[guild_id] = vc.get();
-
 	vc->channel_id = channel_id;
 	vc->guild_id = guild_id;
 	vc->my_id = my_id;
@@ -25,7 +24,7 @@ cerwy::task<voice_connection> voice_connect_impl(internal_shard& me, const voice
 	vc->web_socket_endpoint = std::move(endpoint);
 	vc->session_id = std::move(session_id);
 	vc->strand = &me.strand();
-	vc->shard_ptr = &me;
+	
 	//vc->heartbeat_sender = &me.parent_client().heartbeat_sender;
 
 	cerwy::promise<void> p;
@@ -35,7 +34,7 @@ cerwy::task<voice_connection> voice_connect_impl(internal_shard& me, const voice
 	auto t = p.get_task();
 
 	co_await t;//wait till it's done setting up
-	vc->guild = &ch.guild();
+	vc->guild = std::move(pin_guild);
 	co_await resume_on_strand{me.strand()};
 	int put_breakpoint_here = 0;
 	co_return voice_connection(std::move(vc));

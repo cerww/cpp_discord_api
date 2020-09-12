@@ -86,9 +86,9 @@ struct client {//<(^.^)>
 	std::optional<std::function<void(guild_member, const text_channel&, shard&)>> on_guild_typing_start;
 	std::optional<std::function<void(const user&, const dm_channel&, shard&)>> on_dm_typing_start;
 
-	std::optional<std::function<void(const text_channel&, shard&)>> on_text_channel_delete;
-	std::optional<std::function<void(const voice_channel&, shard&)>> on_voice_channel_delete;
-	std::optional<std::function<void(const channel_catagory&, shard&)>> on_channel_catagory_delete;
+	// std::optional<std::function<void(const text_channel&, shard&)>> on_text_channel_delete;
+	// std::optional<std::function<void(const voice_channel&, shard&)>> on_voice_channel_delete;
+	// std::optional<std::function<void(const channel_catagory&, shard&)>> on_channel_catagory_delete;
 	std::optional<std::function<void(const dm_channel&, shard&)>> on_dm_channel_delete;
 
 	std::optional<std::function<void(guild_member, const text_channel&, snowflake, partial_emoji, shard&)>> on_guild_reaction_add;
@@ -109,12 +109,7 @@ struct client {//<(^.^)>
 	std::optional<std::function<void(shard&)>> on_ready;
 	std::optional<std::function<void(std::vector<emoji>, const std::vector<emoji>&, const Guild&, shard&)>> on_emoji_update;
 
-
-	//Status status = Status::online;
-	//timed_task_executor heartbeat_sender;
-
 	void stop();
-
 
 	virtual void rate_limit_global(std::chrono::system_clock::time_point);
 

@@ -242,11 +242,11 @@ struct ref_stable_map {
 		m_data.reserve(n);
 	}	
 
-	bool operator==(const ref_stable_map& other) {
+	bool operator==(const ref_stable_map& other)const {
 		return m_data == other.m_data;
 	}
 
-	bool operator!=(const ref_stable_map& other) {
+	bool operator!=(const ref_stable_map& other) const {
 		return m_data != other.m_data;
 	}
 

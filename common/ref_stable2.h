@@ -10,23 +10,6 @@
 #include <range/v3/core.hpp>
 #include "../common/arrow_proxy.h"
 
-
-template<typename T>
-struct thread_unsafe_ref_counted_but_different:crtp<T> {
-private:	
-	void increment_ref_count() const noexcept{
-		++m_ref_count;
-	}
-
-	bool decrement_ref_count() const noexcept{
-		return --m_ref_count <= this->self().get_cyclic_ref_count();
-	}
-	
-	mutable int m_ref_count = 0;
-	template<typename>
-	friend struct ref_count_ptr;
-};
-
 template<typename F,typename S>
 std::pair<F,ref_count_ptr<S>> to_thingy_that_works(std::pair<F,S> thing) {
 	return std::make_pair(std::move(thing.first), make_ref_count_ptr<S>(std::move(thing.second)));
@@ -35,7 +18,6 @@ std::pair<F,ref_count_ptr<S>> to_thingy_that_works(std::pair<F,S> thing) {
 template<typename K, typename V, typename H = std::hash<K>, typename E = std::equal_to<>, typename A = std::allocator<std::pair<const K, ref_count_ptr<V>>>>
 struct ref_stable_map2 {
 	using map_t = ska::bytell_hash_map<K, ref_count_ptr<V>, H, E, A>;
-	//using map_t = ska::bytell_hash_map<K, std::unique_ptr<V>, H, E, A>;
 	using value_type = std::pair<const K, V>;
 	using reference = ranges::common_pair<const K&, V&>;//can't use std::pair for some reason
 	using const_reference = ranges::common_pair<const K&, const V&>;
@@ -270,11 +252,11 @@ struct ref_stable_map2 {
 		m_data.reserve(n);
 	}
 
-	bool operator==(const ref_stable_map2& other) {
+	bool operator==(const ref_stable_map2& other)const {
 		return m_data == other.m_data;
 	}
 
-	bool operator!=(const ref_stable_map2& other) {
+	bool operator!=(const ref_stable_map2& other)const {
 		return m_data != other.m_data;
 	}
 
@@ -340,7 +322,14 @@ struct ref_stable_map2 {
 		return m_data.get_allocator();
 	}
 
+	map_t& underlying_map() noexcept {
+		return m_data;
+	}
 
+	const map_t& underlying_map() const noexcept{
+		return m_data;
+	}
+	
 private:
 	map_t m_data;
 };

@@ -219,7 +219,8 @@ private:
 	boost::asio::ssl::stream<boost::asio::ip::tcp::socket> m_socket{ m_ioc, m_ssl_ctx };
 	
 	boost::beast::flat_buffer m_buffer{};
-	mpsc_concurrent_async_queue<discord_request> m_request_queue = {};
+	//mpsc_concurrent_async_queue<discord_request> m_request_queue = {};
+	async_queue_maybe_better<discord_request> m_request_queue = {};
 	client* m_client = nullptr;
 
 	cerwy::task<void> send_to_discord(discord_request);

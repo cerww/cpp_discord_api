@@ -1,7 +1,23 @@
 #pragma once
 #include <atomic>
+#include <compare>
 
 struct ref_counted {
+	ref_counted() = default;
+
+	ref_counted(const ref_counted& o) {}
+
+	ref_counted(ref_counted&& o) noexcept {}
+
+	ref_counted& operator=(const ref_counted& o) {
+		return *this;
+	}
+
+	ref_counted& operator=(ref_counted&& o) noexcept {
+		return *this;
+	}
+
+	~ref_counted() = default;
 private:
 	void increment_ref_count() const noexcept {
 		m_ref_count.fetch_add(1, std::memory_order_relaxed);
@@ -17,12 +33,27 @@ private:
 	}
 
 	mutable std::atomic<int> m_ref_count = 0;//so i can have ref_count_ptr<const T>
-	
+
 	template<typename>
 	friend struct ref_count_ptr;
 };
 
 struct ref_counted_thread_unsafe {
+	ref_counted_thread_unsafe() = default;
+
+	ref_counted_thread_unsafe(const ref_counted_thread_unsafe& o) {}
+
+	ref_counted_thread_unsafe(ref_counted&& o) noexcept {}
+
+	ref_counted_thread_unsafe& operator=(const ref_counted_thread_unsafe& o) {
+		return *this;
+	}
+
+	ref_counted_thread_unsafe& operator=(ref_counted_thread_unsafe&& o) noexcept {
+		return *this;
+	}
+
+	~ref_counted_thread_unsafe() = default;
 private:
 	void increment_ref_count() const noexcept {
 		++m_ref_count;
@@ -38,7 +69,7 @@ private:
 	}
 
 	mutable int m_ref_count = 0;//so i can have ref_count_ptr<const T>
-	
+
 	template<typename>
 	friend struct ref_count_ptr;
 };
@@ -60,8 +91,9 @@ struct ref_count_ptr {
 
 	ref_count_ptr(const ref_count_ptr& other) noexcept :
 		m_self(other.m_self) {
-		if (m_self)
+		if (m_self) {
 			m_self->increment_ref_count();
+		}
 	}
 
 	ref_count_ptr(ref_count_ptr&& other) noexcept :
@@ -104,11 +136,10 @@ struct ref_count_ptr {
 		return *this;
 	}
 
-	operator ref_count_ptr<const T>() const {
+	operator ref_count_ptr<const T>() const noexcept {
 		return ref_count_ptr<const T>(m_self);
 	}
-	/// @brief 
-	/// @return raw pointer 
+
 	T* get() const noexcept {
 		return m_self;
 	}
@@ -123,10 +154,9 @@ struct ref_count_ptr {
 
 	operator bool() const noexcept {
 		return m_self;
-
 	}
-	
-	bool operator==(nullptr_t) const noexcept{
+
+	bool operator==(nullptr_t) const noexcept {
 		return m_self == nullptr;
 	}
 
@@ -134,6 +164,11 @@ struct ref_count_ptr {
 		return m_self != nullptr;
 	}
 
+	constexpr bool operator==(const ref_count_ptr&) const noexcept = default;
+
+	//keep this?
+	constexpr std::strong_ordering operator<=>(const ref_count_ptr&) const noexcept = default;
+	
 private:
 	T* m_self = nullptr;
 };

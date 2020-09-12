@@ -20,12 +20,14 @@
 #include "intents.h"
 #include "webhook_client.h"
 #include "allowed_mentions.h"
+#include "modifies_message_json.h"
 
 struct shard {
 protected:
 
 	explicit shard(int shard_number, client* t_parent, boost::asio::io_context& ioc, std::string auth_token);
-
+	
+	
 public:
 	
 	//content
@@ -35,17 +37,21 @@ public:
 	//have optional allowed_mentions?
 	rq::send_message send_message(const partial_channel& channel, std::string content);
 	rq::send_message send_message(const partial_channel& channel, std::string content, const embed& embed);
-	template<int flags>
-	rq::send_message send_message(const partial_channel& channel, std::string content, const allowed_mentions<flags>&);
-	template<int flags>
-	rq::send_message send_message(const partial_channel& channel, std::string content, const embed& embed, const allowed_mentions<flags>&);
+	
+	template<typename... modifiers>requires (message_modifier<modifiers>&&...)
+	rq::send_message send_message(const partial_channel& channel, std::string content, modifiers&&...);
+	
+	template<typename... modifiers>requires (message_modifier<modifiers>&&...)
+	rq::send_message send_message(const partial_channel& channel, std::string content, const embed& embed, modifiers&&...);
 
 	rq::send_message reply(const partial_message& msg, std::string content);
 	rq::send_message reply(const partial_message& msg, std::string content, const embed& embed);
-	template<int flags>
-	rq::send_message reply(const partial_message& msg, std::string content, const allowed_mentions<flags>&);
-	template<int flags>
-	rq::send_message reply(const partial_message& msg, std::string content, const embed& embed, const allowed_mentions<flags>&);
+	
+	template<typename... modifiers>requires (message_modifier<modifiers>&&...)
+	rq::send_message reply(const partial_message& msg, std::string content, modifiers&&...);
+	
+	template<typename... modifiers>requires (message_modifier<modifiers>&&...)
+	rq::send_message reply(const partial_message& msg, std::string content, const embed& embed, modifiers&&...);
 
 	rq::add_role add_role(const partial_guild&, const partial_guild_member&, const guild_role&);
 	rq::remove_role remove_role(const partial_guild&, const partial_guild_member&, const guild_role&);
@@ -64,7 +70,7 @@ public:
 	rq::change_my_nick change_my_nick(const partial_guild&, std::string new_nick);
 	rq::kick_member kick_member(const partial_guild&, const partial_guild_member&);
 	rq::ban_member ban_member(const partial_guild& g, const partial_guild_member& member, std::string reason = "", int days_to_delete_msg = 0);
-	rq::unban_member unban_member(const Guild&, snowflake id);
+	rq::unban_member unban_member(const partial_guild&, snowflake user_id);
 	//max 100 messages
 	rq::get_messages get_messages(const partial_channel&, int = 100);
 	rq::get_messages get_messages_before(const partial_channel&, snowflake, int = 100);
@@ -73,9 +79,9 @@ public:
 	rq::get_messages get_messages_after(const partial_channel&, const partial_message&, int = 100);
 	rq::get_messages get_messages_around(const partial_channel&, snowflake, int = 100);
 	rq::get_messages get_messages_around(const partial_channel&, const partial_message&, int = 100);
-	rq::create_text_channel create_text_channel(const Guild&, std::string name, std::vector<permission_overwrite>  = {}, bool nsfw = false);
+	rq::create_text_channel create_text_channel(const Guild&, std::string name, std::vector<permission_overwrite> = {}, bool nsfw = false);
 	rq::edit_message edit_message(const partial_message&, std::string new_content);
-	rq::create_voice_channel create_voice_channel(const Guild&, std::string name, std::vector<permission_overwrite>  = {}, bool nsfw = false, int bit_rate = 96);
+	rq::create_voice_channel create_voice_channel(const Guild&, std::string name, std::vector<permission_overwrite> = {}, bool nsfw = false, int bit_rate = 96);
 	rq::create_channel_catagory create_channel_catagory(const Guild&, std::string name, std::vector<permission_overwrite>  = {}, bool nsfw = false);
 	rq::delete_emoji delete_emoji(const partial_guild&, const partial_emoji&);
 	rq::modify_emoji modify_emoji(const partial_guild&, const partial_emoji&, std::string name, std::vector<snowflake> role_ids);
@@ -88,9 +94,8 @@ public:
 	template<typename rng>
 	requires is_range_of_v<rng, snowflake>
 	rq::delete_message_bulk delete_message_bulk(const partial_channel&, rng&&);
-
-
 	rq::delete_message_bulk delete_message_bulk(const partial_channel&, std::vector<snowflake>);
+	
 	rq::leave_guild leave_guild(const Guild&);
 	rq::add_reaction add_reaction(const partial_message&, const partial_emoji&);
 	rq::delete_own_reaction delete_own_reaction(const partial_message& msg, const partial_emoji&);
@@ -177,7 +182,7 @@ public:
 		return m_strand;
 	}
 
-	discord_obj_map<Guild> guilds() const noexcept {
+	discord_obj_map2<Guild> guilds() const noexcept {
 		return m_guilds;
 	}
 
@@ -193,44 +198,45 @@ public:
 	void clear_deleted_data_if(fn&& pred) {
 		if constexpr (std::is_invocable_v<fn, std::chrono::steady_clock::time_point, const Guild&>) {
 			const auto it = std::partition(m_deleted_guilds.begin(), m_deleted_guilds.end(), [&](const auto& thing) {
-				return !std::invoke(pred, thing.first, thing.second.value());
+				return !std::invoke(pred, thing.first, *thing.second);
 			});
 			
 			m_deleted_guilds.erase(it, m_deleted_guilds.end());
 		}
 		if constexpr (std::is_invocable_v<fn, std::chrono::steady_clock::time_point, const text_channel&>) {
 			const auto it = std::remove_if(m_deleted_text_channels.begin(), m_deleted_text_channels.end(), [&](const auto& thing) {
-				return std::invoke(pred, thing.first, thing.second.value());
+				return std::invoke(pred, thing.first, *thing.second);
 			});
 			m_deleted_text_channels.erase(it, m_deleted_text_channels.end());
 		}
 		if constexpr (std::is_invocable_v<fn, std::chrono::steady_clock::time_point, const voice_channel&>) {
 			const auto it = std::remove_if(m_deleted_voice_channels.begin(), m_deleted_voice_channels.end(), [&](const auto& thing) {
-				return std::invoke(pred, thing.first, thing.second.value());
+				return std::invoke(pred, thing.first, *thing.second);
 			});
 			m_deleted_voice_channels.erase(it, m_deleted_voice_channels.end());
 		}
 		if constexpr (std::is_invocable_v<fn, std::chrono::steady_clock::time_point, const channel_catagory&>) {
 			const auto it = std::remove_if(m_deleted_channel_catagories.begin(), m_deleted_channel_catagories.end(), [&](const auto& thing) {
-				return std::invoke(pred, thing.first, thing.second.value());
+				return std::invoke(pred, thing.first, *thing.second);
 			});
 			m_deleted_channel_catagories.erase(it, m_deleted_channel_catagories.end());
 		}
 		if constexpr (std::is_invocable_v<fn, std::chrono::steady_clock::time_point, const dm_channel&>) {
 			const auto it = std::remove_if(m_deleted_dm_channels.begin(), m_deleted_dm_channels.end(), [&](const auto& thing) {
-				return std::invoke(pred, thing.first, thing.second.value());
+				return std::invoke(pred, thing.first, *thing.second);
 			});
 			m_deleted_dm_channels.erase(it, m_deleted_dm_channels.end());
 		}
 		//keep this?
 		if constexpr (std::is_invocable_v<fn, std::chrono::steady_clock::time_point, const guild_member&>) {
 			const auto it = std::remove_if(m_deleted_guild_members.begin(), m_deleted_guild_members.end(), [&](const auto& thing) {
-				return std::invoke(pred, thing.first, thing.second.value());
+				return std::invoke(pred, thing.first, *thing.second);
 			});
 			m_deleted_guild_members.erase(it, m_deleted_guild_members.end());
 		}
 	}
 
+	bool will_have_guild(snowflake guild_id) const noexcept;
 protected:
 
 	
@@ -254,13 +260,13 @@ protected:
 	std::string m_auth_token;
 	async_mutex m_events_mut;
 
-	ref_stable_map<snowflake, Guild> m_guilds;
+	ref_stable_map2<snowflake, Guild> m_guilds;
 	// ref_stable_map<snowflake, text_channel> m_text_channel_map;
 	// ref_stable_map<snowflake, voice_channel> m_voice_channel_map;
 	// ref_stable_map<snowflake, channel_catagory> m_channel_catagory_map;
 	ref_stable_map<snowflake, dm_channel> m_dm_channels;
 
-	std::vector<std::pair<std::chrono::steady_clock::time_point, indirect<Guild>>> m_deleted_guilds;
+	std::vector<std::pair<std::chrono::steady_clock::time_point, ref_count_ptr<Guild>>> m_deleted_guilds;
 	std::vector<std::pair<std::chrono::steady_clock::time_point, ref_count_ptr<text_channel>>> m_deleted_text_channels;
 	std::vector<std::pair<std::chrono::steady_clock::time_point, ref_count_ptr<voice_channel>>> m_deleted_voice_channels;
 	std::vector<std::pair<std::chrono::steady_clock::time_point, ref_count_ptr<channel_catagory>>> m_deleted_channel_catagories;
@@ -268,7 +274,6 @@ protected:
 	std::vector<std::pair<std::chrono::steady_clock::time_point, indirect<guild_member>>> m_deleted_guild_members;
 
 
-	bool will_have_guild(snowflake guild_id) const noexcept;
 
 	friend cerwy::task<void> init_shard(int shardN, internal_shard& t_parent, boost::asio::io_context& ioc, std::string_view gateway);
 	friend struct client;
@@ -313,28 +318,28 @@ std::enable_if_t<!rq::has_content_type_v<T>, T> shard::send_request(args&&... Ar
 	return std::move(retVal);//no nrvo cuz structured bindings
 }
 
-template<int flags>
-rq::send_message shard::send_message(const partial_channel& channel, std::string content, const allowed_mentions<flags>& mentions_allowed) {
+template<typename... modifiers>requires (message_modifier<modifiers>&&...)
+rq::send_message shard::send_message(const partial_channel& channel, std::string content, modifiers&&... modifiers_) {
 	nlohmann::json body = {};
 	body["content"] = std::move(content);
-	body["allowed_mentions"] = mentions_allowed;
+	(modifiers_.modify_message_json(body), ...);
 
 	return send_request<rq::send_message>(body.dump(), channel);;
 }
 
-template<int flags>
-rq::send_message shard::send_message(const partial_channel& channel, std::string content, const embed& embed, const allowed_mentions<flags>& mentions_allowed) {
+template<typename... modifiers>requires (message_modifier<modifiers>&&...)
+rq::send_message shard::send_message(const partial_channel& channel, std::string content, const embed& embed, modifiers&&... modifiers_) {
 	nlohmann::json body = {};
-	body["content"] = std::move(content);
-	body["allowed_mentions"] = mentions_allowed;
+	body["content"] = std::move(content); 
 	body["embed"] = embed;
+	(modifiers_.modify_message_json(body), ...);
 
 	return send_request<rq::send_message>(body.dump(), channel);;
 }
 
 template<typename rng>
 rq::modify_channel_positions shard::modify_channel_positions(const Guild& g, rng&& positions) {
-	nlohmann::json json =
+	const nlohmann::json json =
 			positions |
 			ranges::views::transform([](auto&& a) {
 				auto [id, position] = a;
@@ -454,7 +459,6 @@ rq::modify_webhook shard::modify_webhook(const webhook& wh, settings&&... s) {
 
 template<typename range>
 requires is_range_of<range, std::string>
-
 rq::create_group_dm shard::create_group_dm(range&& access_tokens, std::unordered_map<snowflake, std::string> nicks) {
 	nlohmann::json body;
 	
@@ -467,21 +471,24 @@ rq::create_group_dm shard::create_group_dm(range&& access_tokens, std::unordered
 	return send_request<rq::create_group_dm>(body.dump());
 }
 
-template<int flags>
-rq::send_message shard::reply(const partial_message& msg, std::string content, const allowed_mentions<flags>& mentions_allowed) {
+template<typename...modifiers>requires (message_modifier<modifiers>&&...)
+rq::send_message shard::reply(const partial_message& msg, std::string content, modifiers&&... modifers_) {
 	nlohmann::json body = {};
 	body["content"] = std::move(content);
-	body["allowed_mentions"] = mentions_allowed;
+	(modifers_.modify_message_json(body), ...);
 
 	return send_request<rq::send_message>(body.dump(), msg);;
 }
 
-template<int flags>
-rq::send_message shard::reply(const partial_message& msg, std::string content, const embed& embed, const allowed_mentions<flags>& mentions_allowed) {
+template<typename...modifiers>requires (message_modifier<modifiers>&&...)
+rq::send_message shard::reply(const partial_message& msg, std::string content, const embed& embed, modifiers&&... modifers_) {
 	nlohmann::json body = {};
 	body["content"] = std::move(content);
-	body["allowed_mentions"] = mentions_allowed;
+	(modifers_.modify_message_json(body), ...);
 	body["embed"] = embed;
 
 	return send_request<rq::send_message>(body.dump(), msg);;
 }
+
+
+

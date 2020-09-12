@@ -50,7 +50,7 @@ void test_transform_audio_thingy() {
 }
 
 void aujsdhasdasd() {
-	std::vector<int> aaa = { 12,3,4,5,67,7,8 };
+	std::vector<int> aaa = {12, 3, 4, 5, 67, 7, 8};
 	more_bad_vector<int> y = aaa | ranges::to<more_bad_vector<int>>();
 	assert(y[1] == aaa[1]);
 	auto x = std::move(y);
@@ -61,11 +61,46 @@ void aujsdhasdasd() {
 
 	asdasd = more_bad_vector<int>(aaa.begin(), aaa.end());
 	//assert(ranges::equal(aaa, asdasd));
-	
+
 	std::span<int> wat = x;
 	std::vector<int> c = wat | ranges::to<std::vector>();
 	std::cout << (aaa == c) << std::endl;;
-	
+
+}
+
+cerwy::task<void> test_queue1(async_queue_maybe_better<int>& queue) {
+	for (int i = 0; i < 20001; ++i) {
+		const int a = co_await queue.pop();
+		//assert(a == i);
+	}
+	std::cout << "bbb" << std::endl;
+}
+
+cerwy::task<void> test_new_queue(async_queue_maybe_better<int>& queue) {
+
+	for (int i = 0; i < 10000; ++i) {
+		queue.push(i);
+	}
+
+	co_return;
+}
+
+void test_new_queuea() {
+	async_queue_maybe_better<int> queue;
+	auto t = std::thread([&]() {
+		test_new_queue(queue);
+	});
+
+	auto t2 = std::thread([&]() {
+		test_new_queue(queue);
+	});
+
+	test_queue1(queue);
+
+	t.join();
+	t2.join();
+	std::cout << "aaa" << std::endl;
+	std::cin.get();
 }
 
 //spam bot
@@ -76,7 +111,7 @@ int main() {
 	//std::cin.get();
 	//try {
 	//aujsdhasdasd();
-	//std::cin.get();
+	//
 	client c;
 
 	boost::asio::io_context::strand* shard_of_guild = nullptr;
@@ -94,7 +129,7 @@ int main() {
 	//c.on_guild_ready = &thingy;
 
 	c.on_guild_text_msg = [&](guild_text_message msg, shard& s)->cerwy::task<void> {
-		if (msg.content() == "rawrmander") {			
+		if (msg.content() == "rawrmander") {
 			do_audio_thingy(s.connect_voice(msg.guild().voice_channels_list()[0]));
 		} else if (msg.content() == "watland") {
 			//s.delete_message(msgs.back()).get();
@@ -117,7 +152,7 @@ int main() {
 		} else if (msg.content() == ";-;worldlandasdasdasd") {
 			const auto role = msg.guild().role_by_name("Prophets of Milktea-ism");
 			if (role.has_value()) {
-				s.send_message(msg.channel(), role->to_mentionable_string(),disable_mentions);
+				s.send_message(msg.channel(), role->to_mentionable_string(), disable_mentions);
 			}
 		} else if (msg.content() == "potatoland_world") {
 			s.send_message(msg.channel(), "rawr",
@@ -183,9 +218,9 @@ int main() {
 							if constexpr (
 								std::is_same_v<type, std::optional<changed_role>> ||
 								std::is_same_v<type, std::optional<std::vector<permission_overwrite>>>) {
-									
+
 								str += fmt::format("\t{:>30}, old:{:>20}, new:{:>20} \n", change.key(), "wat", "wat");
-									
+
 							} else {
 								if (old_value.has_value() && new_value.has_value()) {
 									str += fmt::format("\t{:>30}, old:{:>20}, new:{:>20} \n", change.key(), old_value.value(), new_value.value());
@@ -206,12 +241,12 @@ int main() {
 			file << str;
 			file.close();
 
-		}else if(msg.content() == "charizard_world") {
+		} else if (msg.content() == "charizard_world") {
 			auto m1 = s.send_message(msg.channel(), "wat");
 			s.send_message(msg.channel(), "wat");
 			auto m2 = s.send_message(msg.channel(), "wat");
 			m2.cancel();
-			auto m = co_await m1;			
+			auto m = co_await m1;
 		}
 		//s.change_nick(wat.author(), wat.content());
 
@@ -240,7 +275,7 @@ int main() {
 		member.guild().roles();
 		*/
 	};
-	
+
 	c.on_guild_member_add = [&](const guild_member& member, shard& s) {
 		s.send_message(member.guild().system_channel(), "rawr");
 		//s.modify_guild(member.guild(), guild_settings::default_message_notifications{1});
@@ -274,7 +309,7 @@ int main() {
 		std::cout << "reaction_removed" << std::endl;
 	};
 
-	c.on_guild_text_channel_create = [](const text_channel& channel,shard& s) ->cerwy::task<void>{
+	c.on_guild_text_channel_create = [](const text_channel& channel,shard& s) ->cerwy::task<void> {
 		co_await s.send_message(channel, "wat");
 	};
 

@@ -18,9 +18,7 @@ struct guild_member :partial_guild_member {
 	
 private:
 	discord_obj_map<guild_role> id_to_role_map() const noexcept;
-
-	Guild* m_guild = nullptr;
-	//ref_count_ptr<guild> m_guild = nullptr;
+	ref_count_ptr<Guild> m_guild = nullptr;
 	
 	friend void from_json(const nlohmann::json& in, guild_member& out);
 	friend struct internal_shard;

@@ -47,7 +47,15 @@ struct internal_shard: shard {
 	internal_shard(internal_shard&&) = delete;
 
 	~internal_shard() noexcept {
-		m_web_socket->close(4000);
+		try {
+			for (auto&& [id, guild] : m_guilds) {
+				remove_cyclic_refs(guild);
+			}
+			m_web_socket->close(4000);
+			m_is_disconnected = true;
+		}catch (...) {
+			//ignore?
+		}
 	}
 	
 	bool is_disconnected() const noexcept {
@@ -63,7 +71,6 @@ struct internal_shard: shard {
 	nlohmann::json presence() const;
 
 	cerwy::task<voice_connection> connect_voice(const voice_channel&);
-
 
 	auto& resolver() {
 		return m_resolver;
@@ -94,8 +101,8 @@ struct internal_shard: shard {
 	std::atomic<uint64_t> m_seq_num = 0;
 
 	std::unique_ptr<wsClient> m_web_socket = nullptr;
-
-	ska::bytell_hash_map<snowflake, discord_voice_connection_impl*> voice_connections;
+		
+	ska::bytell_hash_set<snowflake> guilds_connected_to_vc;
 	
 private:
 	cerwy::task<boost::beast::error_code> connect_http_connection();
@@ -218,7 +225,19 @@ private:
 	static reaction& add_reaction(std::vector<reaction>&, partial_emoji&, snowflake, snowflake);
 	static reaction& remove_reaction(std::vector<reaction>&, partial_emoji&, snowflake, snowflake);
 
-
+	static void remove_cyclic_refs(Guild& g)noexcept {
+		g.m_text_channels.clear();
+		g.m_text_channel_ids.clear();
+		//g.m_text_channel_ids.shrink_to_fit();
+		g.m_channel_catagories.clear();
+		g.m_channel_catagory_ids.clear();
+		//g.m_channel_catagory_ids.shrink_to_fit();
+		g.m_voice_channels.clear();
+		g.m_voice_channel_ids.clear();
+		//g.m_voice_channel_ids.shrink_to_fit();
+		g.m_members.clear();
+		//g.m_members.shrink_to_fit();
+	}
 	
 	guild_member make_member_from_msg(const nlohmann::json& user_json, const nlohmann::json& member_json) const;
 

@@ -4,6 +4,7 @@
 //#include <boost/container/deque.hpp>
 #include <span>
 #include <algorithm>
+#include "async_mutex.h"
 
 template<typename T>
 struct concurrent_async_queue {
@@ -14,8 +15,7 @@ struct concurrent_async_queue {
 			auto top = std::move(m_data.front());
 			m_data.erase(m_data.begin());
 			return cerwy::make_ready_task(std::move(top));
-		}
-		else {
+		} else {
 			cerwy::promise<T> promise;
 			auto task = promise.get_task();
 			m_waiters.push_back(std::move(promise));
@@ -25,14 +25,13 @@ struct concurrent_async_queue {
 
 	void push(T val) {
 		std::unique_lock lock(m_mut);
-		
-		if (!m_waiters.empty()) {			
+
+		if (!m_waiters.empty()) {
 			auto p = std::move(m_waiters.front());
 			m_waiters.erase(m_waiters.begin());
 			lock.unlock();
 			p.set_value(std::move(val));
-		}
-		else {
+		} else {
 			m_data.push_back(std::move(val));
 		}
 	}
@@ -43,14 +42,13 @@ struct concurrent_async_queue {
 			if (!m_waiters.empty()) {
 				//m_data is empty
 				//this can be done with zip
-				const auto n = std::min(vals.size(), m_waiters.size());				
-				std::vector<cerwy::promise<T>> waiters_to_resume(n);	
-				std::move(m_waiters.begin(), m_waiters.begin() + n, waiters_to_resume.begin());				
-				m_waiters.erase(m_waiters.begin(), m_waiters.begin() + n);				
+				const auto n = std::min(vals.size(), m_waiters.size());
+				std::vector<cerwy::promise<T>> waiters_to_resume(n);
+				std::move(m_waiters.begin(), m_waiters.begin() + n, waiters_to_resume.begin());
+				m_waiters.erase(m_waiters.begin(), m_waiters.begin() + n);
 				m_data.insert(m_data.end(), vals.begin() + n, vals.end());
 				lock.unlock();
-			}
-			else {
+			} else {
 				m_data.insert(m_data.end(), vals.begin(), vals.end());
 			}
 		}
@@ -90,8 +88,7 @@ struct mpsc_concurrent_async_queue {
 			auto top = std::move(m_data.front());
 			m_data.erase(m_data.begin());
 			return cerwy::make_ready_task(std::move(top));
-		}
-		else {
+		} else {
 			cerwy::promise<T> promise;
 			auto task = promise.get_task();
 			m_waiter = std::move(promise);
@@ -101,7 +98,7 @@ struct mpsc_concurrent_async_queue {
 
 	std::optional<T> try_pop() {
 		std::lock_guard lock(m_mut);
-		if(m_data.empty()) {
+		if (m_data.empty()) {
 			return std::nullopt;
 		}
 		auto first = std::move(m_data.front());
@@ -117,14 +114,13 @@ struct mpsc_concurrent_async_queue {
 			m_waiter = std::nullopt;
 			lock.unlock();
 			p.set_value(std::move(val));
-		}
-		else {
+		} else {
 			m_data.push_back(std::move(val));
 		}
 	}
 
 	void push_all(std::span<T> vals) {
-		if(vals.empty()) {
+		if (vals.empty()) {
 			return;
 		}
 		{
@@ -133,13 +129,12 @@ struct mpsc_concurrent_async_queue {
 				//data is empty
 				auto p = std::move(m_waiter.value());
 				m_waiter = std::nullopt;
-				
+
 				m_data.resize(vals.size());
 				std::move(vals.begin() + 1, vals.end(), m_data.begin());
 				lock.unlock();
 				p.set_value(std::move(vals.front()));
-			}
-			else {
+			} else {
 				m_data.insert(m_data.end(), vals.begin(), vals.end());
 			}
 		}
@@ -147,10 +142,10 @@ struct mpsc_concurrent_async_queue {
 
 	void cancel_all() {
 		std::lock_guard lock(m_mut);
-		if(m_waiter.has_value()) {
+		if (m_waiter.has_value()) {
 			m_waiter->set_exception(std::make_exception_ptr(1));
 		}
-		
+
 	}
 
 	std::vector<T> pop_all() {
@@ -170,7 +165,7 @@ struct mpsc_concurrent_async_queue {
 		}
 		auto thing = std::move(m_data[idx]);
 		m_data.erase(m_data.begin() + idx);
-		return thing;		
+		return thing;
 	}
 
 private:
@@ -181,21 +176,44 @@ private:
 	//has waiter => no data
 };
 
-template<typename T,size_t ring_size = 16> //requires ring_size %2 == 0
-struct async_ring_buffer_queue {
+//use the waste 1 element when full method 
+template<typename T, size_t ring_size = 16> //requires ring_size %2 == 0
+struct ring_buffer_no_thread_stuffs {
 
-	bool is_full()const noexcept {
+	bool is_full() const noexcept {
+		return (m_head + 1) % ring_size == m_tail;
+	}
+
+	bool is_empty() const noexcept {
 		return m_head == m_tail;
 	}
 
-	bool is_empty()const noexcept {
-		return (m_head + 1) % ring_size == m_tail;
+	bool try_push(T& thing) {
+		if (is_full()) {
+			return false;
+		}
+		m_data[m_tail++] = std::move(thing);
+		m_tail %= ring_size;
+
+		return true;
 	}
+
+	std::optional<T> try_pop() {
+		if (is_empty()) {
+			return std::nullopt;
+		}
+		T thing = std::move(m_data[m_head]);
+		m_head = (m_head + 1) % ring_size;
+
+		return thing;
+	}
+
 private:
-	std::array<T, ring_size> m_data;
-	int m_head = ring_size-1;
+	std::array<T, ring_size> m_data = {};
+	int m_head = 0;
 	int m_tail = 0;
 };
+
 //size = 8
 //________ tail = 0, head = 7
 //aaaaaaaa tail = s - 1, head = s - 1
@@ -208,3 +226,109 @@ private:
 //_aaa___
 //es_____ full
 //s=e empty?
+//
+//
+//
+
+template<typename T>
+struct async_queue_maybe_better {
+
+	void push(T thing) {
+		auto coro_to_resume = [&]()->std::experimental::coroutine_handle<> {//iife for lock_guard
+			std::lock_guard lock(m_mut);
+
+			if (m_waiter) {
+				awaiter* const waiter = std::exchange(m_waiter, m_waiter->next);
+				waiter->thing = std::move(thing);
+				return waiter->coro;
+			}
+
+			if (m_ring_buffer.try_push(thing)) {
+				return nullptr;
+			} else {
+				m_overflow.push_back(std::move(thing));
+				return nullptr;
+			}
+		}();
+
+		if (coro_to_resume) {
+			coro_to_resume.resume();
+		}
+	}
+
+	struct awaiter {
+		explicit awaiter(async_queue_maybe_better* a) :
+			queue(a) {}
+
+		bool await_ready() const noexcept {
+			return false;
+		}
+
+		bool await_suspend(std::experimental::coroutine_handle<> t_coro) {
+			std::lock_guard guard(queue->m_mut);
+			coro = t_coro;
+			if (!queue->is_empty()) {
+				thing = queue->pop_1();
+				return false;
+			}
+			next = queue->m_waiter;
+			queue->m_waiter = this;
+			return true;
+		}
+
+		T await_resume() {
+			//return std::move(*thing);
+			if(std::holds_alternative<T>(thing)) {
+				return std::move(std::get<T>(thing));
+			}else {
+				throw std::get<std::exception_ptr>(thing);
+			}
+		}
+
+		async_queue_maybe_better* queue = nullptr;
+		awaiter* next = nullptr;
+		std::variant<T,std::exception_ptr> thing;		
+		std::experimental::coroutine_handle<> coro;
+	};
+
+	awaiter pop() {
+		return awaiter(this);
+	}
+
+	void cancel_all() {
+		auto waiters = [&]() {
+			std::lock_guard lock(m_mut);
+			return std::exchange(m_waiter, nullptr);
+		}();
+
+		while(waiters) {
+			auto current_waiter = waiters;
+			waiters = waiters->next;			
+			current_waiter->thing = std::make_exception_ptr(1);
+			current_waiter->coro.resume();
+		}
+
+	}
+
+private:
+	bool is_empty() const noexcept {
+		return m_ring_buffer.is_empty();
+	}
+	
+	//requires !is_empty()
+	T pop_1() {
+		auto a = m_ring_buffer.try_pop();
+		if (!m_overflow.empty()) {
+			auto next_thing_in_overflow = std::move(m_overflow.front());
+			m_overflow.pop_front();
+			m_ring_buffer.try_push(next_thing_in_overflow);
+		}
+		return std::move(*a);
+	}
+
+	std::mutex m_mut;
+	ring_buffer_no_thread_stuffs<T, 32> m_ring_buffer;
+	std::deque<T> m_overflow;
+	awaiter* m_waiter = nullptr;
+	friend awaiter;
+};

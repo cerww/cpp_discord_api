@@ -101,8 +101,7 @@ struct discord_voice_connection_impl :
 
 		//TODO change with for co_await when that is a thing
 		auto frames = async_source.frames(time_frame);
-		while (true) {
-			int ui = 0;
+		while (true) {			
 			std::optional<audio_frame> frame_opt = co_await frames.next();
 			if (!frame_opt) {
 				break;
@@ -117,7 +116,7 @@ struct discord_voice_connection_impl :
 			}
 
 			if (frame.channel_count != 2 || frame.sampling_rate != 48000) {
-				frame = resample_meh(frame, 2, 48000);
+				frame = resample_fn(frame, 2, 48000);
 			}
 			send_frame(frame, sqeuence_number++, ssrc_big_end);
 
@@ -162,17 +161,13 @@ struct discord_voice_connection_impl :
 	int heartbeat_interval = 0;
 	uint32_t ssrc = 0;
 
-	union {
-		const Guild* guild;
+	
+	ref_count_ptr<const Guild> guild;
 
-		//used in setting up vc only
-		cerwy::promise<void>* waiter = nullptr;
-
-		//only 1 of these two^ will be used at any time ;-;
-		//while setting up, the coroutine has access to the channel
-	};
-
-	internal_shard* shard_ptr;
+	
+	cerwy::promise<void>* waiter = nullptr;
+	
+	
 
 	int delay = 0;
 	std::atomic<bool> is_alive = true;

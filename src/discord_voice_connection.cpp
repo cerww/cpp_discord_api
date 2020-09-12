@@ -17,9 +17,11 @@ discord_voice_connection_impl::discord_voice_connection_impl(web_socket_session 
 	};
 
 	socket.on_error() = [this](boost::system::error_code ec) ->cerwy::task<void> {
-		std::cout << "error voice websocket "<< ec << std::endl;
+		std::cout << "error voice websocket "<< ec << std::endl;	
 		if (ec != boost::asio::error::operation_aborted) {
-			co_await socket.reconnect(web_socket_endpoint);
+			if(ec.value() != 4014) {//check if its a websocket error too, idk how
+				co_await socket.reconnect(web_socket_endpoint);				
+			}
 		}
 		co_return;
 	};
@@ -49,7 +51,7 @@ void discord_voice_connection_impl::close() {
 	is_alive = false;
 	socket.close(1000);
 	cancel_current_data();
-	shard_ptr->voice_connections.erase(guild_id);
+	//shard_ptr->voice_connections.erase(guild_id);//this is bad, shard might be dead by now ;-;
 }
 
 using namespace std::literals;
@@ -97,7 +99,7 @@ std::vector<std::byte> discord_voice_connection_impl::encrypt_xsalsa20_poly1305(
 	
 	std::copy(header.begin(), header.end(), nonce.begin());
 	
-	sodium_init();
+	(void)sodium_init();
 	
 	crypto_secretbox_easy(
 		(unsigned char*)return_val.data() + header_size_bytes,

@@ -284,7 +284,6 @@ void http_connection2::send(discord_request&& d) {
 	//send_to_discord(std::move(d));
 }
 
-
 cerwy::task<boost::beast::error_code> http_connection2::async_connect() {
 	const auto [ec, results] = co_await m_resolver.async_resolve("discord.com", "https", use_task_return_tuple2);
 	if (ec) {
@@ -295,8 +294,9 @@ cerwy::task<boost::beast::error_code> http_connection2::async_connect() {
 		co_return ec2;
 	}
 	const auto ec3 = co_await m_socket.async_handshake(boost::asio::ssl::stream_base::client, use_task_return_ec);
-	if(!ec3)
+	if (!ec3) {
 		start_sending();
+	}
 	co_return ec3;
 }
 
