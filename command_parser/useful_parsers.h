@@ -389,7 +389,7 @@ struct parse_until {
 template<typename fn>
 parse_until(fn&&)->parse_until<fn>;
 
-template<int num>
+template<int size>
 struct parse_until_char {
 
 	template<typename... Char>
@@ -412,7 +412,7 @@ struct parse_until_char {
 		}
 	}
 
-	std::array<char, num> chars = {};
+	std::array<char, size> chars = {};
 };
 
 template<typename... Char>

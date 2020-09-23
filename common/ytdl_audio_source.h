@@ -21,11 +21,13 @@ struct ytdl_source {
 			ytdl_child(
 				fmt::format("youtube-dl -f bestaudio  \"{}\" -o - --buffer-size 16384", url), boost::process::std_out > *ytdl_pipe,
 				//boost::process::std_err > stderr, 
+				boost::process::std_err.null(),
 				ioc),
 			ffmpeg_child(
 				"ffmpeg -re -i - -f s16le -ac 2 -ar 48000 -acodec pcm_s16le -",
 				boost::process::std_out > *ffmpeg_pipe, boost::process::std_in < *ytdl_pipe, 
 				//boost::process::std_err > stderr,
+				boost::process::std_err.null(),
 				ioc),
 			time_frame(t_time_frame){ }
 
@@ -89,13 +91,11 @@ struct ytdl_search_source {
 			ffmpeg_pipe(std::make_unique<boost::process::async_pipe>(ioc)),
 			ytdl_child(
 				fmt::format("youtube-dl -f bestaudio  ytsearch1:\"{}\" -o - --buffer-size 16384 --no-playlist", query), boost::process::std_out > * ytdl_pipe,
-				//boost::process::std_err > stderr,
 				boost::process::std_err.null(),
 				ioc),
 			ffmpeg_child(
 				"ffmpeg -re -i - -f s16le -ac 2 -ar 48000 -acodec pcm_s16le -",
 				boost::process::std_out > * ffmpeg_pipe, boost::process::std_in < *ytdl_pipe, 
-				//boost::process::std_err > stderr, 
 				boost::process::std_err.null(),
 				ioc),
 			time_frame(t_time_frame) { }

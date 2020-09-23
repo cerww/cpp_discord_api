@@ -10,13 +10,7 @@ shard::shard(int shard_number, client* t_parent, boost::asio::io_context& ioc, s
 	m_parent_client(t_parent),
 	m_auth_token(std::move(auth_token)) { }
 
-cerwy::task<voice_connection> shard::connect_voice(const voice_channel& ch) {
-	//;-;
-	//TODO: change this
-	//make it virutal?
-	auto& me = (internal_shard&)*this;
-	return me.connect_voice(ch);
-}
+
 
 constexpr bool is_char_that_needs_escaping(char c) noexcept {
 	return c == '\n' || c == '\t' || c == '\r';
@@ -78,11 +72,11 @@ rq::send_message shard::send_message(const partial_channel& channel, std::string
 }
 
 rq::send_message shard::reply(const partial_message& msg, std::string content) {
-	std::string body = "{\"content\":\"" + std::move(content) + "\"}";
-	//nlohmann::json body;
-	//body["content"] = std::move(content);
-	return send_request<rq::send_message>(escape_stuffs(std::move(body)), msg);
-	//return send_request<rq::send_message>(body.dump(), msg);
+	//std::string body = "{\"content\":\"" + std::move(content) + "\"}";
+	nlohmann::json body;
+	body["content"] = std::move(content);
+	//return send_request<rq::send_message>(escape_stuffs(std::move(body)), msg);
+	return send_request<rq::send_message>(body.dump(), msg);
 }
 
 rq::send_message shard::reply(const partial_message& msg, std::string content, const embed& embed) {

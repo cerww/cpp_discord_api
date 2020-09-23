@@ -220,9 +220,8 @@ void discord_voice_connection_impl::on_ready(nlohmann::json data) {
 	ssrc = data["ssrc"].get<uint32_t>();
 	m_ip = data["ip"].get<std::string>();
 	m_port = data["port"].get<int>();
-	m_modes = data["modes"].get<std::vector<std::string>>();
-	connect_udp();
-	
+	m_modes = data["modes"].get<std::vector<std::string>>();	
+	connect_udp();	
 }
 
 void discord_voice_connection_impl::send_op1_select_protocol() const {
@@ -313,7 +312,7 @@ cerwy::task<boost::system::error_code> discord_voice_connection_impl::send_voice
 
 cerwy::task<boost::system::error_code> discord_voice_connection_impl::wait(std::chrono::milliseconds time) {
 	boost::asio::steady_timer timer(context());
-	timer.expires_after(19ms);
+	timer.expires_after(time);
 	auto ec3 = co_await timer.async_wait(use_task_return_ec);
 	co_return ec3;
 }

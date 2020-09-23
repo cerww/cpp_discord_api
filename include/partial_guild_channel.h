@@ -1,7 +1,6 @@
 #pragma once
 #include "snowflake.h"
 #include "partial_channel.h"
-
 #include <span>
 
 struct partial_guild_channel :partial_channel {

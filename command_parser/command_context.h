@@ -1,5 +1,6 @@
 #pragma once
 #include "../include/partial_message.h"
+#include "../include/guild_text_message.h"
 #include "../include/guild.h"
 #include "../include/guild_channel.h"
 #include "../include/voice_channel.h"
@@ -54,6 +55,13 @@ struct parser {
 template<typename T>
 concept parsable_arg = std::is_constructible_v<parser<T>, const guild_text_message&>;
 
+struct parser_base_helper {
+	explicit parser_base_helper(const guild_text_message& t_msg) :
+		msg(t_msg) { }
+
+	const guild_text_message& msg;
+};
+
 template<>
 struct parser<guild_member> {
 
@@ -106,12 +114,28 @@ struct parser<emoji> {
 	const guild_text_message& msg;
 };
 
-
+//like parser<emoji> but supports non-custom emojis
 template<>
-struct parser<partial_emoji> :parser<emoji> {
-	using base = parser<emoji>;	//same template, can't do using parser::parser;
-	using base::base;
+struct parser<partial_emoji> {
+	parser(const guild_text_message& t_msg) :
+		msg(t_msg) { }
 
+	parse_result<partial_emoji> operator()(std::string_view s)const {
+		auto custom_emoji_parse_result = parser<emoji>(msg)(s);
+		if (custom_emoji_parse_result) {
+			return custom_emoji_parse_result.transform([](const emoji* emo) {
+				return partial_emoji(*emo);
+			});
+		} else {
+			return parse_consecutive(s, ':'_p, parse_until_char(':',' ','\n','\t','-'), ':'_p)//this might not work?
+				   .transform(return_nth<1>())
+				   .transform([](std::string_view emoji_name) {
+					   return partial_emoji(std::string(emoji_name));
+				   });
+		}
+	}
+
+	const guild_text_message& msg;
 };
 
 template<>
@@ -127,7 +151,7 @@ template<>
 struct parser<std::string> {
 	explicit parser(const guild_text_message&) {}
 
-	parse_result<std::string> operator()(std::string_view s)const  {
+	parse_result<std::string> operator()(std::string_view s) const {
 		return parse_result(std::string(s), "");
 	}
 };
@@ -251,25 +275,40 @@ struct parser<std::vector<T>> {
 // 	const guild_text_message& m;
 // };
 
+template<typename T>
+struct parser<std::optional<T>> {
+	using base = parser<T>;
+
+	explicit parser(const guild_text_message& msg):
+		lower_parser(msg) { }
+
+	parse_result<std::optional<parse_result_value_t<parser<T>>>> operator()(std::string_view s) {
+		return optional_parser(lower_parser)(s);
+	}
+
+	parser<T> lower_parser;
+
+};
+
 struct command {
 	std::function<bool(std::string_view, guild_text_message&, shard&)> try_invoke_with;
 };
 
-struct command_group :std::vector<command> {
+struct command_group {
 	command_group& operator+=(command c) {
-		push_back(std::move(c));
+		commands.push_back(std::move(c));
 		return *this;
 	}
 
 	void call(std::string_view s, guild_text_message& msg, shard& sa) {
-		for (const auto& fn : ((std::vector<command>&)*this) | ranges::views::transform(&command::try_invoke_with)) {
-			if (fn(s, msg, sa)) {
+		for (const auto& fn : (commands) | ranges::views::transform(&command::try_invoke_with)) {
+			if (fn(s, msg/* in/out might move*/, sa)) {
 				return;
 			}
 		}
 	}
 
-	//std::vector<command> commands;
+	std::vector<command> commands;
 };
 
 //rename?
@@ -277,32 +316,35 @@ struct command_context {
 
 	std::string prefix = "";
 
-	void do_command(guild_text_message msg, shard& s) {		
+	void do_command(guild_text_message msg, shard& s) {
 		if (msg.content().starts_with(prefix)) {
-			msg.force_heap_allocated();
-			auto content = msg.content();			
+			msg.force_heap_allocated();//so i can take string_views to .content make a no_sbo_string?
+			auto content = msg.content();
 			content.remove_prefix(prefix.size());
-
-			for (auto& [command_name,group] : m_command_groups) {
-				if (content.starts_with(std::string(command_name))) {
-					content.remove_prefix(command_name.size());
-					group.call(content, msg, s);
-					return;
-				}
+			//don't use string.find because i don't want npos, i want not-found to return the end
+			const auto idx_of_whitespace_or_end = std::distance(content.begin(), std::find_if(content.begin(), content.end(), &isspace));
+			const auto command_name = content.substr(0, idx_of_whitespace_or_end);
+					
+			const auto command_name_as_string = std::string(command_name);
+			if (m_command_groups.contains(command_name_as_string)) {
+				content.remove_prefix(idx_of_whitespace_or_end);
+				m_command_groups[command_name_as_string].call(content, msg, s);
 			}
 		}
 	}
 
 	auto& operator[](std::string_view s) {
+		assert(std::none_of(s.begin(), s.end(), &isspace));
 		return m_command_groups[std::string(s)];
 	}
 
 	auto& operator[](const std::string& s) {
+		assert(std::none_of(s.begin(), s.end(), &isspace));
 		return m_command_groups[s];
 	}
 
 	auto& operator[](const char* s) {//;-;
-		return m_command_groups[s];
+		return (*this)[std::string(s)];
 	}
 
 
@@ -312,10 +354,9 @@ struct command_context {
 
 private:
 	std::unordered_map<std::string, command_group> m_command_groups;
-
 };
 
-const auto to_something_passable = [](auto&& arg) ->decltype(auto) {
+const auto to_something_passable = [](auto&& arg) ->auto&& {
 	using type = std::remove_cvref_t<decltype(arg)>;
 	if constexpr (std::is_pointer_v<type>) {
 		return *arg;
@@ -344,7 +385,7 @@ command make_command(fn&& f) {
 
 			std::apply([&](auto&&... args) {
 				f_(to_something_passable(args)..., std::move(c), s);
-			}, stuff.value());
+			}, std::move(stuff.value()));
 			return true;
 		};
 	}

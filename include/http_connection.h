@@ -16,7 +16,10 @@ struct discord_request {
 	ref_count_ptr<rq::shared_state> state;
 };
 
+constexpr static int aushdkjasdjaskldasd = sizeof(boost::beast::http::request<boost::beast::http::string_body>);
+
 struct client;
+
 //
 // struct http_connection {
 // 	void sleep_till(std::chrono::system_clock::time_point time_point) {
@@ -177,6 +180,7 @@ std::future<void> http_conn(d::subscriber_thingy_async<std::variant<discord_requ
 
 struct http_connection2 {
 	void sleep_till(std::chrono::system_clock::time_point time_point) {
+		//this is thread safe?
 		m_rate_limted_until = time_point;
 		m_global_rate_limited.store(true);
 	};

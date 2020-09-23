@@ -11,7 +11,7 @@
 
 struct partial_guild {
 	snowflake id() const noexcept;
-	discord_obj_map<guild_role> roles() const noexcept;
+	discord_obj_map<guild_role> roles() const noexcept { return m_roles; };
 	
 	std::string_view name() const noexcept;
 	std::string_view icon() const noexcept;

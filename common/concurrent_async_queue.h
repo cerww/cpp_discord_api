@@ -332,3 +332,77 @@ private:
 	awaiter* m_waiter = nullptr;
 	friend awaiter;
 };
+
+template<typename T>
+struct async_queue_thread_unsafe {
+
+	struct awaiter {
+		bool await_ready() {
+			return !queue->data().empty();
+		}
+
+		void await_suspend(std::experimental::coroutine_handle<> coroutine_handle) {
+			coro = coroutine_handle;
+			next = std::exchange(queue->m_waiter_stack, this);
+		}
+
+		T await_resume() {
+			if(exception.has_value()) {
+				std::rethrow_exception(*exception);
+			}
+			if (next_in_queue) {
+				return std::move(*next_in_queue);
+			}
+			else {
+				auto ret = std::move(queue->data().front());
+				queue->data().erase(queue->data().begin());
+				return ret;
+			}
+		}
+
+		async_queue_thread_unsafe* queue = nullptr;
+		awaiter* next = nullptr;
+		std::experimental::coroutine_handle<> coro;
+		std::optional<T> next_in_queue;
+		std::optional<std::exception_ptr> exception;
+	};
+
+	std::vector<T>& data() {
+		return m_data;
+	}
+
+	const std::vector<T>& data()const {
+		return m_data;
+	}
+
+	awaiter pop() {
+		return awaiter{ this };
+	}
+
+	void push(T thing) {
+		if (m_waiter_stack) {
+			m_waiter_stack->next_in_queue = std::move(thing);
+			auto me = std::exchange(m_waiter_stack, m_waiter_stack->next);
+			me->coro.resume();
+		}
+		else {
+			m_data.push_back(std::move(thing));
+		}
+	}
+
+	void cancel_all() {
+		auto stack = std::exchange(m_waiter_stack, nullptr);
+		while(stack) {
+			stack->exception = std::make_exception_ptr(1);
+			std::exchange(stack, stack->next)->coro.resume();
+		}
+		
+	}
+
+	
+private:
+	friend awaiter;
+	
+	std::vector<T> m_data;
+	awaiter* m_waiter_stack = nullptr;
+};

@@ -9,7 +9,7 @@ struct channel_catagory;
 
 struct Guild;
 
-struct guild_channel :partial_guild_channel, ref_counted {
+struct guild_channel :ref_counted ,partial_guild_channel {
 
 	const Guild& guild() const noexcept;
 
@@ -26,8 +26,7 @@ struct guild_channel :partial_guild_channel, ref_counted {
 	}
 
 private:
-	ref_count_ptr<channel_catagory> m_parent = nullptr;
-	//Guild* m_guild = nullptr;
+	ref_count_ptr<channel_catagory> m_parent = nullptr;	
 	ref_count_ptr<Guild> m_guild = nullptr;	
 
 	friend struct internal_shard;

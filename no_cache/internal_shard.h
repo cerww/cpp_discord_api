@@ -48,7 +48,7 @@ struct internal_shard :shard {
 	internal_shard(internal_shard&&) = delete;
 
 	~internal_shard() noexcept {
-		m_client->close(4000);
+		m_web_socket->close(4000);
 	}
 
 	bool is_disconnected() const noexcept {
@@ -63,8 +63,8 @@ struct internal_shard :shard {
 
 	nlohmann::json presence() const;
 
-	cerwy::task<voice_connection> connect_voice(const voice_channel&);
-	cerwy::task<voice_connection> connect_voice(snowflake, snowflake);
+	cerwy::task<voice_connection> connect_voice(const voice_channel&) override;
+	cerwy::task<voice_connection> connect_voice(snowflake, snowflake) override;
 
 
 	auto& resolver() {
@@ -84,19 +84,20 @@ struct internal_shard :shard {
 	}
 
 	client& parent_client() {
-		return *m_parent;
+		return *m_parent_client;
 	}
 
 	const client& parent_client() const {
-		return *m_parent;
+		return *m_parent_client;
 	}
 
 	void reconnect();
 
 	std::atomic<uint64_t> m_seq_num = 0;
 
-	std::unique_ptr<wsClient> m_client = nullptr;
-
+	std::unique_ptr<wsClient> m_web_socket = nullptr;
+	cerwy::task<void> send_identity() const;
+	
 private:
 	cerwy::task<boost::beast::error_code> connect_http_connection();
 
@@ -112,7 +113,7 @@ private:
 	bool m_is_disconnected = false;
 
 
-	void request_guild_members(snowflake g) const;
+	void request_guild_members(snowflake g) const override;
 
 	//dispatch
 	void m_opcode0(nlohmann::json, event_name, uint64_t);

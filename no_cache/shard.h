@@ -151,7 +151,7 @@ public:
 protected:
 	using wsClient = rename_later_5;
 
-	cerwy::task<boost::beast::error_code> connect_http_connection();
+	
 
 	void set_up_request(boost::beast::http::request<boost::beast::http::string_body>&) const;
 
@@ -173,7 +173,7 @@ protected:
 
 	boost::asio::io_context::strand m_strand;
 
-	client* m_parent = nullptr;
+	client* m_parent_client = nullptr;
 
 	std::string m_auth_token;
 

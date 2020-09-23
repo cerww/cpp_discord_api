@@ -15,10 +15,19 @@ struct guild_member :partial_guild_member {
 	auto roles() const {
 		return role_ids() | ranges::views::transform(hof::map_with(id_to_role_map()));
 	}
+
+	// auto roles_sorted() const{
+	// 	if(!m_roles_are_sorted) {
+	// 		//ranges::sort(m_roles.begin(), m_roles.end(),std::less(),hof::flow(id_to_role_map(),&guild_role::position));			
+	// 	}
+	// 	return roles();
+	// }
 	
 private:
-	discord_obj_map<guild_role> id_to_role_map() const noexcept;
 	ref_count_ptr<Guild> m_guild = nullptr;
+	//mutable bool m_roles_are_sorted = false;
+	
+	discord_obj_map<guild_role> id_to_role_map() const noexcept;
 	
 	friend void from_json(const nlohmann::json& in, guild_member& out);
 	friend struct internal_shard;
@@ -36,3 +45,4 @@ struct fmt::formatter<guild_member, Char> :fmt::formatter<std::string_view, Char
 		return fmt::formatter<std::string_view, Char>::format(person.to_mentionable_string(), ctx);
 	}
 };
+

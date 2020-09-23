@@ -224,13 +224,3 @@ private:
  *
  * 
  */
-
-inline void iuasdgtasdiasd() {
-	std::vector<int> aaa;
-	more_bad_vector<int> y = aaa | ranges::to<more_bad_vector<int>>();
-
-	std::span<int> wat = y;
-	for(int a : y) {
-		
-	}
-}

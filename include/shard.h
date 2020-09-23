@@ -21,15 +21,18 @@
 #include "webhook_client.h"
 #include "allowed_mentions.h"
 #include "modifies_message_json.h"
+#include "guild_text_message.h"
+#include "dm_message.h"
 
 struct shard {
 protected:
+	~shard() = default;
 
 	explicit shard(int shard_number, client* t_parent, boost::asio::io_context& ioc, std::string auth_token);
-	
-	
+
+
 public:
-	
+	// clang-format off
 	//content
 	//content, embed
 	//content, attachment
@@ -37,20 +40,21 @@ public:
 	//have optional allowed_mentions?
 	rq::send_message send_message(const partial_channel& channel, std::string content);
 	rq::send_message send_message(const partial_channel& channel, std::string content, const embed& embed);
-	
-	template<typename... modifiers>requires (message_modifier<modifiers>&&...)
+
+	template<typename... modifiers>	requires(message_modifier<modifiers>&&...)
 	rq::send_message send_message(const partial_channel& channel, std::string content, modifiers&&...);
-	
-	template<typename... modifiers>requires (message_modifier<modifiers>&&...)
+
+	template<typename... modifiers>	requires(message_modifier<modifiers>&&...)
 	rq::send_message send_message(const partial_channel& channel, std::string content, const embed& embed, modifiers&&...);
 
 	rq::send_message reply(const partial_message& msg, std::string content);
 	rq::send_message reply(const partial_message& msg, std::string content, const embed& embed);
-	
-	template<typename... modifiers>requires (message_modifier<modifiers>&&...)
+
+	template<typename... modifiers>	requires(message_modifier<modifiers>&&...)
 	rq::send_message reply(const partial_message& msg, std::string content, modifiers&&...);
-	
-	template<typename... modifiers>requires (message_modifier<modifiers>&&...)
+
+	template<typename... modifiers>
+	requires(message_modifier<modifiers>&&...)
 	rq::send_message reply(const partial_message& msg, std::string content, const embed& embed, modifiers&&...);
 
 	rq::add_role add_role(const partial_guild&, const partial_guild_member&, const guild_role&);
@@ -65,7 +69,7 @@ public:
 
 	rq::modify_member change_nick(const guild_member&, std::string new_nick);
 	rq::modify_member change_nick(const partial_guild&, const user&, std::string new_nick);
-	
+
 	rq::modify_member assign_roles(const guild_member&, const std::vector<snowflake>& roles_ids);
 	rq::change_my_nick change_my_nick(const partial_guild&, std::string new_nick);
 	rq::kick_member kick_member(const partial_guild&, const partial_guild_member&);
@@ -79,9 +83,9 @@ public:
 	rq::get_messages get_messages_after(const partial_channel&, const partial_message&, int = 100);
 	rq::get_messages get_messages_around(const partial_channel&, snowflake, int = 100);
 	rq::get_messages get_messages_around(const partial_channel&, const partial_message&, int = 100);
-	rq::create_text_channel create_text_channel(const Guild&, std::string name, std::vector<permission_overwrite> = {}, bool nsfw = false);
+	rq::create_text_channel create_text_channel(const Guild&, std::string name, std::vector<permission_overwrite>  = {}, bool nsfw = false);
 	rq::edit_message edit_message(const partial_message&, std::string new_content);
-	rq::create_voice_channel create_voice_channel(const Guild&, std::string name, std::vector<permission_overwrite> = {}, bool nsfw = false, int bit_rate = 96);
+	rq::create_voice_channel create_voice_channel(const Guild&, std::string name, std::vector<permission_overwrite>  = {}, bool nsfw = false, int bit_rate = 96);
 	rq::create_channel_catagory create_channel_catagory(const Guild&, std::string name, std::vector<permission_overwrite>  = {}, bool nsfw = false);
 	rq::delete_emoji delete_emoji(const partial_guild&, const partial_emoji&);
 	rq::modify_emoji modify_emoji(const partial_guild&, const partial_emoji&, std::string name, std::vector<snowflake> role_ids);
@@ -95,7 +99,7 @@ public:
 	requires is_range_of_v<rng, snowflake>
 	rq::delete_message_bulk delete_message_bulk(const partial_channel&, rng&&);
 	rq::delete_message_bulk delete_message_bulk(const partial_channel&, std::vector<snowflake>);
-	
+
 	rq::leave_guild leave_guild(const Guild&);
 	rq::add_reaction add_reaction(const partial_message&, const partial_emoji&);
 	rq::delete_own_reaction delete_own_reaction(const partial_message& msg, const partial_emoji&);
@@ -176,7 +180,7 @@ public:
 		return m_self_user;
 	}
 
-	cerwy::task<voice_connection> connect_voice(const voice_channel&);
+	virtual cerwy::task<voice_connection> connect_voice(const voice_channel&) = 0;
 
 	boost::asio::io_context::strand& strand() {
 		return m_strand;
@@ -200,7 +204,7 @@ public:
 			const auto it = std::partition(m_deleted_guilds.begin(), m_deleted_guilds.end(), [&](const auto& thing) {
 				return !std::invoke(pred, thing.first, *thing.second);
 			});
-			
+
 			m_deleted_guilds.erase(it, m_deleted_guilds.end());
 		}
 		if constexpr (std::is_invocable_v<fn, std::chrono::steady_clock::time_point, const text_channel&>) {
@@ -237,9 +241,10 @@ public:
 	}
 
 	bool will_have_guild(snowflake guild_id) const noexcept;
+	
 protected:
 
-	
+
 	using wsClient = rename_later_5;
 
 	cerwy::task<boost::beast::error_code> connect_http_connection();
@@ -274,23 +279,22 @@ protected:
 	std::vector<std::pair<std::chrono::steady_clock::time_point, indirect<guild_member>>> m_deleted_guild_members;
 
 
-
 	friend cerwy::task<void> init_shard(int shardN, internal_shard& t_parent, boost::asio::io_context& ioc, std::string_view gateway);
 	friend struct client;
 };
 
 namespace rawrland {//rename later ;-;
 
-template<typename fut_type, typename ... Args>
-std::pair<fut_type, discord_request> get_default_stuffs_for_request(Args&&... args) {
-	std::pair<fut_type, discord_request> retVal;
+template<typename request_type, typename ... Args>
+std::pair<request_type, discord_request> get_default_stuffs_for_request(Args&&... args) {
+	std::pair<request_type, discord_request> retVal;
 	retVal.second.state = make_ref_count_ptr<rq::shared_state>();
 
-	retVal.first = fut_type(retVal.second.state);
-	retVal.second.req = fut_type::request(std::forward<Args>(args)...);
+	retVal.first = request_type(retVal.second.state);
+	retVal.second.req = request_type::request(std::forward<Args>(args)...);
 
-	if constexpr (rq::has_content_type_v<fut_type>) {
-		retVal.second.req.set(boost::beast::http::field::content_type, fut_type::content_type);
+	if constexpr (rq::has_content_type_v<request_type>) {
+		retVal.second.req.set(boost::beast::http::field::content_type, request_type::content_type);
 	}
 	return retVal;
 }
@@ -318,7 +322,8 @@ std::enable_if_t<!rq::has_content_type_v<T>, T> shard::send_request(args&&... Ar
 	return std::move(retVal);//no nrvo cuz structured bindings
 }
 
-template<typename... modifiers>requires (message_modifier<modifiers>&&...)
+template<typename... modifiers>
+requires(message_modifier<modifiers>&&...)
 rq::send_message shard::send_message(const partial_channel& channel, std::string content, modifiers&&... modifiers_) {
 	nlohmann::json body = {};
 	body["content"] = std::move(content);
@@ -327,10 +332,11 @@ rq::send_message shard::send_message(const partial_channel& channel, std::string
 	return send_request<rq::send_message>(body.dump(), channel);;
 }
 
-template<typename... modifiers>requires (message_modifier<modifiers>&&...)
+template<typename... modifiers>
+requires(message_modifier<modifiers>&&...)
 rq::send_message shard::send_message(const partial_channel& channel, std::string content, const embed& embed, modifiers&&... modifiers_) {
 	nlohmann::json body = {};
-	body["content"] = std::move(content); 
+	body["content"] = std::move(content);
 	body["embed"] = embed;
 	(modifiers_.modify_message_json(body), ...);
 
@@ -471,7 +477,8 @@ rq::create_group_dm shard::create_group_dm(range&& access_tokens, std::unordered
 	return send_request<rq::create_group_dm>(body.dump());
 }
 
-template<typename...modifiers>requires (message_modifier<modifiers>&&...)
+template<typename...modifiers>
+requires(message_modifier<modifiers>&&...)
 rq::send_message shard::reply(const partial_message& msg, std::string content, modifiers&&... modifers_) {
 	nlohmann::json body = {};
 	body["content"] = std::move(content);
@@ -480,7 +487,8 @@ rq::send_message shard::reply(const partial_message& msg, std::string content, m
 	return send_request<rq::send_message>(body.dump(), msg);;
 }
 
-template<typename...modifiers>requires (message_modifier<modifiers>&&...)
+template<typename...modifiers>
+requires(message_modifier<modifiers>&&...)
 rq::send_message shard::reply(const partial_message& msg, std::string content, const embed& embed, modifiers&&... modifers_) {
 	nlohmann::json body = {};
 	body["content"] = std::move(content);
@@ -489,6 +497,4 @@ rq::send_message shard::reply(const partial_message& msg, std::string content, c
 
 	return send_request<rq::send_message>(body.dump(), msg);;
 }
-
-
-
+// clang-format on

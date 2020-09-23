@@ -12,7 +12,6 @@ int user::discriminator() const noexcept {
 	return m_discriminator;
 }
 
-
 void to_json(nlohmann::json& json, const user& other) {
 	json["id"] = std::to_string(other.id().val);
 	json["username"] = other.username();

@@ -3,6 +3,7 @@
 #include <span>
 #include <fmt/core.h>
 #include "snowflake.h"
+#include <fmt/format.h>
 
 
 struct partial_emoji {
@@ -36,6 +37,10 @@ struct partial_emoji {
 		}
 	}
 
+	bool is_custom()const noexcept {
+		return m_id != snowflake(0);
+	}
+
 private:
 	snowflake m_id = snowflake(0);
 	std::string m_name;
@@ -64,3 +69,17 @@ inline void from_json(const nlohmann::json& json, partial_emoji& e) {
 inline void from_json(const nlohmann::json& json, emoji& e) {
 	from_json(json, static_cast<partial_emoji&>(e));
 }
+
+template<typename Char>
+struct fmt::formatter<partial_emoji,Char>:formatter<std::string_view,Char> {
+
+	template <typename FormatContext>
+	auto format(const partial_emoji& val, FormatContext& ctx) {
+		return formatter<string_view,Char>::format(val.to_string(), ctx);
+	}
+	
+};
+template<typename Char>
+struct fmt::formatter<emoji, Char> :formatter<partial_emoji, Char> {
+		
+};

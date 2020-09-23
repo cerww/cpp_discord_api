@@ -35,44 +35,48 @@ struct Guild :ref_counted, partial_guild {
 
 	const text_channel& system_channel() const;
 
-	const auto& members() const noexcept {
+	discord_obj_map<guild_member> members() const {
 		return m_members;
 	};
 
-	auto members_list() const noexcept {
+	auto members_list() const {
+		throw_if_dead();
 		return m_members | ranges::views::values;
 	};
 
 	const guild_member& owner() const;
 
-	auto text_channels_list() const noexcept {
-		return m_text_channel_ids | ranges::views::transform(hof::map_with(text_channels()));
-		//return m_text_channels | ranges::views::values;
+	auto text_channels_list() const {
+		throw_if_dead();
+		return m_text_channel_ids | ranges::views::transform(hof::map_with(text_channels()));		
 	}
 
-	auto voice_channels_list() const noexcept {
-		return m_voice_channel_ids | ranges::views::transform(hof::map_with(voice_channels()));
-		//return m_voice_channels | ranges::views::values;
+	auto voice_channels_list() const {
+		throw_if_dead();
+		return m_voice_channel_ids | ranges::views::transform(hof::map_with(voice_channels()));		
 	}
 
-	auto channel_catagories_list() const noexcept {
-		return m_channel_catagory_ids | ranges::views::transform(hof::map_with(channel_catagories()));
-		//return m_channel_catagories | ranges::views::values;
+	auto channel_catagories_list() const {
+		throw_if_dead();
+		return m_channel_catagory_ids | ranges::views::transform(hof::map_with(channel_catagories()));		
 	}
 
-	discord_obj_map2<text_channel> text_channels() const noexcept {
+	discord_obj_map2<text_channel> text_channels() const {
+		throw_if_dead();
 		return m_text_channels;
 	}
 
-	discord_obj_map2<voice_channel> voice_channels() const noexcept {
+	discord_obj_map2<voice_channel> voice_channels() const  {
+		throw_if_dead();
 		return m_voice_channels;
 	}
 
-	discord_obj_map2<channel_catagory> channel_catagories() const noexcept {
+	discord_obj_map2<channel_catagory> channel_catagories() const  {
+		throw_if_dead();
 		return m_channel_catagories;
 	}
 
-	std::span<const snowflake> text_channel_ids() const noexcept {
+	std::span<const snowflake> text_channel_ids() const noexcept {		
 		return m_text_channel_ids;
 	};
 
@@ -84,7 +88,13 @@ struct Guild :ref_counted, partial_guild {
 		return m_voice_channel_ids;
 	};
 
-	optional_ref<const voice_channel> afk_channel() const;
+	optional_ref<const voice_channel> afk_channel() const {
+		throw_if_dead();
+		if (afk_channel_id().val) {
+			return m_voice_channels.at(afk_channel_id());
+		}
+		return std::nullopt;
+	};
 
 	std::span<const voice_state> voice_states() const noexcept {
 		return m_voice_states;
@@ -117,6 +127,7 @@ struct Guild :ref_counted, partial_guild {
 	}
 
 	optional_ref<const voice_channel> voice_channel_for(const partial_guild_member& member) const {
+		throw_if_dead();
 		const auto it = ranges::find(m_voice_states, member.id(), &voice_state::user_id);
 		if (it == m_voice_states.end()) {
 			return std::nullopt;
@@ -158,10 +169,54 @@ private:
 
 	bool m_is_ready = true;
 	nlohmann::json m_presences;
+	bool m_is_dead = false;
+	
+	void throw_if_dead()const  {
+		if(m_is_dead) {
+			throw std::runtime_error("guild is dead");
+		}
+	}
+
+	
+	void set_dead() {
+		m_text_channels.clear();
+		m_channel_catagories.clear();
+		m_voice_channels.clear();
+		m_members.clear();
+		
+		m_is_dead = true;
+	}
+	
 	friend void from_json(const nlohmann::json& json, Guild& guild);
 	friend struct internal_shard;
+	friend struct guild_lifetime_extender;
 };
 
-constexpr int ausdhasdasdasd = sizeof(Guild);
+constexpr int ausdhasdasdasdjkghkjg = sizeof(Guild);
 
 void from_json(const nlohmann::json& json, Guild& guild);
+
+struct guild_lifetime_extender {
+	guild_lifetime_extender() = default;
+	guild_lifetime_extender(Guild& g) :m_guild(&g){
+		
+	}
+	guild_lifetime_extender(const guild_lifetime_extender&) = default;
+	guild_lifetime_extender(guild_lifetime_extender&&) = default;
+	guild_lifetime_extender& operator=(const guild_lifetime_extender&) = default;
+	guild_lifetime_extender& operator=(guild_lifetime_extender&&) = default;
+	
+	~guild_lifetime_extender() {
+		m_guild->set_dead();
+	}
+
+	const Guild& guild()const noexcept {
+		return *m_guild;
+	}
+
+	bool operator==(const guild_lifetime_extender&) const noexcept = default;
+	
+private:
+	ref_count_ptr<Guild> m_guild;
+	
+};

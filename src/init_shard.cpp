@@ -22,16 +22,16 @@ namespace discord_ec {
 
 cerwy::task<void> init_shard(const int shard_number, internal_shard& me, boost::asio::io_context& ioc, std::string_view gateway) {
 	try {
-		auto& strand = me.strand();
+		//auto& strand = me.strand();
 		
 		co_await reconnect_wss_from_url(me.m_socket, gateway, me.m_resolver, me.ssl_context());
 
 		auto& m_socket = me.m_socket;
 
 		me.m_web_socket = std::make_unique<rename_later_5>(m_socket);
-		rename_later_5& m_client = *me.m_web_socket;
+		rename_later_5& m_web_socket = *me.m_web_socket;
 
-		auto ec = co_await me.connect_http_connection();
+		const auto ec = co_await me.connect_http_connection();
 		if(ec) {
 			std::cout << "connect http " << ec << std::endl;
 		}
@@ -46,13 +46,13 @@ cerwy::task<void> init_shard(const int shard_number, internal_shard& me, boost::
 				std::cout << "init shard " << ec << ' ' << ec.message() << std::endl;
 				if (ec.value() == discord_ec::unknown_error) {
 					co_await reconnect_wss_from_url(m_socket, gateway, me.m_resolver, me.ssl_context());
-					m_client.maybe_restart();
+					m_web_socket.maybe_restart();
 					me.on_reconnect();
 					continue;
 				}
 				else if (ec.value() == discord_ec::not_authenticated) {
 					co_await reconnect_wss_from_url(m_socket, gateway, me.m_resolver, me.ssl_context());
-					m_client.maybe_restart();
+					m_web_socket.maybe_restart();
 					me.on_reconnect();
 					continue;
 				}
@@ -66,7 +66,7 @@ cerwy::task<void> init_shard(const int shard_number, internal_shard& me, boost::
 				}
 				else if (ec.value() == discord_ec::invalid_seq) {
 					co_await reconnect_wss_from_url(m_socket, gateway, me.m_resolver, me.ssl_context());
-					m_client.maybe_restart();
+					m_web_socket.maybe_restart();
 					me.on_reconnect();
 					continue;
 				}
@@ -77,7 +77,7 @@ cerwy::task<void> init_shard(const int shard_number, internal_shard& me, boost::
 				else if (ec.value() == discord_ec::timeout) {
 					fmt::print("session timedout, reconnecting");
 					co_await reconnect_wss_from_url(m_socket, gateway, me.m_resolver, me.ssl_context());
-					m_client.maybe_restart();
+					m_web_socket.maybe_restart();
 					me.on_reconnect();
 					continue;
 				}
@@ -87,7 +87,7 @@ cerwy::task<void> init_shard(const int shard_number, internal_shard& me, boost::
 				}
 				else {
 					std::cout << ec << std::endl;
-					m_client.close((int)boost::beast::websocket::close_code::normal);
+					m_web_socket.close((int)boost::beast::websocket::close_code::normal);
 					co_return;
 				}
 			}

@@ -18,7 +18,7 @@ std::string getFileContents(const std::string& filePath, decltype(std::ios::in) 
 	return fileContents;
 }
 
-cerwy::task<void> play_stuffs(voice_connection& vc, mpsc_concurrent_async_queue<std::string>& queue) {
+cerwy::task<void> play_stuffs(voice_connection& vc, async_queue_thread_unsafe<std::string>& queue) {
 	while (vc.is_connected()) {
 		auto next_query = co_await queue.pop();
 		co_await vc.send_async(ytdl_search_source(std::move(next_query), vc.strand().context()));			
@@ -32,13 +32,19 @@ struct connection_stuffs {
 		vc(std::move(v)) {}
 
 	voice_connection vc;
-	mpsc_concurrent_async_queue<std::string> queue;
+	async_queue_thread_unsafe<std::string> queue;
 	cerwy::task<void> thingy;
 };
 
 //wat is asio.ssl.337690831
+#include <openssl/err.h>
 
 int main() {
+	const std::string err = std::string(" (")
+		+ std::to_string(ERR_GET_LIB(337690831)) + ","
+		+ std::to_string(ERR_GET_FUNC(337690831)) + ","
+		+ std::to_string(ERR_GET_REASON(337690831)) + ") ";
+	std::cout << err << std::endl;
 	client c;
 	c.set_token(getFileContents("token.txt"));
 
@@ -80,14 +86,18 @@ int main() {
 
 	command_thingy["show_queue"] += shiny::make_command([&](guild_text_message m,shard& s) {
 		if (connections.contains(m.guild().id())) {
-			auto stuff = connections[m.guild().id()].queue.get_data_copy();
-			s.reply(m, stuff | ranges::views::join('\n') | ranges::to<std::string>());
+			auto stuff = connections[m.guild().id()].queue.data();
+			s.reply(m, connections[m.guild().id()].queue.data() | ranges::views::join('\n') | ranges::to<std::string>());
 		} else {
 			s.reply(m, "not connected");
 		}
 	});
 
-	c.on_guild_text_msg = hof::bind1st(&shiny::command_context::do_command, command_thingy);	
+	command_thingy["say"] += shiny::make_command<std::string>([](std::string wat,guild_text_message m, shard& s) {
+		s.reply(m, wat);
+	});
+
+	c.on_guild_text_msg = hof::bind1st(&shiny::command_context::do_command, command_thingy);
 
 	c.run();
 }

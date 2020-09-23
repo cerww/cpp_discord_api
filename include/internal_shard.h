@@ -24,6 +24,7 @@
 #include "heartbeat_context.h"
 
 
+
 using namespace std::string_literals;
 using namespace std::chrono_literals;
 
@@ -33,10 +34,9 @@ struct voice_connection;
 
 struct internal_shard: shard {
 	static constexpr int large_threshold = 51;
-
-	
+		
 	//not in here cuz shard.cpp would be too big to compile without /bigobj on vc ;-;
-	friend cerwy::task<void> init_shard(int shardN, internal_shard& t_parent, boost::asio::io_context& ioc, std::string_view gateway);
+	friend cerwy::task<void> init_shard(int shard_number, internal_shard& me, boost::asio::io_context& ioc, std::string_view gateway);
 
 	using wsClient = rename_later_5;
 	explicit internal_shard(int shard_number, client* t_parent, boost::asio::io_context& ioc, std::string_view, intents);
@@ -49,7 +49,7 @@ struct internal_shard: shard {
 	~internal_shard() noexcept {
 		try {
 			for (auto&& [id, guild] : m_guilds) {
-				remove_cyclic_refs(guild);
+				guild.set_dead();
 			}
 			m_web_socket->close(4000);
 			m_is_disconnected = true;
@@ -70,7 +70,7 @@ struct internal_shard: shard {
 
 	nlohmann::json presence() const;
 
-	cerwy::task<voice_connection> connect_voice(const voice_channel&);
+	cerwy::task<voice_connection> connect_voice(const voice_channel&) override;
 
 	auto& resolver() {
 		return m_resolver;
@@ -104,6 +104,8 @@ struct internal_shard: shard {
 		
 	ska::bytell_hash_set<snowflake> guilds_connected_to_vc;
 	
+	cerwy::task<void> send_identity() const;
+	
 private:
 	cerwy::task<boost::beast::error_code> connect_http_connection();
 
@@ -118,7 +120,6 @@ private:
 
 	bool m_is_disconnected = false;
 
-
 	void request_guild_members(Guild& g) const;
 
 	//dispatch
@@ -126,7 +127,7 @@ private:
 	//heartbeat
 	void m_opcode1_send_heartbeat() const;
 	//identify
-	void m_opcode2_send_identity() const;
+	void m_opcode2_send_identity();
 	//status update
 	void m_opcode3_send_presence() const;//update presence
 	//voice state
@@ -143,8 +144,6 @@ private:
 	void m_opcode10_on_hello(nlohmann::json&);
 	//heartbeat ack
 	void m_opcode11(nlohmann::json&);
-
-	void m_send_identity() const;
 
 	//event stuff
 	template<event_name e>
@@ -220,24 +219,11 @@ private:
 	template<>
 	void procces_event<event_name::WEBHOOKS_UPDATE>(nlohmann::json&);
 
-	template<int n>
-	static reaction& update_reactions(std::vector<reaction>&, partial_emoji&, snowflake, snowflake my_id);
-	static reaction& add_reaction(std::vector<reaction>&, partial_emoji&, snowflake, snowflake);
-	static reaction& remove_reaction(std::vector<reaction>&, partial_emoji&, snowflake, snowflake);
+	// template<int n>
+	// static reaction& update_reactions(std::vector<reaction>&, partial_emoji&, snowflake, snowflake my_id);
+	// static reaction& add_reaction(std::vector<reaction>&, partial_emoji&, snowflake, snowflake);
+	// static reaction& remove_reaction(std::vector<reaction>&, partial_emoji&, snowflake, snowflake);
 
-	static void remove_cyclic_refs(Guild& g)noexcept {
-		g.m_text_channels.clear();
-		g.m_text_channel_ids.clear();
-		//g.m_text_channel_ids.shrink_to_fit();
-		g.m_channel_catagories.clear();
-		g.m_channel_catagory_ids.clear();
-		//g.m_channel_catagory_ids.shrink_to_fit();
-		g.m_voice_channels.clear();
-		g.m_voice_channel_ids.clear();
-		//g.m_voice_channel_ids.shrink_to_fit();
-		g.m_members.clear();
-		//g.m_members.shrink_to_fit();
-	}
 	
 	guild_member make_member_from_msg(const nlohmann::json& user_json, const nlohmann::json& member_json) const;
 
@@ -294,7 +280,7 @@ inline guild_member internal_shard::make_member_from_msg(const nlohmann::json& u
 	if (it != member_json.end())
 		ret.m_nick = it->is_null() ? "" : it->get<std::string>();
 
-	ret.m_roles = member_json["roles"] | ranges::views::transform(&nlohmann::json::get<snowflake>) | ranges::to<boost::container::small_vector<snowflake, 5>>();
+	ret.m_roles = member_json["roles"] | ranges::views::transform(&nlohmann::json::get<snowflake>) | ranges::to<std::decay_t<decltype(ret.m_roles)>>();
 
 	//out.m_joined_at = in["joined_at"].get<timestamp>();
 
@@ -320,6 +306,7 @@ msg_t internal_shard::create_msg(channel_t& ch, const nlohmann::json& stuffs, ma
 		else {
 			retVal.m_author = make_member_from_msg(stuffs["author"], stuffs["member"]);
 			retVal.m_author.m_guild = ch.m_guild;
+			retVal.m_author.m_roles.push_back(ch.m_guild->id());
 		}
 	} else {
 		retVal.m_author = stuffs["author"].get<user>();
@@ -331,6 +318,7 @@ msg_t internal_shard::create_msg(channel_t& ch, const nlohmann::json& stuffs, ma
 		for (const auto& mention : stuffs["mentions"]) {
 			auto& member = retVal.m_mentions.emplace_back(make_member_from_msg(mention, mention["member"]));
 			member.m_guild = ch.m_guild;
+			member.m_roles.push_back(ch.m_guild->id());
 		}
 	}else {
 		retVal.m_mentions = stuffs["mentions"].get<std::vector<user>>();
@@ -406,39 +394,39 @@ msg_t internal_shard::createMsgUpdate(channel_t& ch, const nlohmann::json& stuff
 	
 	return retVal;
 }
-
-inline reaction& internal_shard::add_reaction(std::vector<reaction>& a, partial_emoji& b, snowflake c, snowflake d) {
-	return update_reactions<1>(a, b, c, d);
-}
-
-inline reaction& internal_shard::remove_reaction(std::vector<reaction>& a, partial_emoji& b, snowflake c, snowflake d) {
-	return update_reactions<-1>(a, b, c, d);
-}
-
-//this function was hacky ;-;
-template<int n>//n = 1 means add_reaction, -1 means remove
-reaction& internal_shard::update_reactions(
-	std::vector<reaction>& reactions,
-	partial_emoji& emoji,
-	const snowflake user_id,
-	const snowflake my_id
-) {
-	static_assert(n == -1 || n == 1);
-	const auto it = ranges::find(reactions, emoji.id(), hof::flow(&reaction::emoji, &emoji::id));
-	if (it == reactions.end()) {//reaction not in vector -> add it 
-		reaction temp;
-		temp.m_count = n;
-		temp.m_emoji = std::move(emoji);
-		temp.m_me = user_id == my_id;
-		return reactions.emplace_back(std::move(temp));
-	}
-	else {
-		reaction& r = *it;
-		r.m_count += n;
-
-		if (my_id == user_id) {
-			r.m_me = n > 0;//true if n == 1, false if n==-1
-		}
-		return r;
-	}
-}
+//
+// inline reaction& internal_shard::add_reaction(std::vector<reaction>& a, partial_emoji& b, snowflake c, snowflake d) {
+// 	return update_reactions<1>(a, b, c, d);
+// }
+//
+// inline reaction& internal_shard::remove_reaction(std::vector<reaction>& a, partial_emoji& b, snowflake c, snowflake d) {
+// 	return update_reactions<-1>(a, b, c, d);
+// }
+//
+// //this function was hacky ;-;
+// template<int n>//n = 1 means add_reaction, -1 means remove
+// reaction& internal_shard::update_reactions(
+// 	std::vector<reaction>& reactions,
+// 	partial_emoji& emoji,
+// 	const snowflake user_id,
+// 	const snowflake my_id
+// ) {
+// 	static_assert(n == -1 || n == 1);
+// 	const auto it = ranges::find(reactions, emoji.id(), hof::flow(&reaction::emoji, &emoji::id));
+// 	if (it == reactions.end()) {//reaction not in vector -> add it 
+// 		reaction temp;
+// 		temp.m_count = n;
+// 		temp.m_emoji = std::move(emoji);
+// 		temp.m_me = user_id == my_id;
+// 		return reactions.emplace_back(std::move(temp));
+// 	}
+// 	else {
+// 		reaction& r = *it;
+// 		r.m_count += n;
+//
+// 		if (my_id == user_id) {
+// 			r.m_me = n > 0;//true if n == 1, false if n==-1
+// 		}
+// 		return r;
+// 	}
+// }

@@ -3,7 +3,7 @@
 
 snowflake partial_guild::id() const noexcept { return m_id; }
 
-discord_obj_map<guild_role> partial_guild::roles() const noexcept { return m_roles; }
+
 
 std::string_view partial_guild::name() const noexcept { return m_name; }
 

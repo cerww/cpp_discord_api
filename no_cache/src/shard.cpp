@@ -9,23 +9,23 @@ shard::shard(int shard_number, client* t_parent, boost::asio::io_context& ioc, s
 	m_shard_number(shard_number),
 	m_http_connection(t_parent, ioc),
 	m_strand(ioc),
-	m_parent(t_parent),
+	m_parent_client(t_parent),
 	m_auth_token(std::move(auth_token)) { }
 
 bool shard::will_have_guild(snowflake guild_id) const noexcept {
-	return (guild_id.val >> 22) % m_parent->num_shards() == m_shard_number;
+	return (guild_id.val >> 22) % m_parent_client->num_shards() == m_shard_number;
 }
 
-cerwy::task<boost::beast::error_code> shard::connect_http_connection() {
-	auto ec = co_await m_http_connection.async_connect();
-	int tries = 1;
-	//TODO: change this
-	while (ec && tries < 10) {
-		ec = co_await m_http_connection.async_connect();
-		++tries;
-	}
-	co_return ec;
-}
+// cerwy::task<boost::beast::error_code> shard::connect_http_connection() {
+// 	auto ec = co_await m_http_connection.async_connect();
+// 	int tries = 1;
+// 	//TODO: change this
+// 	while (ec && tries < 10) {
+// 		ec = co_await m_http_connection.async_connect();
+// 		++tries;
+// 	}
+// 	co_return ec;
+// }
 
 void shard::set_up_request(boost::beast::http::request<boost::beast::http::string_body>& req) const {
 	req.set("Application", "cerwy");

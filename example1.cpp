@@ -3,7 +3,7 @@
 #include "include/modify_guild_settings.h"
 #include "common/mp3_audio_source.h"
 #include "common/more_bad_vector.h"
-
+#include "common/never_sso_string.h"
 
 using namespace std::literals;
 
@@ -22,8 +22,7 @@ std::string getFileContents(const std::string& filePath, decltype(std::ios::in) 
 cerwy::task<void> do_audio_thingy(cerwy::task<voice_connection> vc_task) {
 	voice_connection channel = co_await vc_task;
 	//co_await channel.send(audio_from_mp3("C:/Users/cerw/Downloads/a2.mp3"));
-	co_await channel.send(mp3_audio_source(from_file{"C:/Users/cerw/Downloads/a.mp3"}));
-
+	co_await channel.send(mp3_audio_source(from_file{"C:/Users/cerw/Downloads/a.mp3"}));	
 }
 
 cerwy::task<void> thingy(const Guild& g, shard& s) {
@@ -34,19 +33,6 @@ cerwy::task<void> thingy(const Guild& g, shard& s) {
 		auto& role = g.roles()[snowflake(725880768659980330)];
 		//s.send_message(s.text_channels().at(snowflake(504562059279728640)), role.to_mentionable_string() + " flag starts soon");
 	}
-}
-
-//test for crashing
-void test_transform_audio_thingy() {
-	audio_frame framy;
-	framy.optional_data_storage.resize(44100 * 20 * 2 / 1000);
-
-	framy.channel_count = 2;
-	framy.sampling_rate = 44100;
-	framy.frame_size = framy.sampling_rate * 20 / 1000;
-	framy.frame_data = framy.optional_data_storage;
-	auto transformed_framy = resample_meh(framy, 2, 48000);
-	int breakpoint_here = 0;
 }
 
 void aujsdhasdasd() {
@@ -66,6 +52,13 @@ void aujsdhasdasd() {
 	std::vector<int> c = wat | ranges::to<std::vector>();
 	std::cout << (aaa == c) << std::endl;;
 
+}
+
+
+void test_never_sso_string() {
+	never_sbo_string s1;
+	s1 = "aaaa";
+	std::string s1_real_str = "aaaa";
 }
 
 cerwy::task<void> test_queue1(async_queue_maybe_better<int>& queue) {
@@ -144,7 +137,7 @@ int main() {
 					ranges::views::join(" "sv) |
 					ranges::to<std::string>();
 
-			s.reply(msg, stuff);
+			s.reply(msg, stuff, disable_mentions);
 		} else if (msg.content() == "invite") {
 			co_await s.create_channel_invite(msg.channel()).async_wait();
 		} else if (msg.content() == "namey") {
@@ -284,7 +277,7 @@ int main() {
 
 	c.on_guild_msg_update = [](guild_msg_update g,shard& s) {
 		if (g.content().has_value()) {
-			const auto new_thing = g.content().value();
+			const std::string_view new_thing = g.content().value();
 			std::cout << new_thing << std::endl;;
 		}
 	};

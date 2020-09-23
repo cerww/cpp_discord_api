@@ -476,6 +476,20 @@ struct embed {
 		return *this;
 	}
 
+	template<typename R>requires is_range_of_v<R,embed_field>
+	embed& add_fields_range(R&& r) {
+		if (!m_fields.has_value()) {
+			m_fields.emplace();
+		}
+		ranges::push_back(m_fields.value(), std::forward<R>(r));
+		return *this;
+	}
+
+	embed& set_fields(std::vector<embed_field> fields) {
+		m_fields = std::move(fields);
+		return *this;		
+	}
+
 private:
 	std::optional<std::string> m_title;
 	std::optional<std::string> m_description;
@@ -570,8 +584,8 @@ namespace thingy_workyausdhasjdl {
 	template<typename tag, template<typename> typename ...Property>
 	struct embed_object :Property<embed_object<tag, Property...>>... {
 
-		friend void from_json(const nlohmann::json&, embed_object<tag, Property...>&);
-		friend void to_json(nlohmann::json&, const embed_object<tag, Property...>&);
+		friend void from_json(const nlohmann::json&, embed_object<tag, Property...>&){};
+		friend void to_json(nlohmann::json&, const embed_object<tag, Property...>&){};
 	};
 	
 	template<typename Obj_t>
@@ -594,7 +608,7 @@ namespace thingy_workyausdhasjdl {
 			}
 		}
 	};
-#define MAKE_PROPERTY_AAA(type,name)
+#define MAKE_PROPERTY_AAA(type,name) 
 
 	
 #undef MAKE_PROPERTY_AAA

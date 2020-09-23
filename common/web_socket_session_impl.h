@@ -13,27 +13,23 @@ struct web_socket_session_impl :ref_counted {
 	//web_socket_session_impl() = default;
 
 	web_socket_session_impl(
-		boost::beast::websocket::stream<boost::beast::ssl_stream<boost::asio::ip::tcp::socket>> s,		
+		boost::beast::websocket::stream<boost::beast::ssl_stream<boost::asio::ip::tcp::socket>> s,
 		boost::asio::ssl::context ssl_ctx
 	):
-		m_socket(std::move(s)),		
-		m_ssl_ctx(std::move(ssl_ctx)) {
-		
-	};
+		m_socket(std::move(s)),
+		m_ssl_ctx(std::move(ssl_ctx)) { };
 
 	web_socket_session_impl(
 		boost::beast::websocket::stream<boost::beast::ssl_stream<boost::asio::ip::tcp::socket>> s,
 		boost::asio::ssl::context_base::method ssl_ctx_method
 	) :
 		m_socket(std::move(s)),
-		m_ssl_ctx(ssl_ctx_method) {
-
-	};
+		m_ssl_ctx(ssl_ctx_method) { };
 
 	std::function<void(std::string)> on_read = [](auto&&...) {};
-	std::function<void(std::vector<std::byte>)> on_binary = [](auto&&...){};
-	
-	std::function<cerwy::task<void>(boost::beast::error_code)> on_error = [](auto&&...) {return cerwy::make_ready_void_task(); };
+	std::function<void(std::vector<std::byte>)> on_binary = [](auto&&...) {};
+
+	std::function<cerwy::task<void>(boost::beast::error_code)> on_error = [](auto&&...) { return cerwy::make_ready_void_task(); };
 
 	cerwy::task<void> reconnect(std::string uri);
 	cerwy::task<void> connect(std::string uri);
@@ -69,7 +65,7 @@ private:
 	boost::beast::multi_buffer m_buffer;
 
 	async_mutex m_mut;
-	
+
 	boost::asio::ssl::context m_ssl_ctx;
 
 	std::atomic<bool> m_is_reading = false;
@@ -92,7 +88,7 @@ struct web_socket_session {
 	web_socket_session(web_socket_session&&) = default;
 	web_socket_session& operator=(web_socket_session&&) = default;
 
-	~web_socket_session() noexcept {		
+	~web_socket_session() noexcept {
 		if (m_me)
 			m_me->close(1000);
 	}
@@ -101,6 +97,10 @@ struct web_socket_session {
 		return m_me->on_read;
 	};
 
+	std::function<void(std::vector<std::byte>)>& on_binary() {
+		return m_me->on_binary;
+	}
+
 	std::function<cerwy::task<void>(boost::beast::error_code)>& on_error() {
 		return m_me->on_error;
 	};
@@ -108,6 +108,10 @@ struct web_socket_session {
 	const std::function<void(std::string)>& on_read() const {
 		return m_me->on_read;
 	};
+	
+	const std::function<void(std::vector<std::byte>)>& on_binary() const{
+		return m_me->on_binary;
+	}
 
 	const std::function<cerwy::task<void>(boost::beast::error_code)>& on_error() const {
 		return m_me->on_error;
@@ -130,7 +134,7 @@ struct web_socket_session {
 		return m_me->send_thing(std::move(what));
 	};
 
-	cerwy::task<void> send_thing(std::vector<std::byte> what)const {
+	cerwy::task<void> send_thing(std::vector<std::byte> what) const {
 		return m_me->send_thing(std::move(what));
 	};
 
@@ -173,6 +177,6 @@ private:
 
 cerwy::task<web_socket_session> create_session(
 	std::string_view full_uri,
-	boost::asio::io_context& ioc,//make this any_io_executor?
+	boost::asio::io_context& ioc,//make this any_io_executor?	
 	boost::asio::ssl::context_base::method c
 );

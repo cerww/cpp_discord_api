@@ -23,7 +23,7 @@ cerwy::task<void> web_socket_session_impl::send_thing(const std::string msg) {
 
 	auto lock = co_await m_mut.async_lock();
 	auto [ec,n] = co_await m_socket.async_write(boost::asio::buffer(msg), use_task_return_tuple2);
-	while (ec && ec != boost::asio::error::operation_aborted && ec != boost::beast::websocket::error::closed) {		
+	while (ec && ec.value() != boost::asio::error::operation_aborted && ec != boost::beast::websocket::error::closed) {		
 		//TODO: change this
 		boost::asio::steady_timer timer(m_socket.get_executor());
 		timer.expires_from_now(std::chrono::seconds(5));

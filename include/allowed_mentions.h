@@ -18,7 +18,7 @@ constexpr int allows_users_flag = 1 << 4;
 struct empty_allowed_mentions{};
 
 template<int flags = 0>
-struct allowed_mentions:modifies_message_json {
+struct allowed_mentions {
 	static constexpr bool allow_everyone = bool(flags & allows_everyone_flag);
 	static constexpr bool allow_all_roles = bool(flags & allows_all_roles_flag);
 	static constexpr bool allow_all_users = bool(flags & allows_all_users_flag);
@@ -293,15 +293,14 @@ void allowed_mentions<flags>::modify_message_json(nlohmann::json& json) const{
 
 
 
-struct allowed_mentions1:modifies_message_json{
+struct allowed_mentions1{
 	bool everyone = false;
 	bool allow_users = false;
 	bool allow_roles = false;
 	std::vector<snowflake> role_ids;
 	std::vector<snowflake> user_ids;
 	
-	void modify_message_json(nlohmann::json& json)const;
-	
+	void modify_message_json(nlohmann::json& json)const;	
 };
 
 //static const allowed_mentions1 disable_mentions{};

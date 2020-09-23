@@ -1,8 +1,8 @@
-#include "internal_shard.h"
 #include "snowflake.h"
 #include "guild.h"
 
 const guild_member& Guild::owner() const {
+	throw_if_dead();
 	return m_members.at(owner_id());
 }
 
@@ -13,8 +13,6 @@ bool Guild::large() const noexcept { return m_large; }
 bool Guild::unavailable() const noexcept { return m_unavailable; }
 
 int Guild::member_count() const noexcept { return m_member_count; }
-
-
 
 void from_json(const nlohmann::json& json, Guild& guild) {
 	json.get_to(static_cast<partial_guild&>(guild));
@@ -29,9 +27,4 @@ const text_channel& Guild::system_channel() const {
 	return m_text_channels.at(system_channel_id());
 }
 
-optional_ref<const voice_channel> Guild::afk_channel() const {
-	if (afk_channel_id().val) {
-		return m_voice_channels.at(afk_channel_id());
-	}
-	return std::nullopt;
-}
+

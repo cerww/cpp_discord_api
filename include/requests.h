@@ -130,6 +130,7 @@ struct with_exception {
 	T exception;
 };
 
+//TODO make it lazy?
 template<typename reqeust>
 struct request_base :private crtp<reqeust> {
 	request_base() = default;

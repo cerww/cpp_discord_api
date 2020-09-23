@@ -78,12 +78,14 @@ private:
 /// @tparam T 
 template<typename T>
 struct ref_count_ptr {
+	static_assert(!std::is_reference_v<T>);
 	ref_count_ptr() = default;
 
 	ref_count_ptr(nullptr_t) noexcept {}
 
 	ref_count_ptr(T* t) noexcept :
 		m_self(t) {
+		
 		if (m_self) {
 			m_self->increment_ref_count();
 		}
@@ -91,6 +93,7 @@ struct ref_count_ptr {
 
 	ref_count_ptr(const ref_count_ptr& other) noexcept :
 		m_self(other.m_self) {
+		
 		if (m_self) {
 			m_self->increment_ref_count();
 		}
@@ -102,20 +105,23 @@ struct ref_count_ptr {
 	template<typename O, std::enable_if_t<std::is_base_of_v<O, T>, int>  = 0>
 	explicit ref_count_ptr(const ref_count_ptr<O>& o) :
 		m_self(o.m_self) {
-		if (m_self)
+		if (m_self) {
 			m_self->increment_ref_count();
+		}
 	}
 
 	template<typename O, std::enable_if_t<std::is_base_of_v<T, O>, int>  = 0>
 	ref_count_ptr(const ref_count_ptr<O>& o) :
 		m_self(o.m_self) {
-		if (m_self)
+		if (m_self) {
 			m_self->increment_ref_count();
+		}
 	}
 
 	~ref_count_ptr() noexcept {
-		if (m_self && m_self->decrement_ref_count())
+		if (m_self && m_self->decrement_ref_count()) {
 			delete m_self;
+		}
 	}
 
 	ref_count_ptr& operator=(T* other) noexcept {

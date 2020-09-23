@@ -79,6 +79,9 @@ void client::rate_limit_global(const std::chrono::system_clock::time_point tp) {
 
 void client::do_gateway_stuff() {
 	m_getGateway();
+	if (on_gateway.has_value()) {
+		on_gateway.value()();
+	}
 	for (size_t i = 0; i < m_num_shards; ++i) {
 		m_shards.emplace_back(std::make_unique<internal_shard>((int)i, this, context(), m_gateway, m_intents));
 	}
@@ -126,6 +129,7 @@ void client::m_getGateway() {
 	//std::cout << m_gateway << std::endl;
 	fmt::print(m_gateway);
 	fmt::print("\n");
+	
 }
 
 /*

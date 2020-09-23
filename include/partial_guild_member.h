@@ -20,7 +20,7 @@ struct partial_guild_member :user {
 	bool has_role(snowflake role_id) const noexcept;
 	bool has_role(const guild_role& role) const noexcept;
 
-private:
+protected:
 	boost::container::small_vector<snowflake, 5> m_roles{};
 	std::string m_nick{};
 	timestamp m_joined_at{};
@@ -59,3 +59,4 @@ struct fmt::formatter<partial_guild_member, Char> :fmt::formatter<std::string_vi
 		return fmt::formatter<std::string_view, Char>::format(person.to_mentionable_string(), ctx);
 	}
 };
+

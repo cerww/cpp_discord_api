@@ -52,9 +52,7 @@ struct client {//<(^.^)>
 	void set_token(std::string token, token_type type = token_type::BOT);
 
 	std::string_view token() const { return m_token; }
-
 	std::string_view auth_token() const { return m_authToken; }
-
 	size_t num_shards() const noexcept { return m_num_shards; }
 
 	std::optional<std::function<void(guild_text_message, shard&)>> on_guild_text_msg;
@@ -65,15 +63,15 @@ struct client {//<(^.^)>
 	std::optional<std::function<void(const dm_channel&, shard&)>> on_dm_channel_create;
 
 	std::optional<std::function<void(const guild_member&, shard&)>> on_guild_member_add;
-	std::optional<std::function<void(const guild_member&, shard&)>> on_guild_member_remove;
+	std::optional<std::function<void(guild_member, shard&)>> on_guild_member_remove;
 	std::optional<std::function<void(const guild_member&, shard&)>> on_guild_member_update;
 
 	std::optional<std::function<void(const text_channel&, shard&)>> on_guild_text_channel_update;
-	std::optional<std::function<void(const dm_channel&, shard&)>> on_dm_channel_update;
 	std::optional<std::function<void(const voice_channel&, shard&)>> on_guild_voice_channel_update;
 	std::optional<std::function<void(const channel_catagory&, shard&)>> on_guild_channel_catagory_update;
+	std::optional<std::function<void(const dm_channel&, shard&)>> on_dm_channel_update;
+	
 	std::optional<std::function<void(const Guild&, shard&)>> on_guild_update;
-	std::optional<std::function<void(const Guild&, bool, shard&)>> on_guild_remove;
 	std::optional<std::function<void(const Guild&, user, shard&)>> on_ban_add;
 	std::optional<std::function<void(const Guild&, user, shard&)>> on_ban_remove;
 	std::optional<std::function<void(const Guild&, const guild_role&, shard&)>> on_role_create;
@@ -86,9 +84,11 @@ struct client {//<(^.^)>
 	std::optional<std::function<void(guild_member, const text_channel&, shard&)>> on_guild_typing_start;
 	std::optional<std::function<void(const user&, const dm_channel&, shard&)>> on_dm_typing_start;
 
-	// std::optional<std::function<void(const text_channel&, shard&)>> on_text_channel_delete;
-	// std::optional<std::function<void(const voice_channel&, shard&)>> on_voice_channel_delete;
-	// std::optional<std::function<void(const channel_catagory&, shard&)>> on_channel_catagory_delete;
+	std::optional<std::function<void(const Guild&, bool, shard&)>> on_guild_remove;
+	
+	std::optional<std::function<void(text_channel, shard&)>> on_text_channel_delete;
+	std::optional<std::function<void(voice_channel, shard&)>> on_voice_channel_delete;
+	std::optional<std::function<void(channel_catagory, shard&)>> on_channel_catagory_delete;
 	std::optional<std::function<void(const dm_channel&, shard&)>> on_dm_channel_delete;
 
 	std::optional<std::function<void(guild_member, const text_channel&, snowflake, partial_emoji, shard&)>> on_guild_reaction_add;
@@ -109,9 +109,10 @@ struct client {//<(^.^)>
 	std::optional<std::function<void(shard&)>> on_ready;
 	std::optional<std::function<void(std::vector<emoji>, const std::vector<emoji>&, const Guild&, shard&)>> on_emoji_update;
 
+	std::optional<std::function<void()>> on_gateway;
+
 	void stop();
 
-	virtual void rate_limit_global(std::chrono::system_clock::time_point);
 
 	boost::asio::io_context& context() {
 		if (std::holds_alternative<boost::asio::io_context>(m_ioc)) {
@@ -121,18 +122,52 @@ struct client {//<(^.^)>
 		}
 	}
 
-	virtual void queue_to_identify(internal_shard& s) { }
-
-	virtual void notify_identified() { }
-
-	virtual std::chrono::steady_clock::time_point get_time_point_for_identifying() {
-		//use mutex or atomic?
-
+	virtual void rate_limit_global(std::chrono::system_clock::time_point);
+	
+	virtual void queue_to_identify(internal_shard& s) {
 		std::lock_guard lock(m_identify_mut);
-		//5.1s to account for some random delay that might happen 
-		m_last_identify = std::max(std::chrono::steady_clock::now(), m_last_identify + std::chrono::milliseconds(5100));
-		return m_last_identify;
+		if (m_no_one_is_identifying) {
+			m_no_one_is_identifying = false;
+			auto timer = std::make_unique<boost::asio::steady_timer>(context());
+			timer->expires_at(m_last_identify + 5s);
+			timer->async_wait([pin = std::move(timer), s_ = &s](auto ec) {
+				if (ec) { } else {
+					(void)s_->send_identity();
+				}
+			});
+
+		} else {
+			m_identifying_stack.push_back(&s);
+		}
 	}
+
+	virtual void notify_identified() {
+		std::lock_guard lock(m_identify_mut);
+		m_last_identify = std::chrono::steady_clock::now();
+
+		if (!m_identifying_stack.empty()) {
+			const auto next = m_identifying_stack.back();
+			m_identifying_stack.pop_back();
+			auto timer = std::make_unique<boost::asio::steady_timer>(context());
+			timer->expires_at(m_last_identify + 5s);
+			timer->async_wait([pin = std::move(timer), s_ = next](auto ec) {
+				if (ec) { } else {
+					(void)s_->send_identity();
+				}
+			});
+		} else {
+			m_no_one_is_identifying = true;
+		}
+	}
+
+	// virtual std::chrono::steady_clock::time_point get_time_point_for_identifying() {
+	// 	//use mutex or atomic?
+	//
+	// 	std::lock_guard lock(m_identify_mut);
+	// 	//5.1s to account for some random delay that might happen ?
+	// 	m_last_identify = std::max(std::chrono::steady_clock::now(), m_last_identify + std::chrono::milliseconds(5100));
+	// 	return m_last_identify;
+	// }
 
 	virtual void do_gateway_stuff();
 
@@ -145,8 +180,13 @@ struct client {//<(^.^)>
 protected:
 	void m_getGateway();
 	std::chrono::system_clock::time_point m_last_global_rate_limit = std::chrono::system_clock::now();
+	
 	//1 identify every 5s, -6s is so we don't wait 5s for the first one
 	std::chrono::steady_clock::time_point m_last_identify = std::chrono::steady_clock::now() - std::chrono::seconds(6);
+	std::vector<internal_shard*> m_identifying_stack;
+	bool m_no_one_is_identifying = true;
+
+
 	std::mutex m_identify_mut;
 
 	intents m_intents = {};

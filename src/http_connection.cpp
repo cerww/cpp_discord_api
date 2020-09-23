@@ -293,7 +293,7 @@ cerwy::task<boost::beast::error_code> http_connection2::async_connect() {
 	if (ec2) {
 		co_return ec2;
 	}
-	const auto ec3 = co_await m_socket.async_handshake(boost::asio::ssl::stream_base::client, use_task_return_ec);
+	const auto ec3 = co_await m_socket.async_handshake(boost::asio::ssl::stream_base::client, use_task_return_ec);	
 	if (!ec3) {
 		start_sending();
 	}
@@ -328,8 +328,9 @@ cerwy::task<void> http_connection2::send_to_discord(discord_request r, uint64_t 
 	}
 
 	std::lock_guard<std::mutex> locky(r.state->ready_mut);
-	if (co_await send_to_discord_(r))
+	if (co_await send_to_discord_(r)) {
 		r.state->finish();
+	}
 }
 
 //pre-con: request isn't rate-limited already
@@ -448,6 +449,11 @@ cerwy::task<void> http_connection2::start_sending() {
 // 	}
 // }
 
+
+//#include <openssl/err.h>
+
+
+
 cerwy::task<void> http_connection2::reconnect() {
 	while (true) {
 		if (m_socket.next_layer().is_open()) {			
@@ -480,7 +486,14 @@ redo:
 
 	if (ec) {
 		std::cout << request.req << std::endl;
-		std::cout << "send_rq " << ec << std::endl;		
+		std::cout << "send_rq " << ec << std::endl;
+		if(ec.category() == boost::asio::error::get_ssl_category()) {
+			std::string err = std::string(" (")
+				+ std::to_string(ERR_GET_LIB(ec.value())) + ","
+				+ std::to_string(ERR_GET_FUNC(ec.value())) + ","
+				+ std::to_string(ERR_GET_REASON(ec.value())) + ") ";
+			std::cout << err << std::endl;
+		}
 		co_await reconnect();
 		goto redo;
 	}

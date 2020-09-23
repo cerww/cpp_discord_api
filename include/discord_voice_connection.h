@@ -58,7 +58,7 @@ struct discord_voice_connection_impl :
 			if (is_canceled.exchange(false)) {
 				is_playing = false;
 				co_await control_speaking(0);
-				co_await resume_on_strand{*strand};
+				co_await resume_on_strand(*strand);
 				cancel_promise.set_value();
 				co_return;
 			}
@@ -66,7 +66,7 @@ struct discord_voice_connection_impl :
 			if (frame.channel_count != 2 || frame.sampling_rate != 48000) {
 				frame = resample_fn(frame, 2, 48000);
 			}
-			send_frame(frame, sqeuence_number++, ssrc_big_end);
+			co_await send_frame(frame, sqeuence_number++, ssrc_big_end);
 
 			last_time_sent_packet += time_frame;
 			const auto next_time_to_send_packet = last_time_sent_packet;
@@ -118,7 +118,7 @@ struct discord_voice_connection_impl :
 			if (frame.channel_count != 2 || frame.sampling_rate != 48000) {
 				frame = resample_fn(frame, 2, 48000);
 			}
-			send_frame(frame, sqeuence_number++, ssrc_big_end);
+			co_await send_frame(frame, sqeuence_number++, ssrc_big_end);
 
 			last_time_sent_packet += time_frame;
 			const auto next_time_to_send_packet = last_time_sent_packet;
@@ -160,14 +160,10 @@ struct discord_voice_connection_impl :
 
 	int heartbeat_interval = 0;
 	uint32_t ssrc = 0;
-
 	
 	ref_count_ptr<const Guild> guild;
-
 	
-	cerwy::promise<void>* waiter = nullptr;
-	
-	
+	cerwy::promise<void>* waiter = nullptr;	
 
 	int delay = 0;
 	std::atomic<bool> is_alive = true;
@@ -209,13 +205,13 @@ private:
 
 	[[nodiscard]] cerwy::task<boost::system::error_code> wait(std::chrono::milliseconds);
 
-	void send_frame(const audio_frame& frame, uint16_t sqeuence_number, uint32_t ssrc_big_end) {
+	cerwy::task<void> send_frame(const audio_frame& frame, uint16_t sqeuence_number, uint32_t ssrc_big_end) {
 		std::array<std::byte, 12> header{{}};
 
 		(uint8_t&)header[0] = 0x80;
 		(uint8_t&)header[1] = 0x78;
 
-		(uint16_t&)header[2] = htons(sqeuence_number++);
+		(uint16_t&)header[2] = htons(sqeuence_number);
 
 		(uint32_t&)header[4] = htonl(m_timestamp);
 		(uint32_t&)header[8] = ssrc_big_end;
@@ -224,7 +220,7 @@ private:
 		const int len = m_opus_encoder.encode_into_buffer(frame, opus_data.data(), (int)opus_data.size());
 
 		const auto encrypted_voice_data = encrypt_xsalsa20_poly1305(header, std::span<std::byte>(opus_data.data(), len));
-		(void)send_voice_data_udp(encrypted_voice_data);//don't acually need to check if data was sent?
+		co_await send_voice_data_udp(encrypted_voice_data);//don't acually need to check if data was sent?
 		m_timestamp += frame.frame_size;
 	}
 };

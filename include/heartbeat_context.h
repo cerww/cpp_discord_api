@@ -10,11 +10,8 @@ struct heartbeat_context {
 	void start();
 
 	int hb_interval = 0;
-
-	std::atomic<bool> recived_ack = false;
-	
-private:
-	
+	std::atomic<bool> recived_ack = false;	
+private:	
 	void send_heartbeat();
 
 	internal_shard& m_shard;

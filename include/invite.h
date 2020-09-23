@@ -2,7 +2,7 @@
 #include <nlohmann/json.hpp>
 #include <string>
 #include "snowflake.h"
-#include "user.h"
+#include "User.h"
 
 namespace invite_internal {
 
@@ -50,14 +50,14 @@ private:
 
 
 struct invite_metadata {
-	const auto& User() const noexcept { return m_user; }
+	const auto& user() const noexcept { return m_user; }
 
 	int uses() const noexcept { return m_uses; }
 
 	int max_uses() const noexcept { return m_max_uses; }
 
 private:
-	std::optional<user> m_user = std::nullopt;
+	std::optional<::user> m_user = std::nullopt;
 	int m_uses = 0;
 	int m_max_uses = 0;
 	friend void from_json(const nlohmann::json& j, invite_metadata& stuff);
