@@ -25,8 +25,6 @@ struct partial_guild {
 	std::string_view region() const noexcept;
 	int afk_timeout() const noexcept;
 	snowflake afk_channel_id() const noexcept;
-	bool embed_enabled() const noexcept;
-	snowflake embed_channel_id() const noexcept;
 	int verification_level() const noexcept;
 	bool explicit_content_filter() const noexcept;
 
@@ -49,17 +47,15 @@ struct partial_guild {
 	}
 	
 private:
-	snowflake m_id;
-	std::string m_name;
 	std::string m_icon;
 	std::string m_splash;
+	snowflake m_id;
+	std::string m_name;
 	snowflake m_owner_id;
 	permission m_client_permissions;
 	std::string m_region;
 	snowflake m_afk_channel_id;
 	int m_afk_timeout = 0;
-	bool m_embed_enabled = false;
-	snowflake m_embed_channel_id;
 	int m_verification_level = 0;
 	int m_default_message_notifications = 0;//what is this for ;-;
 	bool m_explicit_content_filter = false;

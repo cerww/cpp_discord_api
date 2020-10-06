@@ -9,7 +9,7 @@
 struct guild_role {
 	snowflake id() const noexcept;;
 	int position() const noexcept;
-	permission permissions() const noexcept;
+	const permission& permissions() const noexcept;
 	bool managed() const noexcept;
 	bool mentionable() const noexcept;
 	bool hoist() const noexcept;

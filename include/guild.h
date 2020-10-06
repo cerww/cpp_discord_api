@@ -37,12 +37,12 @@ struct Guild :ref_counted, partial_guild {
 
 	discord_obj_map<guild_member> members() const {
 		return m_members;
-	};
+	}
 
 	auto members_list() const {
 		throw_if_dead();
 		return m_members | ranges::views::values;
-	};
+	}
 
 	const guild_member& owner() const;
 
@@ -78,15 +78,15 @@ struct Guild :ref_counted, partial_guild {
 
 	std::span<const snowflake> text_channel_ids() const noexcept {		
 		return m_text_channel_ids;
-	};
+	}
 
 	std::span<const snowflake> channel_catagories_ids() const noexcept {
 		return m_channel_catagory_ids;
-	};
+	}
 
 	std::span<const snowflake> voice_channel_ids() const noexcept {
 		return m_voice_channel_ids;
-	};
+	}
 
 	optional_ref<const voice_channel> afk_channel() const {
 		throw_if_dead();
@@ -94,13 +94,13 @@ struct Guild :ref_counted, partial_guild {
 			return m_voice_channels.at(afk_channel_id());
 		}
 		return std::nullopt;
-	};
+	}
 
 	std::span<const voice_state> voice_states() const noexcept {
 		return m_voice_states;
-	};
+	}
 
-	std::optional<activity> activity_for(snowflake id) const noexcept {
+	std::optional<std::span<const activity>> activity_for(snowflake id) const noexcept {
 		const auto it = m_activities.find(id);
 		if (it == m_activities.end()) {
 			return std::nullopt;
@@ -109,7 +109,7 @@ struct Guild :ref_counted, partial_guild {
 		}
 	}
 
-	std::optional<activity> activity_for(const partial_guild_member& member) const noexcept {
+	std::optional<std::span<const activity>> activity_for(const partial_guild_member& member) const noexcept {
 		return activity_for(member.id());
 	}
 
@@ -136,7 +136,10 @@ struct Guild :ref_counted, partial_guild {
 		}
 	}
 
-	
+	const guild_member& my_member() const{
+		throw_if_dead();
+		return m_members.at(m_bot_id);	
+	}
 	
 private:
 	timestamp m_joined_at = {};
@@ -145,14 +148,14 @@ private:
 	int m_member_count = 0;
 
 	ref_stable_map<snowflake, guild_member> m_members{};//keep ref stable?
-	ska::bytell_hash_map<snowflake, std::optional<activity>> m_activities;
+	ska::bytell_hash_map<snowflake, std::vector<activity>> m_activities;
 	ska::bytell_hash_map<snowflake, Status> m_status;
 
 	ref_stable_map2<snowflake, text_channel> m_text_channels;
 	ref_stable_map2<snowflake, voice_channel> m_voice_channels;
 	ref_stable_map2<snowflake, channel_catagory> m_channel_catagories;
 
-	//non-const version used for conveniance in shard.cpp
+	//non-const version used for conveniance in internal_shard.cpp
 	//returns mutable members so it has to be private
 	auto mutable_members_list() noexcept {
 		return m_members | ranges::views::values;
@@ -170,13 +173,14 @@ private:
 	bool m_is_ready = true;
 	nlohmann::json m_presences;
 	bool m_is_dead = false;
+
+	snowflake m_bot_id;
 	
 	void throw_if_dead()const  {
 		if(m_is_dead) {
 			throw std::runtime_error("guild is dead");
 		}
 	}
-
 	
 	void set_dead() {
 		m_text_channels.clear();
@@ -198,9 +202,11 @@ void from_json(const nlohmann::json& json, Guild& guild);
 
 struct guild_lifetime_extender {
 	guild_lifetime_extender() = default;
+	
 	guild_lifetime_extender(Guild& g) :m_guild(&g){
 		
 	}
+	
 	guild_lifetime_extender(const guild_lifetime_extender&) = default;
 	guild_lifetime_extender(guild_lifetime_extender&&) = default;
 	guild_lifetime_extender& operator=(const guild_lifetime_extender&) = default;
@@ -217,6 +223,5 @@ struct guild_lifetime_extender {
 	bool operator==(const guild_lifetime_extender&) const noexcept = default;
 	
 private:
-	ref_count_ptr<Guild> m_guild;
-	
+	ref_count_ptr<Guild> m_guild;	
 };

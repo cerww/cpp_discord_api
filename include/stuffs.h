@@ -9,7 +9,7 @@
 #include <variant>
 #include "guild.h"
 
-constexpr permission combined_permissions(permission p1, permission p2) {
+inline permission combined_permissions(const permission& p1, const permission& p2) {
 	return p1 | p2;
 }
 
@@ -27,20 +27,21 @@ std::enable_if_t<
 	is_range_of_v<overwrite_range_t, permission_overwrite>
 	&& is_range_of_v<roles_range, guild_role>, permission> combined_permissions(roles_range&& roles , overwrite_range_t&& overwrites, const Guild& guild) {
 	
-	std::vector<std::variant<const guild_role*, permission_overwrite>> perms_list_all;
+	std::vector<std::variant<const guild_role*, const permission_overwrite*>> perms_list_all;
 
 	if constexpr (ranges::sized_range<roles_range> && ranges::sized_range<overwrite_range_t>) {
-		perms_list_all.reserve(overwrites.size() + roles.size());
+		perms_list_all.reserve(overwrites.size() + roles.size()+1);
 	} else if constexpr (ranges::sized_range<overwrite_range_t>) {
-		perms_list_all.reserve(overwrites.size());
+		perms_list_all.reserve(overwrites.size() + 1 + 3);
 	} else if constexpr (ranges::sized_range<roles_range>) {
-		perms_list_all.reserve(roles.size());
+		perms_list_all.reserve(roles.size()+1);
 	} else {
-		perms_list_all.reserve(2);//random number, should always contain at least 1 since @everyone role
+		perms_list_all.reserve(2 + 1);//random number, should always contain at least 1 since @everyone role
 	}
-
+	
+	perms_list_all.push_back(&guild.roles()[guild.id()]);
 	ranges::actions::push_back(perms_list_all, roles | ranges::views::addressof);
-	ranges::actions::push_back(perms_list_all, overwrites);
+	ranges::actions::push_back(perms_list_all, overwrites | ranges::views::addressof);
 	
 	std::sort(perms_list_all.begin(), perms_list_all.end(), [&](const auto& a,const auto& b) {
 		if (std::holds_alternative<permission_overwrite>(b) 
@@ -57,18 +58,18 @@ std::enable_if_t<
 			if(std::holds_alternative<const guild_role*>(a)) {
 				return std::get<const guild_role*>(a)->position();
 			}else {
-				return guild.roles()[std::get<permission_overwrite>(a).id()].position();
+				return guild.roles()[std::get<const permission_overwrite*>(a)->id()].position();
 			}
 		}();
 
 		const int idx_b = [&]() {
 			if (std::holds_alternative<const guild_role*>(b)) {
 				return std::get<const guild_role*>(b)->position();
-			}
-			else {
-				return guild.roles()[std::get<permission_overwrite>(b).id()].position();
+			} else {
+				return guild.roles()[std::get<const permission_overwrite*>(a)->id()].position();
 			}
 		}();
+		
 		return idx_a < idx_b;
 		
 	});
@@ -99,7 +100,7 @@ inline permission combined_permissions(const guild_member& member) {
 
 template<typename rng>
 std::enable_if_t<is_range_of_v<rng, permission_overwrite>, permission> combined_permissions(const guild_member& member, rng&& range) {
-	return combined_permissions(member.roles(), range | ranges::views::filter([&](permission_overwrite p) {
+	return combined_permissions(member.roles(), range | ranges::views::filter([&](const permission_overwrite& p) {
 		if (p.type() == overwrite_type::member) {
 			return member.id() == p.id();
 		}

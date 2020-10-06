@@ -277,10 +277,14 @@ inline guild_member internal_shard::make_member_from_msg(const nlohmann::json& u
 	from_json(user_json, (user&)ret);
 	
 	const auto it = member_json.find("nick");
-	if (it != member_json.end())
+	if (it != member_json.end()) {
 		ret.m_nick = it->is_null() ? "" : it->get<std::string>();
+	}
 
-	ret.m_roles = member_json["roles"] | ranges::views::transform(&nlohmann::json::get<snowflake>) | ranges::to<std::decay_t<decltype(ret.m_roles)>>();
+	auto& member_roles_json = member_json["roles"];
+	//ret.m_roles.reserve(member_roles_json.size() + 1);
+	ranges::push_back(ret.m_roles, member_roles_json| ranges::views::transform(&nlohmann::json::get<snowflake>));
+	//ret.m_roles = member_roles_json | ranges::views::transform(&nlohmann::json::get<snowflake>) | ranges::to<std::vector>();
 
 	//out.m_joined_at = in["joined_at"].get<timestamp>();
 
@@ -306,19 +310,18 @@ msg_t internal_shard::create_msg(channel_t& ch, const nlohmann::json& stuffs, ma
 		else {
 			retVal.m_author = make_member_from_msg(stuffs["author"], stuffs["member"]);
 			retVal.m_author.m_guild = ch.m_guild;
-			retVal.m_author.m_roles.push_back(ch.m_guild->id());
+			//retVal.m_author.m_roles.push_back(ch.m_guild->id());
 		}
 	} else {
 		retVal.m_author = stuffs["author"].get<user>();
 	}
-
 
 	if constexpr (is_guild_msg) {
 		retVal.m_mentions.reserve(stuffs["mentions"].size());
 		for (const auto& mention : stuffs["mentions"]) {
 			auto& member = retVal.m_mentions.emplace_back(make_member_from_msg(mention, mention["member"]));
 			member.m_guild = ch.m_guild;
-			member.m_roles.push_back(ch.m_guild->id());
+			//member.m_roles.push_back(ch.m_guild->id());
 		}
 	}else {
 		retVal.m_mentions = stuffs["mentions"].get<std::vector<user>>();
@@ -375,9 +378,6 @@ msg_t internal_shard::createMsgUpdate(channel_t& ch, const nlohmann::json& stuff
 		}
 	}
 		//stuffs.value("mention_roles", std::optional<std::vector<snowflake>>());
-	
-	
-
 	if constexpr (is_guild_msg) {
 		//retVal.m_mention_role_ids = stuffs.value("mention_roles",std::optional<std::vector<snowflake>>());
 
@@ -387,8 +387,9 @@ msg_t internal_shard::createMsgUpdate(channel_t& ch, const nlohmann::json& stuff
 			retVal.m_mention_roles = std::vector<const guild_role*>();
 			const Guild& guild = *ch.m_guild;
 			retVal.m_mention_roles->reserve(retVal.m_mention_role_ids->size());
-			for (const auto& role_id : *retVal.m_mention_role_ids)
+			for (const auto& role_id : *retVal.m_mention_role_ids) {
 				retVal.m_mention_roles->push_back(&guild.m_roles.at(role_id));
+			}
 		}
 	}
 	

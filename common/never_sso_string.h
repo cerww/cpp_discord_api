@@ -102,15 +102,12 @@ struct never_sbo_string {
 			return;
 		}
 		else {
-			if (m_capacity == 0) {
-				m_data = (char*)malloc(new_cap);  // NOLINT
-				m_capacity = (int)new_cap;
-			}
 			char* new_data = (char*)malloc(new_cap);  // NOLINT
 			std::copy(m_data, m_data + size(), new_data);
 			free(m_data);  // NOLINT
 			m_data = new_data;
 			m_capacity = (int)new_cap;
+			
 		}
 	}
 

@@ -19,10 +19,6 @@ int partial_guild::afk_timeout() const noexcept { return m_afk_timeout; }
 
 snowflake partial_guild::afk_channel_id() const noexcept { return m_afk_channel_id; }
 
-bool partial_guild::embed_enabled() const noexcept { return m_embed_enabled; }
-
-snowflake partial_guild::embed_channel_id() const noexcept { return m_embed_channel_id; }
-
 int partial_guild::verification_level() const noexcept { return m_verification_level; }
 
 bool partial_guild::explicit_content_filter() const noexcept { return m_explicit_content_filter; }
@@ -39,13 +35,11 @@ void from_json(const nlohmann::json& json, partial_guild& guild) {
 	guild.m_region = json["region"].get<std::string>();
 	guild.m_afk_channel_id = json["afk_channel_id"].get<snowflake>();
 	guild.m_afk_timeout = json["afk_timeout"].get<int>();
-	guild.m_embed_enabled = json.value("embed_enabled", false);
-	guild.m_embed_channel_id = json.value("embed_channel_id", snowflake());
 	guild.m_verification_level = json["verification_level"].get<int>();
 	guild.m_default_message_notifications = json["default_message_notifications"].get<int>();
 	guild.m_explicit_content_filter = json["explicit_content_filter"].get<int>();
 
-	guild.m_roles.reserve(json["roles"].size());
+	//guild.m_roles.reserve(json["roles"].size());
 	guild.m_roles = json["roles"] | ranges::views::transform(&get_then_return_id<guild_role>) | ranges::to<ref_stable_map<snowflake,guild_role>>();
 	
 	//for (const auto& r : json["roles"]) 

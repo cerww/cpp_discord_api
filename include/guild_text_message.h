@@ -2,7 +2,7 @@
 #include "partial_message.h"
 
 struct guild_text_message :partial_message {
-	const text_channel& channel() const noexcept;;
+	const text_channel& channel() const noexcept;
 	const Guild& guild() const noexcept;
 	const guild_member& author() const noexcept;
 
@@ -28,7 +28,7 @@ private:
 	friend struct msg_update_access;
 };
 
-static constexpr int asueohdasd = sizeof(std::vector<snowflake>);
+static constexpr int asueoasdasdhdasd = sizeof(std::vector<snowflake>);
 
 static constexpr int rawradsjksdfhksldjfa = sizeof(guild_member);
 static constexpr int rawradsjksdfhksldjf = sizeof(guild_text_message);
@@ -45,7 +45,8 @@ struct guild_msg_update :msg_update {
 	};
 
 	auto mention_roles() const noexcept {
-		//these could've been done with monanadic interface
+		//these could've been done with monanadic interface ;-;
+		//return m_mention_roles.transform(ranges::views::indirect);
 		using return_type = decltype(std::optional(m_mention_roles.value() | ranges::views::indirect));
 		if (m_mention_roles.has_value()) {
 			return std::optional(m_mention_roles.value() | ranges::views::indirect);

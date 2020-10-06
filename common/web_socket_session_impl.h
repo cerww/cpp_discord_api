@@ -29,7 +29,7 @@ struct web_socket_session_impl :ref_counted {
 	std::function<void(std::string)> on_read = [](auto&&...) {};
 	std::function<void(std::vector<std::byte>)> on_binary = [](auto&&...) {};
 
-	std::function<cerwy::task<void>(boost::beast::error_code)> on_error = [](auto&&...) { return cerwy::make_ready_void_task(); };
+	std::function<cerwy::task<void>(boost::beast::error_code)> on_error = [](auto&&...) { return cerwy::make_ready_void_task(); };//reconsider task?
 
 	cerwy::task<void> reconnect(std::string uri);
 	cerwy::task<void> connect(std::string uri);

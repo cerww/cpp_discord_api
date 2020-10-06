@@ -14,6 +14,10 @@ void from_json(const nlohmann::json& in, guild_member& out) {
 
 discord_obj_map<guild_role> guild_member::id_to_role_map() const noexcept {
 	return m_guild->roles();
+}
+
+snowflake guild_member::guild_id() const noexcept {
+	return guild().id();
 };
 
 

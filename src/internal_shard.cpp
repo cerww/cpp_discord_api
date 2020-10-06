@@ -375,11 +375,8 @@ void internal_shard::send_resume() const {
 
 void internal_shard::apply_presences(const nlohmann::json& presences, Guild& guild) {
 	for (const auto& presence : presences) {
-		const auto id = presence["user"]["id"].get<snowflake>();
-		const auto& temp = presence["game"];
-		if (!temp.is_null()) {
-			guild.m_activities.insert(std::make_pair(id, temp.get<activity>()));
-		}
+		const auto id = presence["user"]["id"].get<snowflake>();		
+		guild.m_activities.insert(std::make_pair(id, presences["activities"].get<std::vector<activity>>()));
 		guild.m_status[id] = string_to_status(presence["status"].get_ref<const nlohmann::json::string_t&>());
 	}
 }
@@ -451,13 +448,10 @@ template<>
 void internal_shard::procces_event<event_name::GUILD_CREATE>(nlohmann::json& data) {
 	
 	//Guild& guild = m_guilds.insert(std::make_pair(data["id"].get<snowflake>(), data.get<Guild>())).first->second;
-	//
-	// std::ofstream file(data["id"].get<std::string>() + "wat.txt", std::ios::out);
-	// file << data.dump(1);
-	// file.close();
-	
+
 	Guild& guild = m_guilds[data["id"].get<snowflake>()];
 	data.get_to(guild);
+	guild.m_bot_id = m_self_user.id();
 	
 	if (m_intents.has_intents(intent::GUILD_MEMBERS) && guild.m_member_count >= large_threshold) {
 		guild.m_is_ready = false;
@@ -465,7 +459,7 @@ void internal_shard::procces_event<event_name::GUILD_CREATE>(nlohmann::json& dat
 	} else if (m_intents.has_intents(intent::GUILD_MEMBERS)) {
 		for (const auto& member_json : data["members"]) {
 			auto member = member_json.get<guild_member>();
-			member.m_roles.push_back(guild.id());
+			//member.m_roles.push_back(guild.id());
 			member.m_guild = &guild;
 			const auto id = member.id();
 			guild.m_members.insert(std::make_pair(id, std::move(member)));
@@ -475,10 +469,14 @@ void internal_shard::procces_event<event_name::GUILD_CREATE>(nlohmann::json& dat
 	const auto channels = data["channels"].get_ref<const nlohmann::json::array_t&>();
 	guild.m_text_channel_ids.reserve(channels.size());
 	guild.m_voice_channel_ids.reserve(std::max(3ull, channels.size() / 10));//random numbers
+	guild.m_channel_catagory_ids.reserve(std::max(6ull, channels.size() / 8));
+	
+	guild.m_text_channels.reserve(channels.capacity());
+	guild.m_voice_channels.reserve(guild.m_voice_channel_ids.capacity());
+	guild.m_channel_catagories.reserve(guild.m_channel_catagory_ids.capacity());
 
 	for (const auto& channel_json : channels) {
 		if (const auto type = channel_json["type"].get<int>(); type == 0 || type == 5 || type == 6) {//text
-			//auto& channel = m_text_channel_map.insert(std::make_pair(channel_json["id"].get<snowflake>(), channel_json.get<text_channel>())).first->second;
 			auto& channel = guild.m_text_channels[channel_json["id"].get<snowflake>()];
 			channel_json.get_to(channel);
 			channel.m_guild_id = guild.id();
@@ -492,14 +490,12 @@ void internal_shard::procces_event<event_name::GUILD_CREATE>(nlohmann::json& dat
 				channel.m_channel_type = text_channel_type::store;
 			}
 		} else if (type == 2) {//voice
-			//auto& channel = m_voice_channel_map.insert(std::make_pair(channel_json["id"].get<snowflake>(), channel_json.get<voice_channel>())).first->second;
 			auto& channel = guild.m_voice_channels[channel_json["id"].get<snowflake>()];
 			channel_json.get_to(channel);
 			channel.m_guild_id = guild.id();
 			guild.m_voice_channel_ids.push_back(channel.id());
 			channel.m_guild = &guild;
 		} else if (type == 4) {//guild catagory
-			//auto& channel = m_channel_catagory_map.insert(std::make_pair(channel_json["id"].get<snowflake>(), channel_json.get<channel_catagory>())).first->second;
 			auto& channel = guild.m_channel_catagories[channel_json["id"].get<snowflake>()];
 			channel_json.get_to(channel);
 			channel.m_guild_id = guild.id();
@@ -509,7 +505,6 @@ void internal_shard::procces_event<event_name::GUILD_CREATE>(nlohmann::json& dat
 			//unimplemented channel
 		}
 
-		//type == 1,3 is missing since it's DM channel, dm channels don't exist in guild channels
 	}
 
 	for (auto& channel : guild.m_text_channel_ids |
@@ -547,7 +542,7 @@ void internal_shard::procces_event<event_name::GUILD_MEMBERS_CHUNK>(nlohmann::js
 	Guild& g = m_guilds[e["guild_id"].get<snowflake>()];//guild_id will always be in m_guilds?
 	for (const auto& i : e["members"]) {
 		auto temp_member = i.get<guild_member>();
-		temp_member.m_roles.push_back(g.id());
+		//temp_member.m_roles.push_back(g.id());
 		const auto id = temp_member.id();
 		temp_member.m_guild = &g;
 		g.m_members[id] = std::move(temp_member);
@@ -673,6 +668,7 @@ void internal_shard::procces_event<event_name::MESSAGE_CREATE>(nlohmann::json& e
 
 template<>
 void internal_shard::procces_event<event_name::CHANNEL_CREATE>(nlohmann::json& channel_json) {
+	//TODO Bots no longer receive Channel Create Gateway Event for DMs
 	const auto guild_id = channel_json.value("guild_id", snowflake{});
 	const auto type = channel_json["type"].get<int>();
 	if (guild_id.val) {
@@ -827,7 +823,7 @@ void internal_shard::procces_event<event_name::GUILD_MEMBER_ADD>(nlohmann::json&
 
 	auto member = e.get<guild_member>();
 	member.m_guild = &guild;
-	member.m_roles.push_back(guild.id());
+	//member.m_roles.push_back(guild.id());
 	const auto member_id = member.m_id;
 
 	auto& member_ref = guild.m_members.insert(std::pair(member_id, std::move(member))).first->second;
@@ -966,11 +962,12 @@ template<>
 void internal_shard::procces_event<event_name::GUILD_DELETE>(nlohmann::json& e) {
 	const auto unavailable = e["unavailable"].get<bool>();
 	
-	//in case guild_create never came for some reason
+	//in case guild_create never came for some reason, when a guild is unavailable at the start, this is sent
 	const auto it = m_guilds.find(e["id"].get<snowflake>());	
-	if (it != m_guilds.end()) {		
+	if (it != m_guilds.end()) {
 		auto node_handle = m_guilds.extract(it);
-		auto& guild = m_deleted_guilds.emplace_back(std::chrono::steady_clock::now(), std::move(node_handle.mapped_ptr())).second;
+		//auto& guild = m_deleted_guilds.emplace_back(std::chrono::steady_clock::now(), std::move(node_handle.mapped_ptr())).second;
+		auto guild = std::move(node_handle.mapped_ptr());
 			
 		guild->set_dead();
 		
@@ -1380,18 +1377,10 @@ void internal_shard::procces_event<event_name::PRESENCE_UPDATE>(nlohmann::json& 
 
 		auto& member = member_it->second;
 		if (const auto status_it = e.find("status"); status_it != e.end()) {
-			//user.m_status = string_to_status(status_it->get<std::string_view>());
+			guild.m_status[member.id()] = string_to_status(status_it->get<std::string_view>());
 		}
 
-		member.m_roles = e.value("roles", member.m_roles);
-		if (const auto it = e.find("game"); it != e.end()) {
-			const auto& game = *it;
-			if (game.is_null()) {
-				guild.m_activities[id] = std::nullopt;
-			} else {
-				guild.m_activities[id] = game.get<activity>();
-			}
-		}
+		
 		if (m_parent_client->on_presence_update.has_value()) {
 			m_parent_client->on_presence_update.value()(member, *this);
 		}

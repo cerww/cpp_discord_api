@@ -30,7 +30,7 @@ int main() {
 
 	
 	webhook_client c2(snowflake(731786996493844591ull),"k8ElkHsnKrD83NkWiRniQhRHbR_JsXgiF038MecLLCem2bxcYaI2UuH74cOn6QwEWX9-");
-	c2.send("aaa");
+	c2.send("aaa").execute_and_ignore();
 	std::thread t([&]() {
 		c2.run();
 	});		
@@ -43,7 +43,7 @@ int main() {
 			co_await s.send_with_webhook(hook, "rawrworld");
 			auto wh_client = s.make_webhook_client(hook);				
 			co_await wh_client.send("potatoland");
-			co_await wh_client.send("potatoland2");
+			co_await wh_client.send("potatoland2").ignoring_result();
 			
 			co_await s.modify_webhook(hook,modify_webhook_settings().name("charizard"));
 

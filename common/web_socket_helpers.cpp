@@ -90,13 +90,13 @@ cerwy::task<boost::beast::websocket::stream<boost::asio::ip::tcp::socket>> ws_fr
 	co_return std::move(web_socket);
 }
 
+constexpr int asdasda = sizeof(boost::asio::ssl::context);
 
 cerwy::task<boost::beast::websocket::stream<boost::beast::ssl_stream<boost::asio::ip::tcp::socket>>> wss_from_uri(
 	std::string_view full_uri,
 	boost::asio::ip::tcp::resolver& resolver,
 	boost::asio::ssl::context& ssl_ctx) {
 
-	constexpr int a = sizeof(boost::asio::ssl::context);
 	
 	auto [service, host, port,path] = rawr::parse_url_better(full_uri);
 	
@@ -112,10 +112,6 @@ cerwy::task<boost::beast::websocket::stream<boost::beast::ssl_stream<boost::asio
 	boost::asio::ip::tcp::socket socket(resolver.get_executor());
 
 	auto [ec2,ep] = co_await boost::asio::async_connect(socket, results, use_task_return_tuple2);
-
-	//co_await socket.async_connect(results,use_task_return_ec);
-	//socket.
-	//boost::asio::connect()
 	
 	if (!socket.is_open() || ec2) {
 		throw std::runtime_error(";-;");
@@ -142,7 +138,6 @@ cerwy::task<void> reconnect_wss_from_url(
 	boost::asio::ssl::context& ssl_ctx) {
 	
 	auto [service, host, port, path] = rawr::parse_url_better(full_uri);
-
 	
 	if (service == "wss") {
 		service = "https";

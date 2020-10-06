@@ -98,7 +98,7 @@ void web_socket_session_impl::kill_me() {
 
 cerwy::task<web_socket_session> create_session(
 	std::string_view uri,
-	boost::asio::io_context& ioc,
+	boost::asio::io_context& ioc,//TODO change this to any_io_executor or executor, watever is in boost 1.7.4
 	boost::asio::ssl::context_base::method c
 ) {
 	boost::asio::ip::tcp::resolver resolver(ioc);

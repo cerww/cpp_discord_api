@@ -82,7 +82,7 @@ void client::m_getGateway() {
 
 	boost::asio::connect(ssl_socket.next_layer(), resolver.resolve("discord.com", "https"));
 	ssl_socket.handshake(boost::asio::ssl::stream_base::client);
-	boost::beast::http::request<boost::beast::http::string_body> request(boost::beast::http::verb::get, "/api/v6/gateway/bot", 11);
+	boost::beast::http::request<boost::beast::http::string_body> request(boost::beast::http::verb::get, "/api/v8/gateway/bot", 11);
 	request.set("Application", "cerwy");
 	request.set(boost::beast::http::field::authorization, m_authToken);
 	request.set("Host", "discord.com"s);
@@ -106,7 +106,7 @@ void client::m_getGateway() {
 	}
 	nlohmann::json yay = nlohmann::json::parse(response.body());
 
-	m_gateway = yay["url"].get<std::string>() + "/?v=6&encoding=json";
+	m_gateway = yay["url"].get<std::string>() + "/?v=8&encoding=json";
 	if (m_num_shards == 0) {
 		m_num_shards = yay["shards"].get<int>();
 	}

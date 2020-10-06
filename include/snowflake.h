@@ -34,8 +34,10 @@ struct snowflake {
 		val(a) {}
 
 	uint64_t val = 0;//no reason to be private?
-	
-	
+
+	uint64_t as_int()const noexcept {
+		return val;
+	}
 };
 
 /*

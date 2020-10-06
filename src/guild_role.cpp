@@ -2,7 +2,7 @@
 
 int guild_role::position() const noexcept { return m_position; }
 
-permission guild_role::permissions() const noexcept { return m_permissions; }
+const permission& guild_role::permissions() const noexcept { return m_permissions; }
 
 snowflake guild_role::id() const noexcept { return m_id; }
 
@@ -16,7 +16,7 @@ std::string_view guild_role::name() const noexcept { return m_name; }
 
 void to_json(nlohmann::json& json, const guild_role& r) {
 	json["position"] = r.position();
-	json["permissions"] = r.permissions().data();
+	json["permissions"] = r.permissions();
 	json["id"] = r.id();
 	json["hoist"] = r.hoist();
 	json["mentionable"] = r.mentionable();

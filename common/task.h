@@ -61,8 +61,9 @@ struct shared_state_base_void :ref_counted {
 	}
 
 	void value() {
-		if (m_watland)
+		if (m_watland) {
 			std::rethrow_exception(*m_watland);
+		}
 	}
 
 protected:
@@ -158,8 +159,9 @@ template<typename T>
 struct non_shared_shared_state :non_shared_shared_state_base<T> {
 	void set_value(T a) {
 		this->set_value__(std::move(a));
-		if (this->m_awaiter)
+		if (this->m_awaiter) {
 			this->m_awaiter.resume();
+		}
 	}
 };
 
@@ -167,8 +169,9 @@ template<>
 struct non_shared_shared_state<void> :non_shared_shared_state_base<void> {
 	void set_value() {
 		this->set_value__();
-		if (this->m_awaiter)
+		if (this->m_awaiter) {
 			this->m_awaiter.resume();
+		}
 	}
 	/*
 	template<typename executor_t>

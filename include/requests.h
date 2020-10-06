@@ -18,6 +18,7 @@
 #include "dm_channel.h"
 #include "partial_message.h"
 #include "text_channel.h"
+#include "http_connection.h"
 
 
 // clang-format off
@@ -61,35 +62,47 @@ struct server_error final :std::exception {
 	}
 };
 
-struct shared_state :ref_counted {
-	//rename some of these?
-	std::atomic<bool> done = false;
-	boost::asio::io_context::strand* strand = nullptr;
-	std::vector<std::experimental::coroutine_handle<>> waiters{};
-	std::mutex ready_mut{};
-	std::mutex waiter_mut{};
-	std::condition_variable ready_cv{};
-	boost::beast::http::response<boost::beast::http::string_body> res = {};
+struct shared_state2 {	
 	std::optional<std::exception_ptr> exception;//rename?
-	std::atomic<bool> is_canceled = false;
-
-	void finish() {
-		done = true;
-		ready_cv.notify_all();
-
-		auto all_waiters = [&] {
-			std::lock_guard lock(waiter_mut);
-			return std::move(waiters);
-		}();
-
-		const auto execute_on_strand = [&](auto&& f) {
-			boost::asio::post(*strand, f);
-		};
-
-		std::ranges::for_each(all_waiters, execute_on_strand);
-
-	}
+	boost::asio::io_context::strand* strand = nullptr;
+	boost::beast::http::request<boost::beast::http::string_body> req;
+	boost::beast::http::response<boost::beast::http::string_body> res;
+	http_connection2* http_connection = nullptr;
 };
+
+static constexpr int asuodjhasdasd = sizeof(shared_state2);
+
+// struct shared_state :ref_counted {
+// 	//rename some of these?
+// 	std::atomic<bool> done = false;
+// 	boost::asio::io_context::strand* strand = nullptr;
+// 	std::vector<std::experimental::coroutine_handle<>> waiters{};
+// 	std::mutex ready_mut{};
+// 	std::mutex waiter_mut{};
+// 	std::condition_variable ready_cv{};
+// 	boost::beast::http::response<boost::beast::http::string_body> res = {};
+// 	std::optional<std::exception_ptr> exception;//rename?
+// 	std::atomic<bool> is_canceled = false;
+//
+// 	void finish() {
+// 		done = true;
+// 		ready_cv.notify_all();
+//
+// 		auto all_waiters = [&] {
+// 			std::lock_guard lock(waiter_mut);
+// 			return std::move(waiters);
+// 		}();
+//
+// 		const auto execute_on_strand = [&](auto&& f) {
+// 			boost::asio::post(*strand, f);
+// 		};
+//
+// 		std::ranges::for_each(all_waiters, execute_on_strand);
+//
+// 	}
+// };
+
+
 
 constexpr static int ajkdhas = sizeof(std::condition_variable);
 
@@ -97,7 +110,9 @@ template<typename U, typename = void>
 struct has_overload_value :std::false_type {};
 
 template<typename U>
-struct has_overload_value<U, std::void_t<decltype(std::declval<U>().overload_value())>> :std::true_type {};
+struct has_overload_value<U, std::void_t<decltype(std::declval<U>().overload_value(
+	std::declval<boost::beast::http::response<boost::beast::http::string_body>>()))
+>> :std::true_type {};
 
 static constexpr const char* application_json = "application/json";
 
@@ -130,134 +145,303 @@ struct with_exception {
 	T exception;
 };
 
-//TODO make it lazy?
-template<typename reqeust>
-struct request_base :private crtp<reqeust> {
+template<typename request_t>
+struct request_base :private crtp<request_t> {
 	request_base() = default;
 
-	explicit request_base(ref_count_ptr<shared_state> t_state):
+	explicit request_base(shared_state2 t_state) :
 		state(std::move(t_state)) {}
 
 	template<typename T>
-	explicit request_base(with_exception<T> e, boost::asio::io_context::strand* strand):
-		request_base(make_ref_count_ptr<shared_state>()) {
-		state->strand = strand;
-		state->done = true;
-		state->exception = std::make_exception_ptr(e.exception);
+	explicit request_base(with_exception<T> e, boost::asio::io_context::strand* strand) {
+		state.strand = strand;		
+		state.exception = std::make_exception_ptr(e.exception);
+		
 	}
 
 	template<typename ...Ts>
 	static auto request(Ts&&... t) {
 		return boost::beast::http::request<boost::beast::http::string_body>(
-			reqeust::verb,
-			"/api/v6" + reqeust::target(std::forward<Ts>(t)...),
+			request_t::verb,
+			"/api/v8" + request_t::target(std::forward<Ts>(t)...),
 			11
-		);
+			);
 	}
 
 	void handle_errors() const {
-		if (state->exception.has_value()) {
-			std::rethrow_exception(state->exception.value());
-		}else if(state->is_canceled) {
-			throw std::runtime_error("canceled");
+		if (state.exception.has_value()) {
+			std::rethrow_exception(state.exception.value());
 		}
-		const auto status = state->res.result_int();
-		if (status == 400)
+
+		const auto status = state.res.result_int();
+		if (status == 400) {
 			throw bad_request(";-;");
-		if (status == 401)
+		}else if (status == 401) {
 			throw unauthorized();
-		if (status == 403)
+		}else if (status == 403) {
 			throw forbidden();
-		if (status == 404)
+		}else if (status == 404) {
 			throw not_found();
-		if (status == 405)
+		}else if (status == 405) {
 			throw method_not_allowed();
-		if (status == 502)
+		}else if (status == 502) {
 			throw gateway_unavailable();
-		if (status >= 500)
+		}else if (status >= 500) {
 			throw server_error();
-	}
-
-	void wait() {
-		std::unique_lock<std::mutex> lock{state->ready_mut};
-		state->ready_cv.wait(lock, [this]()->bool { return ready(); });
-	}
-
-	bool ready() const noexcept {
-		return state->done.load(std::memory_order_relaxed);
-	}
-
-	// ReSharper disable CppMemberFunctionMayBeStatic
-	bool await_ready() const noexcept {
-		// ReSharper restore CppMemberFunctionMayBeStatic
-		return false;//await suspend checks instead
-	}
-
-	void await_suspend(std::experimental::coroutine_handle<> h) const {
-		std::unique_lock lock(state->waiter_mut);
-		if (ready()) {
-			lock.unlock();
-			h.resume();
-		} else {
-			state->waiters.push_back(h);
 		}
 	}
+	
+	bool await_ready() const noexcept {
+		return state.exception.has_value();
+	}
 
-	decltype(auto) await_resume() const {
-		if constexpr (!std::is_void_v<typename reqeust::return_type>)
-			return value();
+	void await_suspend(std::experimental::coroutine_handle<> h) {
+		discord_request r;
+		r.req = std::move(state.req);
+		r.on_finish = [this,h](auto res) {
+			state.res = std::move(res);
+			boost::asio::post(*state.strand, h);
+		};
+		state.http_connection->send(std::move(r));
 	}
 
 	decltype(auto) value() const {
+		// ReSharper disable CppRedundantTemplateKeyword
 		handle_errors();
-		if constexpr (has_overload_value<reqeust>::value)
-			return this->self().overload_value();
-		else if constexpr (!std::is_void_v<typename reqeust::return_type>)
-			return nlohmann::json::parse(state->res.body()).template get<typename reqeust::return_type>();
+		if constexpr (has_overload_value<request_t>::value)
+			return this->self().overload_value(state.res);
+		else if constexpr (!std::is_void_v<typename request_t::return_type>) {
+			return nlohmann::json::parse(state.res.body()).template get<typename request_t::return_type>();
+		}		
+		// ReSharper restore CppRedundantTemplateKeyword		
 	}
-		
-	//remove along with wait?
-	decltype(auto) get() {
-		wait();
-		handle_errors();
-		if constexpr (!std::is_void_v<typename reqeust::return_type>) {
+
+	decltype(auto) await_resume() const {
+		if constexpr (!std::is_void_v<typename request_t::return_type>)
 			return value();
+	}	
+
+	void execute_and_ignore() {
+		if (!state.exception.has_value()) {
+			discord_request r;
+			r.req = std::move(state.req);
+			state.http_connection->send(std::move(r));
 		}
 	}
-		
-	//returns awaitable and ignores the value returned from discord's api
-	auto async_wait() {
-		struct r {
-			request_base* me = nullptr;
+
+	auto ignoring_result() {
+		struct awaiter {
+			request_base r;
 
 			bool await_ready() {
-				return false;
+				return r.state.exception.has_value();
 			}
 
-			decltype(auto) await_suspend(std::experimental::coroutine_handle<> h) {
-				me->await_suspend(h);
+			void await_suspend(std::experimental::coroutine_handle<> h) {
+				discord_request ret;
+				ret.req = std::move(r.state.req);
+				ret.on_finish = [this,h](auto res) {
+					r.state.res = std::move(res);
+					boost::asio::post(*r.state.strand, h);
+				};
+				r.state.http_connection->send(std::move(ret));
 			}
 
-			// ReSharper disable once CppMemberFunctionMayBeStatic
-			decltype(auto) await_resume() {
-				//me->handle_errors();
-				//return me->await_resume();
+			void await_resume() {
+				r.handle_errors();
 			}
+			
+		};		
+		return awaiter{ std::move(*this) };
+	}
 
+	auto execute_await_later() {
+
+		struct stuffs {
+			explicit stuffs(request_t r):rq(std::move(r)){}
+			
+			request_t rq;
+			bool done = false;
+			std::experimental::coroutine_handle<> waiter;
+			std::mutex mut;
 		};
-		return r{this};
-	}
+		
+		struct awaiter {	
 
-	void cancel() const{
-		//don't set to canceled if already finished
-		if (!state->done) {
-			state->is_canceled = true;
+			bool await_ready() {
+				return shared_state->execption.has_value();
+			}
+
+			bool await_suspend(std::experimental::coroutine_handle<> h) {
+				std::lock_guard lock(shared_state->mut);
+				if(shared_state->done) {					
+					return true;
+				}else {
+					shared_state->waiter = h;
+					return false;
+				}
+			}
+
+			decltype(auto) await_resume() {
+				return shared_state->rq.await_ready();
+			};
+
+			
+			std::shared_ptr<stuffs> shared_state;
+		};
+		
+		std::shared_ptr<stuffs> shared_state = std::make_shared<stuffs>(std::move(this->self()));		
+		
+		if (!state.exception.has_value()) {
+			discord_request r;
+			r.req = std::move(shared_state.rq.state.req);
+			r.on_finish = [=,shared_state](auto res) {
+				{
+					std::lock_guard lock(shared_state->mut);
+					shared_state->done = true;
+					shared_state->rq.state.res = std::move(res);
+				}
+				//shared_state->done == true => the branch that modifies shared_state->waiter won't be executed
+				if (shared_state->waiter) {
+					boost::asio::post(*shared_state->rq.state.strand, shared_state->waiter);
+				}
+			};			
+			state.http_connection->send(std::move(r));
 		}
+		return awaiter{ std::move(shared_state) };
 	}
-
+	
 protected:
-	ref_count_ptr<shared_state> state;
+	shared_state2 state;
 };
+
+// template<typename reqeust>
+// struct request_base2 :private crtp<reqeust> {
+// 	request_base2() = default;
+//
+// 	explicit request_base2(ref_count_ptr<shared_state> t_state):
+// 		state(std::move(t_state)) {}
+//
+// 	template<typename T>
+// 	explicit request_base2(with_exception<T> e, boost::asio::io_context::strand* strand):
+// 		request_base2(make_ref_count_ptr<shared_state>()) {
+// 		state->strand = strand;
+// 		state->done = true;
+// 		state->exception = std::make_exception_ptr(e.exception);
+// 	}
+//
+// 	template<typename ...Ts>
+// 	static auto request(Ts&&... t) {
+// 		return boost::beast::http::request<boost::beast::http::string_body>(
+// 			reqeust::verb,
+// 			"/api/v6" + reqeust::target(std::forward<Ts>(t)...),
+// 			11
+// 		);
+// 	}
+//
+// 	void handle_errors() const {
+// 		if (state->exception.has_value()) {
+// 			std::rethrow_exception(state->exception.value());
+// 		}else if(state->is_canceled) {
+// 			throw std::runtime_error("canceled");
+// 		}
+// 		const auto status = state->res.result_int();
+// 		if (status == 400)
+// 			throw bad_request(";-;");
+// 		if (status == 401)
+// 			throw unauthorized();
+// 		if (status == 403)
+// 			throw forbidden();
+// 		if (status == 404)
+// 			throw not_found();
+// 		if (status == 405)
+// 			throw method_not_allowed();
+// 		if (status == 502)
+// 			throw gateway_unavailable();
+// 		if (status >= 500)
+// 			throw server_error();
+// 	}
+//
+// 	void wait() {
+// 		std::unique_lock<std::mutex> lock{state->ready_mut};
+// 		state->ready_cv.wait(lock, [this]()->bool { return ready(); });
+// 	}
+//
+// 	bool ready() const noexcept {
+// 		return state->done.load(std::memory_order_relaxed);
+// 	}
+//
+// 	// ReSharper disable CppMemberFunctionMayBeStatic
+// 	bool await_ready() const noexcept {
+// 		// ReSharper restore CppMemberFunctionMayBeStatic
+// 		return false;//await suspend checks instead
+// 	}
+//
+// 	void await_suspend(std::experimental::coroutine_handle<> h) const {
+// 		std::unique_lock lock(state->waiter_mut);
+// 		if (ready()) {
+// 			lock.unlock();
+// 			h.resume();
+// 		} else {
+// 			state->waiters.push_back(h);
+// 		}
+// 	}
+//
+// 	decltype(auto) await_resume() const {
+// 		if constexpr (!std::is_void_v<typename reqeust::return_type>)
+// 			return value();
+// 	}
+//
+// 	decltype(auto) value() const {
+// 		handle_errors();
+// 		if constexpr (has_overload_value<reqeust>::value)
+// 			return this->self().overload_value(state->res);
+// 		else if constexpr (!std::is_void_v<typename reqeust::return_type>)
+// 			return nlohmann::json::parse(state->res.body()).template get<typename reqeust::return_type>();
+// 	}
+// 		
+// 	//remove along with wait?
+// 	decltype(auto) get() {
+// 		wait();
+// 		handle_errors();
+// 		if constexpr (!std::is_void_v<typename reqeust::return_type>) {
+// 			return value();
+// 		}
+// 	}
+// 		
+// 	//returns awaitable and ignores the value returned from discord's api
+// 	auto async_wait() {
+// 		struct r {
+// 			request_base* me = nullptr;
+//
+// 			bool await_ready() {
+// 				return false;
+// 			}
+//
+// 			decltype(auto) await_suspend(std::experimental::coroutine_handle<> h) {
+// 				me->await_suspend(h);
+// 			}
+//
+// 			// ReSharper disable once CppMemberFunctionMayBeStatic
+// 			decltype(auto) await_resume() {
+// 				//me->handle_errors();
+// 				//return me->await_resume();
+// 			}
+//
+// 		};
+// 		return r{this};
+// 	}
+//
+// 	void cancel() const{
+// 		//don't set to canceled if already finished
+// 		if (!state->done) {
+// 			state->is_canceled = true;
+// 		}
+// 	}
+//
+// protected:
+// 	ref_count_ptr<shared_state> state;
+// };
 
 struct get_guild :
 		request_base<get_guild>,
@@ -588,7 +772,6 @@ struct delete_own_reaction :
 	static std::string target(const partial_message& msg, const reaction& reaction) {
 		return target(msg, reaction.emoji());
 	}
-
 };
 
 struct delete_user_reaction :
@@ -620,7 +803,6 @@ struct get_reactions :
 	static std::string target(const partial_message& msg, const reaction& emoji) {
 		return "/channels/{}/messages/{}/reactions/{}"_format(msg.channel_id(), msg.id(), emoji.emoji().to_reaction_string());
 	}
-
 };
 
 struct delete_all_reactions :
@@ -647,7 +829,6 @@ struct delete_all_reactions_emoji :
 	static std::string target(const partial_message& msg, const reaction& reaction) {
 		return target(msg, reaction.emoji());
 	}
-
 };
 
 struct typing_start :
@@ -707,8 +888,8 @@ struct add_guild_member :
 		return "/guilds/{}/members/{}"_format(g.id(), id);
 	}
 
-	snowflake overload_value() const {
-		return nlohmann::json::parse(state->res.body())["id"].get<snowflake>();
+	snowflake overload_value(const boost::beast::http::response<boost::beast::http::string_body>&) const {
+		return nlohmann::json::parse(state.res.body())["id"].get<snowflake>();
 	}
 };
 
@@ -878,7 +1059,6 @@ struct get_message :
 	}
 };
 
-
 struct get_webhook :
 		request_base<get_webhook>,
 		get_verb {
@@ -905,7 +1085,6 @@ struct get_channel_webhooks :
 	static std::string target(const partial_channel& channel) {
 		return "/channels/{}/webhooks"_format(channel.id());
 	}
-
 };
 
 struct get_guild_webhooks :
@@ -932,8 +1111,6 @@ struct create_webhook :
 	static std::string target(const partial_channel& ch) {
 		return "/channels/{}/webhooks"_format(ch.id());
 	}
-
-
 };
 
 struct execute_webhook :
@@ -969,7 +1146,6 @@ struct modify_webhook :
 	static std::string target(snowflake id, std::string_view token) {
 		return "/webhooks/{}/{}"_format(id, token);
 	}
-
 };
 
 struct get_audit_log :

@@ -19,7 +19,7 @@ struct ytdl_source {
 			ytdl_pipe(std::make_unique<boost::process::async_pipe>(ioc)),
 			ffmpeg_pipe(std::make_unique<boost::process::async_pipe>(ioc)),
 			ytdl_child(
-				fmt::format("youtube-dl -f bestaudio  \"{}\" -o - --buffer-size 16384", url), boost::process::std_out > *ytdl_pipe,
+				fmt::format("youtube-dl -f bestaudio  \"{}\" -o - --buffer-size 8192", url), boost::process::std_out > *ytdl_pipe,
 				//boost::process::std_err > stderr, 
 				boost::process::std_err.null(),
 				ioc),
@@ -90,7 +90,7 @@ struct ytdl_search_source {
 			ytdl_pipe(std::make_unique<boost::process::async_pipe>(ioc)),
 			ffmpeg_pipe(std::make_unique<boost::process::async_pipe>(ioc)),
 			ytdl_child(
-				fmt::format("youtube-dl -f bestaudio  ytsearch1:\"{}\" -o - --buffer-size 16384 --no-playlist", query), boost::process::std_out > * ytdl_pipe,
+				fmt::format("youtube-dl -f bestaudio  ytsearch1:\"{}\" -o - --buffer-size 8192 --no-playlist", query), boost::process::std_out > * ytdl_pipe,
 				boost::process::std_err.null(),
 				ioc),
 			ffmpeg_child(
@@ -139,6 +139,7 @@ struct ytdl_search_source {
 		std::chrono::milliseconds time_frame;
 	};
 
+	//gib async_generator
 	async_thingy frames(std::chrono::milliseconds a) const{
 		return async_thingy(m_search_query, m_ioc, a);
 	}

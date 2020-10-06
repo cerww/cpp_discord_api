@@ -12,8 +12,20 @@ struct Guild;
 struct guild_member :partial_guild_member {
 	const Guild& guild() const noexcept;;
 
-	auto roles() const {
+	snowflake guild_id() const noexcept;
+
+	auto roles_exclude_everyone() const {
 		return role_ids() | ranges::views::transform(hof::map_with(id_to_role_map()));
+	}
+
+	auto roles() const {
+		return ranges::views::iota(0ull, role_ids().size() + 1) | ranges::views::transform([&](size_t idx) ->const guild_role& {
+			if (idx == role_ids().size()) {
+				return id_to_role_map()[guild_id()];
+			} else {
+				return id_to_role_map()[m_roles[idx]];
+			}
+		});
 	}
 
 	// auto roles_sorted() const{
@@ -22,13 +34,14 @@ struct guild_member :partial_guild_member {
 	// 	}
 	// 	return roles();
 	// }
-	
+
 private:
 	ref_count_ptr<Guild> m_guild = nullptr;
 	//mutable bool m_roles_are_sorted = false;
-	
+
 	discord_obj_map<guild_role> id_to_role_map() const noexcept;
-	
+
+
 	friend void from_json(const nlohmann::json& in, guild_member& out);
 	friend struct internal_shard;
 };
@@ -45,4 +58,3 @@ struct fmt::formatter<guild_member, Char> :fmt::formatter<std::string_view, Char
 		return fmt::formatter<std::string_view, Char>::format(person.to_mentionable_string(), ctx);
 	}
 };
-

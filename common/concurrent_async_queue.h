@@ -5,6 +5,8 @@
 #include <span>
 #include <algorithm>
 #include "async_mutex.h"
+#include <deque>
+#include <iostream>
 
 template<typename T>
 struct concurrent_async_queue {
@@ -234,6 +236,7 @@ template<typename T>
 struct async_queue_maybe_better {
 
 	void push(T thing) {
+		std::cout << (uint64_t)this << std::endl;
 		auto coro_to_resume = [&]()->std::experimental::coroutine_handle<> {//iife for lock_guard
 			std::lock_guard lock(m_mut);
 

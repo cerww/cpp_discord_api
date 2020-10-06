@@ -18,7 +18,7 @@ struct thingy_that_prints_after_destroyed {
 	thingy_that_prints_after_destroyed& operator=(thingy_that_prints_after_destroyed&&) = default;
 
 	~thingy_that_prints_after_destroyed() {
-		std::cout << thing_to_print << std::endl;;
+		std::cout << thing_to_print << std::endl;
 	}
 
 	std::string thing_to_print;

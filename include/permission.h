@@ -1,113 +1,130 @@
 #pragma once
 #include <nlohmann/json.hpp>
+#include "../common/big_uint.h"
 
 //needs to be own class so i can use | and & and add functions to it
 struct permission {
-	constexpr permission() = default;
-	constexpr explicit permission(const uint64_t t):m_permission(t){}
+	permission() = default;
+	
+	explicit permission(const uint64_t t):m_permission_bit_set(t){}
 
-	constexpr permission& add_permissions(uint64_t p) {
-		m_permission |= p;
+	permission(big_uint t):m_permission_bit_set(std::move(t)){}
+
+	permission& add_permissions(uint64_t p) {
+		m_permission_bit_set |= p;
 		return *this;
 	};
 
-	constexpr permission& add_permissions(permission p) {
-		m_permission |= p.data();
+	permission& add_permissions(const big_uint& p) {
+		m_permission_bit_set |= p;
 		return *this;
+	};
+
+	permission& add_permissions(permission p) {
+		return add_permissions(p.data());
 	};
 	
-	constexpr permission& remove_permissions(size_t p) {
-		m_permission &= ~p;
-		return *this;
-	};
-
-	constexpr permission& remove_permissions(permission p) {
-		m_permission &= ~p.data();
-		return *this;
-	};
-
-	constexpr permission& combine_permissions(permission other) {
-		m_permission |= other.m_permission;
+	permission& remove_permissions(const big_uint& p) {
+		//m_permission_bit_set &= ~p;
+		bitwise_and_but_missing_bits_are_1(std::move(m_permission_bit_set), ~p);
 		return *this;
 	}
 
-	constexpr permission intersection(permission other) const noexcept{
+	permission& remove_permissions(const permission& p) {
+		//m_permission_bit_set &= ~p.data();
+		bitwise_and_but_missing_bits_are_1(std::move(m_permission_bit_set), ~p.data());
+		return *this;
+	}
+
+	permission& combine_permissions(const permission& other) {
+		m_permission_bit_set |= other.m_permission_bit_set;
+		return *this;
+	}
+
+	permission intersection(const permission& other) const noexcept{
 		return *this & other;
 	}
 
-	constexpr bool has_permission(size_t p) const noexcept{
-		return (m_permission & p) == p;
-	};
+	bool has_permission(uint64_t p) const noexcept{
+		return (m_permission_bit_set & p) == p;
+	}
 
-	constexpr bool has_permission(permission p) const noexcept {
-		return (m_permission & p.data()) == p.data();
-	};
+	bool has_permission(const permission& p) const noexcept {
+		return (m_permission_bit_set & p.data()) == p.data();
+	}
 
-	constexpr permission operator|(permission other) const noexcept{
+	permission operator|(permission other) const noexcept{
 		return other.combine_permissions(*this);
 	}
 
-	constexpr permission operator&(permission other) const noexcept {
-		return permission(m_permission & other.m_permission);
+	permission operator&(const permission& other) const noexcept {
+		return permission(m_permission_bit_set & other.m_permission_bit_set);
 	}
 
-	constexpr permission operator+(permission o) const noexcept{
+	permission operator+(permission o) const noexcept{
 		return o.add_permissions(*this);
 	}
 
-	constexpr permission operator-(permission o) const noexcept {
+	permission operator-(const permission& o) const noexcept {
 		return permission(*this).remove_permissions(o);
 	}
 
-	constexpr permission& operator+=(permission o) noexcept {
+	permission& operator+=(const permission& o) noexcept {
 		return add_permissions(o);
 	}
 
-	constexpr permission& operator-=(permission o) noexcept {
+	permission& operator-=(const permission& o) noexcept {
 		return remove_permissions(o);
 	}	
 	
-	constexpr size_t data()const noexcept { return m_permission; }
-private:
-	uint64_t m_permission = 0;	
+	const big_uint& data()const noexcept { return m_permission_bit_set; }
+private:	
+	big_uint m_permission_bit_set;
+	friend void from_json(const nlohmann::json&, permission&);
 };
 
 inline void to_json(nlohmann::json& json, const permission& p) {
-	json = p.data();
+	//json = p.data();
+	json = "0";
 };
 
 inline void from_json(const nlohmann::json& json, permission& p) {
-	if (json.is_null())return;
-	p = permission(json.get<size_t>());
+	if (json.is_null()) {
+		return;
+	}
+	//p = permission(json.get<uint64_t>());
+	p.m_permission_bit_set = big_uint(json.get<std::string_view>());
+	
 }
 
 struct permissions {
-	static constexpr permission CREATE_INSTANT_INVITE	= permission(1);
-	static constexpr permission KICK_MEMBERS			= permission(2);
-	static constexpr permission BAN_MEMBERS				= permission(4);
-	static constexpr permission ADMINISTRATOR			= permission(8);
-	static constexpr permission MANAGE_CHANNELS			= permission(16);
-	static constexpr permission MANAGE_GUILD			= permission(32);
-	static constexpr permission ADD_REACTION			= permission(64);
-	static constexpr permission VIEW_AUDIT_LOG			= permission(128);
-	static constexpr permission VIEW_CHANNEL			= permission(1024);
-	static constexpr permission SEND_MESSAGES			= permission(2048);
-	static constexpr permission SEND_TTS_MESSAGES		= permission(4096);
-	static constexpr permission MANAGE_MESSAGES			= permission(8192);
-	static constexpr permission EMBED_LINKS				= permission(16384);
-	static constexpr permission ATTACH_FILES			= permission(32768);
-	static constexpr permission READ_MESSAGE_HISTORY	= permission(65536);
-	static constexpr permission MENTION_EVERYONE		= permission(131072);
-	static constexpr permission USE_EXTERNAL_EMOJIS		= permission(262144);
-	static constexpr permission CONNECT					= permission(1048576);
-	static constexpr permission SPEAK					= permission(2097152);
-	static constexpr permission MUTE_MEMBERS			= permission(4194304);
-	static constexpr permission DEAFEN_MEMBERS			= permission(8388608);
-	static constexpr permission MOVE_MEMBERS			= permission(16777216);
-	static constexpr permission USE_VAD					= permission(33554432);
-	static constexpr permission CHANGE_NICKNAME			= permission(67108864);
-	static constexpr permission MANAGE_NICKNAMES		= permission(134217728);
-	static constexpr permission MANAGE_ROLES			= permission(268435456);
-	static constexpr permission MANAGE_WEBHOOKS			= permission(536870912);
-	static constexpr permission MANAGE_EMOJIS			= permission(1073741824);
+	static const inline permission CREATE_INSTANT_INVITE	= permission(1);
+	static const inline permission KICK_MEMBERS				= permission(2);
+	static const inline permission BAN_MEMBERS				= permission(4);
+	static const inline permission ADMINISTRATOR			= permission(8);
+	static const inline permission MANAGE_CHANNELS			= permission(16);
+	static const inline permission MANAGE_GUILD				= permission(32);
+	static const inline permission ADD_REACTION				= permission(64);
+	static const inline permission VIEW_AUDIT_LOG			= permission(128);
+	static const inline permission VIEW_CHANNEL				= permission(1024);
+	static const inline permission SEND_MESSAGES			= permission(2048);
+	static const inline permission SEND_TTS_MESSAGES		= permission(4096);
+	static const inline permission MANAGE_MESSAGES			= permission(8192);
+	static const inline permission EMBED_LINKS				= permission(16384);
+	static const inline permission ATTACH_FILES				= permission(32768);
+	static const inline permission READ_MESSAGE_HISTORY		= permission(65536);
+	static const inline permission MENTION_EVERYONE			= permission(131072);
+	static const inline permission USE_EXTERNAL_EMOJIS		= permission(262144);
+	static const inline permission CONNECT					= permission(1048576);
+	static const inline permission SPEAK					= permission(2097152);
+	static const inline permission MUTE_MEMBERS				= permission(4194304);
+	static const inline permission DEAFEN_MEMBERS			= permission(8388608);
+	static const inline permission MOVE_MEMBERS				= permission(16777216);
+	static const inline permission USE_VAD					= permission(33554432);
+	static const inline permission CHANGE_NICKNAME			= permission(67108864);
+	static const inline permission MANAGE_NICKNAMES			= permission(134217728);
+	static const inline permission MANAGE_ROLES				= permission(268435456);
+	static const inline permission MANAGE_WEBHOOKS			= permission(536870912);
+	static const inline permission MANAGE_EMOJIS			= permission(1073741824);
 };
+

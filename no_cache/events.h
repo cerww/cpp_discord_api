@@ -18,33 +18,22 @@ namespace cacheless::events {
 struct presence_update_event {
 	//user user;
 	snowflake user_id;
-	std::vector<snowflake> roles;
 	std::optional<activity> game;
 	snowflake guild_id;
 	Status status;
 	std::vector<activity> activities;
 	client_status client_status;
-	std::optional<timestamp> premium_since;
-	std::optional<std::string> nick;
 
 };
 
 inline void from_json(const nlohmann::json& json, presence_update_event& e) {
 	//json["user"].get_to(e.user);
 	json["user"]["id"].get_to(e.user_id);
-	json["roles"].get_to(e.roles);
 	json["game"].get_to(e.game);
 	json["guild_id"].get_to(e.guild_id);
 	e.status = string_to_status(json["status"].get<std::string>());
 	json["activities"].get_to(e.activities);
-	json["client_status"].get_to(e.roles);
-	if (json.contains("premium_since")) {
-		e.premium_since = json["premium_since"].get<timestamp>();
-	}
-
-	if (json.contains("nick")) {
-		e.nick = json["nick"].get<std::string>();
-	}
+	json["client_status"].get_to(e.client_status);
 
 
 }
