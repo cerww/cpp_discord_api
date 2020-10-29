@@ -325,8 +325,8 @@ struct command_context {
 			const auto idx_of_whitespace_or_end = std::distance(content.begin(), std::find_if(content.begin(), content.end(), &isspace));
 			const auto command_name = content.substr(0, idx_of_whitespace_or_end);
 					
-			const auto command_name_as_string = std::string(command_name);
-			if (m_command_groups.contains(command_name_as_string)) {
+			const auto command_name_as_string = std::string(command_name);//usually SBO'd
+			if (m_command_groups.find(command_name_as_string) != m_command_groups.end()) {
 				content.remove_prefix(idx_of_whitespace_or_end);
 				m_command_groups[command_name_as_string].call(content, msg, s);
 			}
@@ -353,7 +353,7 @@ struct command_context {
 	}
 
 private:
-	std::unordered_map<std::string, command_group> m_command_groups;
+	ska::bytell_hash_map<std::string, command_group> m_command_groups;
 };
 
 const auto to_something_passable = [](auto&& arg) ->auto&& {

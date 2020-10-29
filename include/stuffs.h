@@ -39,17 +39,21 @@ std::enable_if_t<
 		perms_list_all.reserve(2 + 1);//random number, should always contain at least 1 since @everyone role
 	}
 	
-	perms_list_all.push_back(&guild.roles()[guild.id()]);
+	//perms_list_all.push_back(&guild.roles()[guild.id()]);
 	ranges::actions::push_back(perms_list_all, roles | ranges::views::addressof);
 	ranges::actions::push_back(perms_list_all, overwrites | ranges::views::addressof);
 	
-	std::sort(perms_list_all.begin(), perms_list_all.end(), [&](const auto& a,const auto& b) {
-		if (std::holds_alternative<permission_overwrite>(b) 
-			&& std::get<permission_overwrite>(b).type() == overwrite_type::member)
+	auto it = ranges::partition(perms_list_all,[](const auto& a) {
+		return std::holds_alternative<const permission_overwrite*>(a) && std::get<const permission_overwrite*>(a)->type() == overwrite_type::member;
+	});
+	
+	std::sort(it, perms_list_all.end(), [&](const auto& a,const auto& b) {
+		if (std::holds_alternative<const permission_overwrite*>(b)
+			&& std::get<const permission_overwrite*>(b)->type() == overwrite_type::member)
 		{			
 			return true;
-		}else if (std::holds_alternative<permission_overwrite>(a) 
-			&& std::get<permission_overwrite>(a).type() == overwrite_type::member) 
+		}else if (std::holds_alternative<const permission_overwrite*>(a)
+			&& std::get<const permission_overwrite*>(a)->type() == overwrite_type::member)
 		{
 			return false;
 		}
@@ -80,7 +84,7 @@ std::enable_if_t<
 			const auto& role = *std::get<const guild_role*>(overwrite_or_role);
 			ret_val.add_permissions(role.permissions());
 		}else {
-			const auto overwrite = std::get<permission_overwrite>(overwrite_or_role);
+			const auto overwrite = *std::get<const permission_overwrite*>(overwrite_or_role);
 			ret_val.add_permissions(overwrite.allow());
 			ret_val.remove_permissions(overwrite.deny());
 		}

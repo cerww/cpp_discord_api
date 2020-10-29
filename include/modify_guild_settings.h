@@ -2,8 +2,6 @@
 #include <string>
 #include "snowflake.h"
 
-
-
 struct guild_settings {
 
 	struct name {

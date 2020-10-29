@@ -37,7 +37,8 @@ struct connection_stuffs {
 };
 
 //wat is asio.ssl.337690831
-#include <openssl/err.h>
+//#include <openssl/err.h>
+
 
 int main() {
 	const std::string err = std::string(" (")
@@ -60,7 +61,7 @@ int main() {
 			connections[m.guild().id()].vc = std::move(connection);
 			connections[m.guild().id()].thingy = play_stuffs(connections[m.guild().id()].vc, connections[m.guild().id()].queue);			
 		} else {
-			co_await s.reply(m, "not connected");
+			co_await s.send_reply(m, "not connected");
 		}
 	});
 
@@ -72,7 +73,7 @@ int main() {
 			co_await connections[m.guild().id()].thingy;
 			connections.erase(m.guild().id());
 		} else {
-			s.reply(m, "wat");
+			co_await s.send_reply(m, "wat");
 		}
 	});
 
@@ -80,21 +81,21 @@ int main() {
 		if (connections.contains(m.guild().id())) {
 			connections[m.guild().id()].queue.push(std::string(query));
 		} else {
-			s.reply(m, "not connected");
+			s.send_reply(m, "not connected").execute_and_ignore();
 		}
 	});
 
 	command_thingy["show_queue"] += shiny::make_command([&](guild_text_message m,shard& s) {
 		if (connections.contains(m.guild().id())) {
 			auto stuff = connections[m.guild().id()].queue.data();
-			s.reply(m, connections[m.guild().id()].queue.data() | ranges::views::join('\n') | ranges::to<std::string>());
+			s.send_reply(m, connections[m.guild().id()].queue.data() | ranges::views::join('\n') | ranges::to<std::string>()).execute_and_ignore();
 		} else {
-			s.reply(m, "not connected");
+			s.send_reply(m, "not connected").execute_and_ignore();
 		}
 	});
 
 	command_thingy["say"] += shiny::make_command<std::string>([](std::string wat,guild_text_message m, shard& s) {
-		s.reply(m, wat);
+		s.send_reply(m, wat).execute_and_ignore();
 	});
 
 	c.on_guild_text_msg = hof::bind1st(&shiny::command_context::do_command, command_thingy);

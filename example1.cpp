@@ -1,4 +1,4 @@
-#include "include/client.h"
+﻿#include "include/client.h"
 #include <fstream>
 #include "include/modify_guild_settings.h"
 #include "common/mp3_audio_source.h"
@@ -31,6 +31,7 @@ cerwy::task<void> thingy(const Guild& g, shard& s) {
 		boost::asio::steady_timer timer(s.strand());
 		timer.expires_after(20s);
 		co_await timer.async_wait(use_task);
+		
 		auto& role = g.roles()[snowflake(725880768659980330)];
 		//s.send_message(s.text_channels().at(snowflake(504562059279728640)), role.to_mentionable_string() + " flag starts soon");
 	}
@@ -155,47 +156,42 @@ void test_big_int() {
 	a += 5;
 	assert(a == 5);
 	a = 6ull;
+	//std::cout << to_string(a) << std::endl;
 	assert(a == 6);
 	assert(a != 50);
 	a = 0xfffffffffull;
 	assert(a == 0xfffffffffull);
+	std::cout << to_string(a) << std::endl;
 	const auto a_squared = a * a;
 	a *= a;
 	assert(a_squared == a);
 	auto qwee = big_uint("1234567890101112");
+	std::cout << to_string(qwee) << std::endl;
 	qwee *= qwee;
+	std::cout << to_string(qwee) << std::endl;
 	qwee = 1 * std::move(qwee);
 	assert(qwee == big_uint("1524157875268711356997583636544"));
 	assert(qwee != big_uint("15241578752687113569975836365441"));
-	//assert(a == 0);
-	std::cout << "done big_uint tests ;-;" << std::endl;
 	
+	//assert(a == 0);
+	std::cout << "done big_uint tests ;-;" << std::endl;	
+}
+
+void test_big_uint_bug() {
+	auto qwee = big_uint("1234567890101112");
+	std::cout << to_string(qwee) << std::endl;
+	qwee *= qwee;
+	std::cout << to_string(qwee) << std::endl;
+	qwee = 1 * std::move(qwee);
+	assert(qwee == big_uint("1524157875268711356997583636544"));
+	assert(qwee != big_uint("15241578752687113569975836365441"));
 }
 
 //spam bot
 int main() {
-	std::vector<int> rawr(20);
-	auto asdasdasd = ranges::views::iota(0, (int)rawr.size()+1) | ranges::views::transform([&,default_val = 0](int a)mutable->int& {
-		if(a == (int)rawr.size()) {
-			return default_val;
-		}else {
-			return rawr[a];
-		}
-	});
-
-	using T = decltype(asdasdasd);
-	RANGES_ASSERT(ranges::sized_range<T>);
-	
-	
-	//test_transform_audio_thingy();
-	//thingy_to_debugy();
-
-	//std::cin.get();
-	//try {
-	//aujsdhasdasd();
-	//
-
-	test_big_int();
+	//test_big_uint_bug();
+	//setlocale(LC_ALL, "");
+	//test_big_int();
 	//std::cin.get();
 	client c;
 
@@ -330,6 +326,10 @@ int main() {
 			auto m2 = s.send_message(msg.channel(), "wat");
 			//m2.cancel();
 			auto m = co_await m1;
+		}else if(msg.content() == "fyy") {
+			//auto a = L"後生仔傾吓偈"s;
+			
+			//s.send_message(msg.channel(), ).execute_and_ignore();
 		}
 		//s.change_nick(wat.author(), wat.content());
 

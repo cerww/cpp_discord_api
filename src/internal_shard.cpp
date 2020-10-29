@@ -1064,7 +1064,8 @@ void internal_shard::procces_event<event_name::GUILD_MEMBER_UPDATE>(nlohmann::js
 		auto& member = (*it).second;
 		from_json(user_json, static_cast<user&>(member));
 
-		member.m_roles = e["roles"] | ranges::views::transform(&nlohmann::json::get<snowflake>) | ranges::to<boost::container::small_vector<snowflake, 5>>();
+		//member.m_roles = e["roles"] | ranges::views::transform(&nlohmann::json::get<snowflake>) | ranges::to<boost::container::small_vector<snowflake, 5>>();
+		member.m_roles = e["roles"] | ranges::views::transform(&nlohmann::json::get<snowflake>) | ranges::to<sbo_vector<snowflake,5>>();
 		if (const auto it2 = e.find("nick"); it2 != e.end()) {
 			member.m_nick = e["nick"].is_null() ? member.m_nick : e["nick"].get<std::string>();
 		}

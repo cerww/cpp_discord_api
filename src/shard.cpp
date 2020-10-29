@@ -63,8 +63,8 @@ void shard::set_up_request(boost::beast::http::request<boost::beast::http::strin
 }
 
 rq::send_message shard::send_message(const partial_channel& channel, std::string content) {
-	std::string body = R"({"content":")" + std::move(content) + "\"}";
-	return create_request<rq::send_message>(escape_stuffs(std::move(body)), channel);
+	std::string body = R"({"content":")" + escape_stuffs(std::move(content)) + "\"}";
+	return create_request<rq::send_message>(std::move(body), channel);
 }
 
 rq::send_message shard::send_message(const partial_channel& channel, std::string content, const embed& embed) {
@@ -74,7 +74,7 @@ rq::send_message shard::send_message(const partial_channel& channel, std::string
 	return create_request<rq::send_message>(body.dump(), channel);
 }
 
-rq::send_message shard::reply(const partial_message& msg, std::string content) {
+rq::send_message shard::send_reply(const partial_message& msg, std::string content) {
 	//std::string body = "{\"content\":\"" + std::move(content) + "\"}";
 	nlohmann::json body;
 	body["content"] = std::move(content);
@@ -82,7 +82,7 @@ rq::send_message shard::reply(const partial_message& msg, std::string content) {
 	return create_request<rq::send_message>(body.dump(), msg);
 }
 
-rq::send_message shard::reply(const partial_message& msg, std::string content, const embed& embed) {
+rq::send_message shard::send_reply(const partial_message& msg, std::string content, const embed& embed) {
 	nlohmann::json body;
 	body["content"] = std::move(content);
 	body["embed"] = embed;

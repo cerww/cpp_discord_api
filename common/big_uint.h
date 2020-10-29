@@ -7,6 +7,8 @@
 #include <charconv>
 #include <fmt/format.h>
 #include <range/v3/all.hpp>
+#include "sbo_vector.h"
+#include <iostream>
 
 
 struct big_uint {
@@ -74,7 +76,17 @@ struct big_uint {
 		}
 	}
 
-	big_uint(std::vector<uint32_t> data_t) :
+	// big_uint(std::vector<uint32_t> data_t) :
+	// 	m_data(std::move(data_t)) {
+	// 	trim_trailing_zeros();
+	// }
+	
+	big_uint(const std::vector<uint32_t>& data_t) :
+		m_data(std::move(data_t) | ranges::to<sbo_vector<uint32_t,4>>()) {
+		trim_trailing_zeros();
+	}
+	
+	big_uint(sbo_vector<uint32_t,4> data_t) :
 		m_data(std::move(data_t)) {
 		trim_trailing_zeros();
 	}
@@ -241,14 +253,6 @@ struct big_uint {
 	friend big_uint operator&(big_uint a, const big_uint& b) {
 		const auto size = std::max(a.data().size(), b.data().size());
 
-		const auto thing_a = [&](int idx)->uint32_t {
-			if (idx >= a.data().size()) {
-				return 0;
-			} else {
-				return a.data()[idx];
-			}
-		};
-
 		const auto thing_b = [&](int idx)->uint32_t {
 			if (idx >= b.data().size()) {
 				return 0;
@@ -269,14 +273,6 @@ struct big_uint {
 	friend big_uint operator|(big_uint a, const big_uint& b) {
 		const auto size = std::max(a.data().size(), b.data().size());
 
-		const auto thing_a = [&](int idx)->uint32_t {
-			if (idx >= a.data().size()) {
-				return 0;
-			} else {
-				return a.data()[idx];
-			}
-		};
-
 		const auto thing_b = [&](int idx)->uint32_t {
 			if (idx >= b.data().size()) {
 				return 0;
@@ -295,7 +291,9 @@ struct big_uint {
 		return a;
 	}
 
-	std::span<const uint32_t> data() const noexcept { return m_data; }
+	std::span<const uint32_t> data() const noexcept {
+		return m_data;
+	}
 
 	bool operator==(const big_uint&) const = default;
 
@@ -346,6 +344,7 @@ struct big_uint {
 	}
 
 	friend big_uint& operator*=(big_uint& a, const big_uint& other) {
+		
 		return a = a * other;
 	}
 
@@ -359,7 +358,7 @@ struct big_uint {
 		}
 		big_uint return_value = 0;
 		for (size_t j = 0; j < b.m_data.size(); ++j) {
-			const auto d_b = b.m_data[j];
+			const auto digit_b = b.m_data[j];
 			std::vector<uint32_t> rt;
 			rt.reserve(a.m_data.size() + 1 + j);
 			rt.resize(a.m_data.size() + j);
@@ -367,7 +366,7 @@ struct big_uint {
 			uint32_t carry = 0;
 			for (size_t i = 0; i < a.m_data.size(); ++i) {
 				const auto digit = a.m_data[i];
-				const uint64_t t = (uint64_t)digit * (uint64_t)d_b + carry;
+				const uint64_t t = (uint64_t)digit * (uint64_t)digit_b + carry;
 				rt[i + j] = (uint32_t)(t & 0xFFFFFFFF);
 				carry = (uint32_t)(t >> 32);
 			}
@@ -377,7 +376,7 @@ struct big_uint {
 			}
 
 			return_value += big_uint(std::move(rt)).trim_trailing_zeros();
-			//return_value.trim_trailing_zeros();
+			return_value.trim_trailing_zeros();
 		}
 		return_value.trim_trailing_zeros();
 		return return_value;
@@ -420,7 +419,6 @@ struct big_uint {
 	}
 
 	friend big_uint operator*(const big_uint& a, uint64_t b) {
-		//TODO
 		return a * big_uint(b);
 		// if (a == 0 || b == 0) {
 		// 	return 0;
@@ -440,7 +438,7 @@ struct big_uint {
 
 		const auto thing_a = [&](int idx)->uint32_t {
 			if (idx >= a.data().size()) {
-				return -1;
+				return 0xFFFFFFFF;
 			} else {
 				return a.data()[idx];
 			}
@@ -448,7 +446,7 @@ struct big_uint {
 
 		const auto thing_b = [&](int idx)->uint32_t {
 			if (idx >= b.data().size()) {
-				return -1;
+				return 0xFFFFFFFF;
 			} else {
 				return b.data()[idx];
 			}
@@ -466,28 +464,19 @@ struct big_uint {
 
 	friend big_uint bitwise_and_but_missing_bits_are_1(big_uint&& a, const big_uint& b) {
 		const auto size = std::max(a.data().size(), b.data().size());
-
-		const auto thing_a = [&](int idx)->uint32_t {
-			if (idx >= a.data().size()) {
-				return -1;
-			} else {
-				return a.data()[idx];
-			}
-		};
-
+			
 		const auto thing_b = [&](int idx)->uint32_t {
 			if (idx >= b.data().size()) {
-				return -1;
+				return 0xFFFFFFFF;
 			} else {
 				return b.data()[idx];
 			}
 		};
 
-		a.m_data.resize(size, -1);
-
+		a.m_data.resize(size, 0xFFFFFFFF);
 
 		for (int i = 0; i < size; ++i) {
-			a.m_data[i] = thing_a(i) & thing_b(i);
+			a.m_data[i] &= thing_b(i);
 		}
 
 		return std::move(a).trim_trailing_zeros();
@@ -545,7 +534,7 @@ struct big_uint {
 		if (other == 0 && m_data.empty()) {
 			return true;
 		}
-		return other >= 0 && m_data.size() == 1 && m_data.front() == (uint32_t)other;
+		return m_data.size() == 1 && m_data.front() == (uint32_t)other;
 	}
 
 
@@ -578,17 +567,124 @@ private:
 		return *this;
 	}
 
-	std::vector<uint32_t> m_data;
+	//std::vector<uint32_t> m_data;
+	sbo_vector<uint32_t, 4> m_data;
 };
 
-// template<typename Char>
-// struct fmt::formatter<big_uint,Char>:formatter<uint64_t,Char> {
-// 	
-// 	template <typename FormatContext>
-// 	auto format(const big_uint& val, FormatContext& ctx) { 
-// 		//TODO
-// 		return ctx;
-// 		//return formatter<uint64_t>::format(, ctx);
-// 	}
-// };
-//
+struct big_uint_to_string_accumulator {
+
+	big_uint_to_string_accumulator() = default;
+
+	explicit big_uint_to_string_accumulator(std::string d):
+		m_data(std::move(d)) {}
+
+	big_uint_to_string_accumulator& operator+=(const uint32_t n) {
+		uint64_t carry = n;
+		for (char& c : m_data) {
+			const auto r = c + carry;
+			c = (char)(r % 10);
+			carry = r / 10;
+		}
+		if (carry) {
+			m_data += std::to_string(carry) | ranges::actions::transform([](char c) { return c - '0'; }) | ranges::actions::reverse;
+		}
+		return *this;
+	}
+
+	//52*5213
+	//25
+	//2*5213 = 10426
+	//6
+	//carry = 1042
+	//5
+	//26065 + 1042
+	//27107
+	//7
+	//2710
+	//0172
+	//670172
+	//271076
+
+	big_uint_to_string_accumulator& operator*=(uint64_t n) {
+		big_uint_to_string_accumulator ret;
+
+		for (int i = 0; i < (int)m_data.size(); ++i) {
+			ret += big_uint_to_string_accumulator(
+				std::to_string(m_data[i] * n)
+				| ranges::actions::transform([](char c) { return c - '0'; })
+				| ranges::actions::reverse
+			).multiply_by_10_to_pow(i);
+		}
+
+		return *this = std::move(ret);
+	}
+
+	big_uint_to_string_accumulator& operator+=(const big_uint_to_string_accumulator& n) {
+		if (n.m_data.size() > m_data.size()) {
+			m_data.resize(n.m_data.size(), 0);
+		}
+
+		const auto other_n = [&](int idx) {
+			if (idx >= (int)n.m_data.size()) {
+				return 0;
+			}
+			return (int)n.m_data[idx];
+		};
+
+		char carry = 0;
+		for (int i = 0; i < (int)m_data.size(); ++i) {
+			m_data[i] += other_n(i) + carry;
+			carry = (char)(m_data[i] / (char)10);
+			m_data[i] %= 10;
+		}
+
+		if (carry) {
+			m_data += std::to_string((uint64_t)carry) | ranges::actions::transform([](char c) { return c - '0'; }) | ranges::actions::reverse;
+		}
+		return *this;
+	}
+
+	big_uint_to_string_accumulator& multiply_by_10_to_pow(int exp) {
+		m_data.resize(m_data.size() + exp);
+		std::shift_right(m_data.begin(), m_data.end(), exp);
+		std::fill(m_data.begin(), m_data.begin() + exp, 0);
+		return *this;
+	}
+
+	void reserve_before(size_t n) {
+		m_data.reserve(n);
+	}
+
+	std::string get_final_result() {
+		return std::move(m_data |= ranges::actions::transform([](char c) { return c + '0'; }) | ranges::actions::reverse);
+	}
+
+private:
+	std::string m_data;
+};
+
+inline std::string to_string(const big_uint& value) {
+	if (value == 0) {
+		return "0";
+	}
+
+	std::cout << "aaaaa" << std::endl;
+	big_uint_to_string_accumulator acc;
+	for (auto n : value.data() | ranges::views::reverse) {
+		std::cout << n << std::endl;
+		acc *= (uint64_t)std::numeric_limits<uint32_t>::max() + 1;
+		acc += n;
+	}
+	std::cout << "bbbbb" << std::endl;
+	return acc.get_final_result();
+}
+
+template<typename Char>
+struct fmt::formatter<big_uint,Char>:formatter<uint64_t,Char> {
+	
+	template <typename FormatContext>
+	auto format(const big_uint& val, FormatContext& ctx) { 
+		return formatter<uint64_t>::format(to_string(val), ctx);
+	}
+};
+

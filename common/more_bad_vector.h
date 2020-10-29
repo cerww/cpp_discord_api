@@ -9,6 +9,11 @@
 
 template<typename T>
 struct more_bad_vector {
+	using value_type = T;
+	using iterator = T*;
+	using const_iterator = const T*;
+	using reverse_iterator = std::reverse_iterator<T*>;
+	using const_reverse_iterator = std::reverse_iterator<const T*>;
 
 	more_bad_vector() = default;
 
@@ -19,7 +24,7 @@ struct more_bad_vector {
 	// 	std::uninitialized_copy(other.begin(), other.end(), begin());
 	// }
 
-	template<typename I,typename S>
+	template<typename I, typename S>
 	explicit more_bad_vector(I&& begin_t, S&& end_t) {
 		resize_uninitialize(ranges::distance(begin_t, end_t));
 		std::uninitialized_copy(begin_t, end_t, this->begin());
@@ -31,6 +36,18 @@ struct more_bad_vector {
 	// 	resize_uninitialize(size);
 	// 	std::uninitialized_move(other.begin(), other.end(), begin());
 	// }
+	//
+
+	explicit more_bad_vector(size_t init_size) {
+		resize_uninitialize(init_size);
+		std::uninitialized_default_construct(begin(), end());
+	}
+
+	template<typename U>
+	explicit more_bad_vector(size_t init_size,const U& init) {
+		resize_uninitialize(init_size);
+		std::uninitialized_fill(begin(), end(), init);
+	}
 
 	more_bad_vector(const more_bad_vector& other) {
 		if (other.size()) {
@@ -57,7 +74,7 @@ struct more_bad_vector {
 		m_data(std::exchange(other.m_data, nullptr)) { }
 
 	more_bad_vector& operator=(more_bad_vector&& other) noexcept {
-		if(&other == this) {
+		if (&other == this) {
 			return *this;
 		}
 		clear();
@@ -71,7 +88,7 @@ struct more_bad_vector {
 
 	T* begin() {
 		if (m_data) {
-			return (T*)(m_data + 16);
+			return std::launder((T*)(m_data + 16));
 		} else {
 			return nullptr;
 		}
@@ -79,30 +96,60 @@ struct more_bad_vector {
 
 	T* end() {
 		if (m_data) {
-			return (T*)((m_data + 16) + size());
+			return std::launder((T*)((m_data + 16) + size()));
 		} else {
 			return nullptr;
 		}
 	}
 
-	const T* begin() const{
+	const T* begin() const {
 		if (m_data) {
-			return (T*)(m_data + 16);
-		}
-		else {
+			return std::launder((T*)(m_data + 16));
+		} else {
 			return nullptr;
 		}
 	}
 
-	const T* end()const {
+	const T* end() const {
 		if (m_data) {
-			return (T*)((m_data + 16) + size());
-		}
-		else {
+			return std::launder((T*)((m_data + 16) + size()));
+		} else {
 			return nullptr;
 		}
 	}
-	
+
+	const T* cbegin() const {
+		if (m_data) {
+			return std::launder((T*)(m_data + 16));
+		} else {
+			return nullptr;
+		}
+	}
+
+	const T* cend() const {
+		if (m_data) {
+			return std::launder((T*)((m_data + 16) + size()));
+		} else {
+			return nullptr;
+		}
+	}
+
+	auto rbegin() {
+		return std::make_reverse_iterator(end());
+	}
+
+	auto rend() {
+		return std::make_reverse_iterator(begin());
+	}
+
+	auto rbegin() const {
+		return std::make_reverse_iterator(end());
+	}
+
+	auto rend() const {
+		return std::make_reverse_iterator(begin());
+	}
+
 	size_t size() const noexcept {
 		if (m_data) {
 			return *(size_t*)m_data;
@@ -120,16 +167,24 @@ struct more_bad_vector {
 		clear();
 		const auto size = std::size(from);
 		resize_uninitialize(size);
-		std::uninitialized_copy(from.begin(), from.end(), begin());		
+		std::uninitialized_copy(from.begin(), from.end(), begin());
 	}
 
-	template<typename range> requires std::is_rvalue_reference_v<range>//&& sized_range
-	void assign(range&& from) {
-		clear();
-		const auto size = std::size(from);
+	template<typename I, typename S>
+	void assign(I&& i, S&& s) {
+		const auto size = ranges::distance(i, s);
 		resize_uninitialize(size);
-		std::uninitialized_move(from.begin(), from.end(), begin());
+		std::uninitialized_copy(i, s, begin());
 	}
+
+	// template<typename range>
+	// requires std::is_rvalue_reference_v<range>//&& sized_range
+	// void assign(range&& from) {
+	// 	clear();
+	// 	const auto size = std::size(from);
+	// 	resize_uninitialize(size);
+	// 	std::uninitialized_move(from.begin(), from.end(), begin());
+	// }
 
 	void assign(const more_bad_vector& from) {
 		if (&from == this) {
@@ -145,19 +200,17 @@ struct more_bad_vector {
 	void assign(more_bad_vector&& from) {
 		if (&from == this) {
 			return;
-		}
-		else {
+		} else {
 			clear();
 			const auto size = std::size(from);
 			resize_uninitialize(size);
 			std::uninitialized_move(from.begin(), from.end(), begin());
 		}
 	}
-	
 
 	void clear() {
 		std::destroy(begin(), end());
-		free(m_data);
+		free(m_data);  // NOLINT
 		m_data = nullptr;
 	}
 
@@ -170,14 +223,14 @@ struct more_bad_vector {
 	}
 
 	T& at(size_t idx) {
-		if(idx<=size()) {
+		if (idx >= size()) {
 			throw std::runtime_error(";-;");
 		}
 		return begin()[idx];
 	}
 
 	const T& at(size_t idx) const {
-		if (idx <= size()) {
+		if (idx >= size()) {
 			throw std::runtime_error(";-;");
 		}
 		return begin()[idx];
@@ -191,11 +244,11 @@ struct more_bad_vector {
 		return *(end() - 1);
 	}
 
-	const T& front()const  {
+	const T& front() const {
 		return *begin();
 	}
 
-	const T& back()const {
+	const T& back() const {
 		return *(end() - 1);
 	}
 
@@ -206,13 +259,52 @@ struct more_bad_vector {
 	const T* data() const {
 		return begin();
 	}
-	
+
+	//no emplace_back, insert, reserve, erase
+
+	void resize(size_t new_size) {
+		const auto my_size = size();
+		if (new_size > my_size) {
+			more_bad_vector other;
+			other.resize_uninitialize(new_size);
+			std::uninitialized_move(begin(), end(), other.begin());
+			std::uninitialized_default_construct(other.begin() + my_size, other.begin() + new_size);
+			std::swap(other.m_data, m_data);
+		}else if(new_size < my_size) {
+			more_bad_vector other;
+			other.resize_uninitialize(new_size);
+			std::uninitialized_move(begin(), begin() + new_size, other.begin());
+			std::swap(other.m_data, m_data);
+		}
+	}
+
+	template<typename U>
+	void resize(size_t new_size,const U& init) {
+		const auto my_size = size();
+		if (new_size > my_size) {
+			more_bad_vector other;
+			other.resize_uninitialize(new_size);
+			std::uninitialized_move(begin(), end(), other.begin());
+			std::uninitialized_fill(other.begin() + my_size, other.begin() + new_size, init);
+			std::swap(other.m_data, m_data);
+		}
+		else if (new_size < my_size) {
+			more_bad_vector other;
+			other.resize_uninitialize(new_size);
+			std::uninitialized_move(begin(), begin() + new_size, other.begin());
+			std::swap(other.m_data, m_data);
+		}
+	}
+
 private:
 
 
 	void resize_uninitialize(size_t size) {
-		m_data = (std::byte*)malloc(size * sizeof(T) + 16);
-		*(size_t*)m_data = size;
+		assert(m_data == nullptr);
+		if (size != 0) {
+			m_data = (std::byte*)malloc(size * sizeof(T) + 16); // NOLINT
+			*(size_t*)m_data = size;
+		}
 	}
 
 	std::byte* m_data = nullptr;

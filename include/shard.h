@@ -38,153 +38,153 @@ public:
 	//content, attachment
 	//content, embed,attachment
 	//have optional allowed_mentions?
-	rq::send_message send_message(const partial_channel& channel, std::string content);
-	rq::send_message send_message(const partial_channel& channel, std::string content, const embed& embed);
+	[[nodiscard]]rq::send_message send_message(const partial_channel& channel, std::string content);
+	[[nodiscard]] rq::send_message send_message(const partial_channel& channel, std::string content, const embed& embed);
 
 	template<typename... modifiers>
 	requires(message_modifier<modifiers>&&...)
-	rq::send_message send_message(const partial_channel& channel, std::string content, modifiers&&...);
+		[[nodiscard]] rq::send_message send_message(const partial_channel& channel, std::string content, modifiers&&...);
 
 	template<typename... modifiers>
 	requires(message_modifier<modifiers>&&...)
-	rq::send_message send_message(const partial_channel& channel, std::string content, const embed& embed, modifiers&&...);
+	[[nodiscard]] rq::send_message send_message(const partial_channel& channel, std::string content, const embed& embed, modifiers&&...);
 
 	
-	rq::send_message reply(const partial_message& msg, std::string content);
-	rq::send_message reply(const partial_message& msg, std::string content, const embed& embed);
+	[[nodiscard]] rq::send_message send_reply(const partial_message& msg, std::string content);
+	[[nodiscard]] rq::send_message send_reply(const partial_message& msg, std::string content, const embed& embed);
 
 	template<typename... modifiers>
 	requires(message_modifier<modifiers>&&...)
-	rq::send_message reply(const partial_message& msg, std::string content, modifiers&&...);
+	[[nodiscard]] rq::send_message send_reply(const partial_message& msg, std::string content, modifiers&&...);
 
 	template<typename... modifiers>
 	requires(message_modifier<modifiers>&&...)
-	rq::send_message reply(const partial_message& msg, std::string content, const embed& embed, modifiers&&...);
+	[[nodiscard]] rq::send_message send_reply(const partial_message& msg, std::string content, const embed& embed, modifiers&&...);
 
-	rq::add_role add_role(const partial_guild&, const partial_guild_member&, const guild_role&);
-	rq::remove_role remove_role(const partial_guild&, const partial_guild_member&, const guild_role&);
+	[[nodiscard]] rq::add_role add_role(const partial_guild&, const partial_guild_member&, const guild_role&);
+	[[nodiscard]] rq::remove_role remove_role(const partial_guild&, const partial_guild_member&, const guild_role&);
 
-	rq::add_role add_role(const guild_member&, const guild_role&);
-	rq::remove_role remove_role(const guild_member&, const guild_role&);
-	rq::modify_member remove_all_roles(const partial_guild&, const guild_member&);
+	[[nodiscard]] rq::add_role add_role(const guild_member&, const guild_role&);
+	[[nodiscard]] rq::remove_role remove_role(const guild_member&, const guild_role&);
+	[[nodiscard]] rq::modify_member remove_all_roles(const partial_guild&, const guild_member&);
 
-	rq::create_role create_role(const partial_guild&, std::string, permission, int color = 0xffffff/*white*/, bool hoist = true, bool mentionable = true);
-	rq::delete_role delete_role(const partial_guild&, const guild_role&);
+	[[nodiscard]] rq::create_role create_role(const partial_guild&, std::string, permission, int color = 0xffffff/*white*/, bool hoist = true, bool mentionable = true);
+	[[nodiscard]] rq::delete_role delete_role(const partial_guild&, const guild_role&);
 
-	rq::modify_member change_nick(const guild_member&, std::string new_nick);
-	rq::modify_member change_nick(const partial_guild&, const user&, std::string new_nick);
+	[[nodiscard]] rq::modify_member change_nick(const guild_member&, std::string new_nick);
+	[[nodiscard]] rq::modify_member change_nick(const partial_guild&, const user&, std::string new_nick);
 
-	rq::modify_member assign_roles(const guild_member&, const std::vector<snowflake>& roles_ids);
-	rq::change_my_nick change_my_nick(const partial_guild&, std::string new_nick);
-	rq::kick_member kick_member(const partial_guild&, const partial_guild_member&);
-	rq::ban_member ban_member(const partial_guild& g, const partial_guild_member& member, std::string reason = "", int days_to_delete_msg = 0);
-	rq::unban_member unban_member(const partial_guild&, snowflake user_id);
+	[[nodiscard]] rq::modify_member assign_roles(const guild_member&, const std::vector<snowflake>& roles_ids);
+	[[nodiscard]] rq::change_my_nick change_my_nick(const partial_guild&, std::string new_nick);
+	[[nodiscard]] rq::kick_member kick_member(const partial_guild&, const partial_guild_member&);
+	[[nodiscard]] rq::ban_member ban_member(const partial_guild& g, const partial_guild_member& member, std::string reason = "", int days_to_delete_msg = 0);
+	[[nodiscard]] rq::unban_member unban_member(const partial_guild&, snowflake user_id);
 	//max 100 messages
-	rq::get_messages get_messages(const partial_channel&, int = 100);
-	rq::get_messages get_messages_before(const partial_channel&, snowflake, int = 100);
-	rq::get_messages get_messages_before(const partial_channel&, const partial_message&, int = 100);
-	rq::get_messages get_messages_after(const partial_channel&, snowflake, int = 100);
-	rq::get_messages get_messages_after(const partial_channel&, const partial_message&, int = 100);
-	rq::get_messages get_messages_around(const partial_channel&, snowflake, int = 100);
-	rq::get_messages get_messages_around(const partial_channel&, const partial_message&, int = 100);
-	rq::create_text_channel create_text_channel(const Guild&, std::string name, const std::vector<permission_overwrite>& = {}, bool nsfw = false);
-	rq::edit_message edit_message(const partial_message&, std::string new_content);
-	rq::create_voice_channel create_voice_channel(const Guild&, std::string name, const std::vector<permission_overwrite>& = {}, bool nsfw = false, int bit_rate = 96);
-	rq::create_channel_catagory create_channel_catagory(const Guild&, std::string name, const std::vector<permission_overwrite>& = {}, bool nsfw = false);
-	rq::delete_emoji delete_emoji(const partial_guild&, const partial_emoji&);
-	rq::modify_emoji modify_emoji(const partial_guild&, const partial_emoji&, std::string name, const std::vector<snowflake>& role_ids);
-	rq::delete_message delete_message(const partial_message&);
+	[[nodiscard]] rq::get_messages get_messages(const partial_channel&, int = 100);
+	[[nodiscard]] rq::get_messages get_messages_before(const partial_channel&, snowflake, int = 100);
+	[[nodiscard]] rq::get_messages get_messages_before(const partial_channel&, const partial_message&, int = 100);
+	[[nodiscard]] rq::get_messages get_messages_after(const partial_channel&, snowflake, int = 100);
+	[[nodiscard]] rq::get_messages get_messages_after(const partial_channel&, const partial_message&, int = 100);
+	[[nodiscard]] rq::get_messages get_messages_around(const partial_channel&, snowflake, int = 100);
+	[[nodiscard]] rq::get_messages get_messages_around(const partial_channel&, const partial_message&, int = 100);
+	[[nodiscard]] rq::create_text_channel create_text_channel(const Guild&, std::string name, const std::vector<permission_overwrite>& = {}, bool nsfw = false);
+	[[nodiscard]] rq::edit_message edit_message(const partial_message&, std::string new_content);
+	[[nodiscard]] rq::create_voice_channel create_voice_channel(const Guild&, std::string name, const std::vector<permission_overwrite>& = {}, bool nsfw = false, int bit_rate = 96);
+	[[nodiscard]] rq::create_channel_catagory create_channel_catagory(const Guild&, std::string name, const std::vector<permission_overwrite>& = {}, bool nsfw = false);
+	[[nodiscard]] rq::delete_emoji delete_emoji(const partial_guild&, const partial_emoji&);
+	[[nodiscard]] rq::modify_emoji modify_emoji(const partial_guild&, const partial_emoji&, std::string name, const std::vector<snowflake>& role_ids);
+	[[nodiscard]] rq::delete_message delete_message(const partial_message&);
 
 	template<typename rng>
 	requires is_range_of_v<rng, partial_message>
-	rq::delete_message_bulk delete_message_bulk(const partial_channel&, rng&&);
+	[[nodiscard]] rq::delete_message_bulk delete_message_bulk(const partial_channel&, rng&&);
 
 	template<typename rng>
 	requires is_range_of_v<rng, snowflake>
-	rq::delete_message_bulk delete_message_bulk(const partial_channel&, rng&&);
-	rq::delete_message_bulk delete_message_bulk(const partial_channel&, const std::vector<snowflake>&);
+	[[nodiscard]] rq::delete_message_bulk delete_message_bulk(const partial_channel&, rng&&);
+	[[nodiscard]] rq::delete_message_bulk delete_message_bulk(const partial_channel&, const std::vector<snowflake>&);
 
-	rq::leave_guild leave_guild(const Guild&);
-	rq::add_reaction add_reaction(const partial_message&, const partial_emoji&);
-	rq::delete_own_reaction delete_own_reaction(const partial_message& msg, const partial_emoji&);
-	rq::delete_own_reaction delete_own_reaction(const partial_message& msg, const reaction&);
-	rq::delete_user_reaction delete_user_reaction(const partial_message& msg, const partial_emoji&, const user&);
-	rq::delete_user_reaction delete_user_reaction(const partial_message& msg, const reaction&, const user&);
-	rq::get_reactions get_reactions(const partial_message& msg, const partial_emoji&);
-	rq::get_reactions get_reactions(const partial_message& msg, const reaction&);
-	rq::delete_all_reactions delete_all_reactions(const partial_message& msg);
-	rq::delete_all_reactions_emoji delete_all_reactions_emoji(const partial_message& msg, const partial_emoji&);
-	rq::delete_all_reactions_emoji delete_all_reactions_emoji(const partial_message& msg, const reaction&);
+	[[nodiscard]] rq::leave_guild leave_guild(const Guild&);
+	[[nodiscard]] rq::add_reaction add_reaction(const partial_message&, const partial_emoji&);
+	[[nodiscard]] rq::delete_own_reaction delete_own_reaction(const partial_message& msg, const partial_emoji&);
+	[[nodiscard]] rq::delete_own_reaction delete_own_reaction(const partial_message& msg, const reaction&);
+	[[nodiscard]] rq::delete_user_reaction delete_user_reaction(const partial_message& msg, const partial_emoji&, const user&);
+	[[nodiscard]] rq::delete_user_reaction delete_user_reaction(const partial_message& msg, const reaction&, const user&);
+	[[nodiscard]] rq::get_reactions get_reactions(const partial_message& msg, const partial_emoji&);
+	[[nodiscard]] rq::get_reactions get_reactions(const partial_message& msg, const reaction&);
+	[[nodiscard]] rq::delete_all_reactions delete_all_reactions(const partial_message& msg);
+	[[nodiscard]] rq::delete_all_reactions_emoji delete_all_reactions_emoji(const partial_message& msg, const partial_emoji&);
+	[[nodiscard]] rq::delete_all_reactions_emoji delete_all_reactions_emoji(const partial_message& msg, const reaction&);
 
-	rq::typing_start typing_start(const partial_channel&);
-	rq::delete_channel_permission delete_channel_permissions(const partial_guild_channel&, const permission_overwrite&);
+	[[nodiscard]] rq::typing_start typing_start(const partial_channel&);
+	[[nodiscard]] rq::delete_channel_permission delete_channel_permissions(const partial_guild_channel&, const permission_overwrite&);
 
 	template<typename rng>
-	rq::modify_channel_positions modify_channel_positions(const Guild&, rng&&);
+	[[nodiscard]] rq::modify_channel_positions modify_channel_positions(const Guild&, rng&&);
 
-	rq::list_guild_members list_guild_members(const partial_guild&, int n = 1, snowflake after = {});
-	rq::edit_channel_permissions edit_channel_permissions(const partial_guild_channel&, const permission_overwrite&);
-	rq::create_dm create_dm(const user&);
+	[[nodiscard]] rq::list_guild_members list_guild_members(const partial_guild&, int n = 1, snowflake after = {});
+	[[nodiscard]] rq::edit_channel_permissions edit_channel_permissions(const partial_guild_channel&, const permission_overwrite&);
+	[[nodiscard]] rq::create_dm create_dm(const user&);
 
-	rq::get_guild_integrations get_guild_integrations(const partial_guild& guild);
+	[[nodiscard]] rq::get_guild_integrations get_guild_integrations(const partial_guild& guild);
 
-	rq::create_guild_integration create_guild_integration(const partial_guild& guild, std::string type, snowflake id);
+	[[nodiscard]] rq::create_guild_integration create_guild_integration(const partial_guild& guild, std::string type, snowflake id);
 
 	template<typename range>
 	requires is_range_of<range, std::string>
-	rq::create_group_dm create_group_dm(range&& access_tokens, std::unordered_map<snowflake, std::string> nicks = {});
+	[[nodiscard]] rq::create_group_dm create_group_dm(range&& access_tokens, std::unordered_map<snowflake, std::string> nicks = {});
 
 	template<typename rng>
 	requires is_range_of<rng, snowflake>
-	rq::add_guild_member add_guild_member(const Guild& guild, snowflake id, std::string access_token, rng&& roles, std::string nick = "", bool deaf = false, bool mute = false);
+	[[nodiscard]] rq::add_guild_member add_guild_member(const Guild& guild, snowflake id, std::string access_token, rng&& roles, std::string nick = "", bool deaf = false, bool mute = false);
 
 	template<typename rng>
 	requires is_range_of<rng, guild_role>
-	rq::add_guild_member add_guild_member(const Guild& guild, snowflake id, std::string access_token, rng&& roles, std::string nick = "", bool deaf = false, bool mute = false);
+	[[nodiscard]] rq::add_guild_member add_guild_member(const Guild& guild, snowflake id, std::string access_token, rng&& roles, std::string nick = "", bool deaf = false, bool mute = false);
 
-	rq::delete_channel delete_channel(const partial_channel&);
-	rq::add_pinned_msg add_pinned_msg(const partial_channel&, const partial_message&);
-	rq::remove_pinned_msg remove_pinned_msg(const partial_channel&, const partial_message&);
-	rq::get_voice_regions get_voice_regions();
-	rq::create_channel_invite create_channel_invite(const partial_guild_channel&, int max_age = 86400, int max_uses = 0, bool temporary = false, bool unique = false);
+	[[nodiscard]] rq::delete_channel delete_channel(const partial_channel&);
+	[[nodiscard]] rq::add_pinned_msg add_pinned_msg(const partial_channel&, const partial_message&);
+	[[nodiscard]] rq::remove_pinned_msg remove_pinned_msg(const partial_channel&, const partial_message&);
+	[[nodiscard]] rq::get_voice_regions get_voice_regions();
+	[[nodiscard]] rq::create_channel_invite create_channel_invite(const partial_guild_channel&, int max_age = 86400, int max_uses = 0, bool temporary = false, bool unique = false);
 
-	rq::get_invite get_invite(std::string, int = 0);
-	rq::delete_invite delete_invite(std::string);
-
-	template<typename ...settings>
-	rq::modify_guild modify_guild(const partial_guild&, settings&&...);
+	[[nodiscard]] rq::get_invite get_invite(std::string, int = 0);
+	[[nodiscard]] rq::delete_invite delete_invite(std::string);
 
 	template<typename ...settings>
-	rq::modify_guild modify_guild(const partial_guild&, modify_guild_settings<settings...>);
+	[[nodiscard]] rq::modify_guild modify_guild(const partial_guild&, settings&&...);
+
+	template<typename ...settings>
+	[[nodiscard]] rq::modify_guild modify_guild(const partial_guild&, modify_guild_settings<settings...>);
 
 	template<typename... settings>
-	rq::modify_role modify_role(const guild_role&, settings&&...);
+	[[nodiscard]] rq::modify_role modify_role(const guild_role&, settings&&...);
 
 	template<typename... settings>
-	rq::modify_role modify_role(const guild_role&, modify_role_settings<settings...>);
+	[[nodiscard]] rq::modify_role modify_role(const guild_role&, modify_role_settings<settings...>);
 
-	rq::create_webhook create_webhook(const partial_channel& channel, std::string name);
-	rq::get_guild_webhooks get_guild_webhooks(const partial_guild&);
-	rq::get_channel_webhooks get_channel_webhooks(const partial_channel&);
-	rq::get_webhook get_webhook(snowflake, std::string token);
-	rq::get_webhook get_webhook(const webhook&);
-	rq::execute_webhook send_with_webhook(const webhook&, std::string s);
-
-	template<typename ...settings>
-	rq::modify_webhook modify_webhook(const webhook&, modify_webhook_settings<settings...>);
+	[[nodiscard]] rq::create_webhook create_webhook(const partial_channel& channel, std::string name);
+	[[nodiscard]] rq::get_guild_webhooks get_guild_webhooks(const partial_guild&);
+	[[nodiscard]] rq::get_channel_webhooks get_channel_webhooks(const partial_channel&);
+	[[nodiscard]] rq::get_webhook get_webhook(snowflake, std::string token);
+	[[nodiscard]] rq::get_webhook get_webhook(const webhook&);
+	[[nodiscard]] rq::execute_webhook send_with_webhook(const webhook&, std::string s);
 
 	template<typename ...settings>
-	rq::modify_webhook modify_webhook(const webhook&, settings&&...);
+	[[nodiscard]] rq::modify_webhook modify_webhook(const webhook&, modify_webhook_settings<settings...>);
 
-	rq::get_message fetch_message(const partial_channel& ch, snowflake msg_id);
+	template<typename ...settings>
+	[[nodiscard]] rq::modify_webhook modify_webhook(const webhook&, settings&&...);
 
-	rq::get_audit_log get_audit_log(const partial_guild&);
+	[[nodiscard]] rq::get_message fetch_message(const partial_channel& ch, snowflake msg_id);
+
+	[[nodiscard]] rq::get_audit_log get_audit_log(const partial_guild&);
 
 	const user& self_user() const noexcept {
 		return m_self_user;
 	}
 
-	virtual cerwy::task<voice_connection> connect_voice(const voice_channel&) = 0;
+	[[nodiscard]] virtual cerwy::task<voice_connection> connect_voice(const voice_channel&) = 0;
 
 	boost::asio::io_context::strand& strand() {
 		return m_strand;
@@ -437,7 +437,7 @@ rq::create_group_dm shard::create_group_dm(range&& access_tokens, std::unordered
 
 template<typename...modifiers>
 requires(message_modifier<modifiers>&&...)
-rq::send_message shard::reply(const partial_message& msg, std::string content, modifiers&&... modifers_) {
+rq::send_message shard::send_reply(const partial_message& msg, std::string content, modifiers&&... modifers_) {
 	nlohmann::json body = {};
 	body["content"] = std::move(content);
 	(modifers_.modify_message_json(body), ...);
@@ -447,7 +447,7 @@ rq::send_message shard::reply(const partial_message& msg, std::string content, m
 
 template<typename...modifiers>
 requires(message_modifier<modifiers>&&...)
-rq::send_message shard::reply(const partial_message& msg, std::string content, const embed& embed, modifiers&&... modifers_) {
+rq::send_message shard::send_reply(const partial_message& msg, std::string content, const embed& embed, modifiers&&... modifers_) {
 	nlohmann::json body = {};
 	body["content"] = std::move(content);
 	(modifers_.modify_message_json(body), ...);

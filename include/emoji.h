@@ -28,7 +28,8 @@ struct partial_emoji {
 
 	std::string to_reaction_string() const {
 		if (m_id == snowflake(0)) {
-			return ":" + m_name + ":";
+			//fmt::print("{}\n", nlohmann::json(m_name).dump().substr(1, m_name.size()));
+			return ":" + nlohmann::json(m_name).dump().substr(1,m_name.size()) + ":";
 		}
 		if (m_animated) {
 			return fmt::format("a:{}:{}", m_name, m_id.val);
@@ -61,8 +62,9 @@ private:
 };
 
 inline void from_json(const nlohmann::json& json, partial_emoji& e) {
+	//fmt::print("{}\n", json.dump());
 	e.m_id = json.value("id", snowflake(0));
-	e.m_name = json.value("name", std::string(""));
+	e.m_name = json.value("name", std::string(""));	
 	e.m_animated = json.value("animated", false);
 }
 

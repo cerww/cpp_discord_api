@@ -1,34 +1,49 @@
 #include "User.h"
 
-snowflake user::id() const noexcept { return m_id; }
+snowflake user::id() const noexcept {
+	return m_id;
+}
 
-bool user::is_bot() const noexcept { return m_bot; }
+bool user::is_bot() const noexcept {
+	return m_bot;
+}
 
 std::string_view user::username() const noexcept {
 	return m_username;
 }
 
-int user::discriminator() const noexcept {
-	return m_discriminator;
+std::optional<int> user::discriminator() const noexcept {
+	if (m_discriminator == 10000) {
+		return std::nullopt;
+	} else {
+		return m_discriminator;
+	}
 }
 
 void to_json(nlohmann::json& json, const user& other) {
-	json["id"] = std::to_string(other.id().val);
+	json["id"] = other.id();
 	json["username"] = other.username();
-	json["bot"] = other.is_bot();
-	json["discriminator"] = other.discriminator();
+	json["bot"] = other.is_bot();	
+	if(other.discriminator()) {
+		json["discriminator"] = std::to_string(other.discriminator().value());
+	}else {
+		json["discriminator"] = "0";
+	}
 }
 
 void from_json(const nlohmann::json& json, user& other) {
 	other.m_id = json["id"].get<snowflake>();
 	other.m_username = json["username"].get<std::string>();
 	other.m_bot = json.value("bot", false);
-	other.m_discriminator = std::stoi(json.value("discriminator", "-1"));
+	other.m_discriminator = std::stoi(json.value("discriminator", "10000"));
 	const auto& a = json["avatar"];
-	if(a.is_null()) {
+	if (a.is_null()) {
 		other.m_avatar = "";
+	} else {
+		other.m_avatar = a.get<std::string>();
 	}
-	else {
-		other.m_avatar = json["avatar"].get<std::string>();
-	}
+	other.m_flags = json.value("flags", 0);
+	other.m_public_flags = json.value("flags", 0);
+	other.m_premium_type = json.value("flags", 0);
+	other.m_system = json.value("system", false);
 }

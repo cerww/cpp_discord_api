@@ -125,7 +125,7 @@ cerwy::task<bool> http_connection2::send_to_discord_(discord_request& r, boost::
 		//std::cout << "rate limited" << '\n';
 		
 		auto json_body = nlohmann::json::parse(res.body());
-		const auto tp = std::chrono::system_clock::now() + std::chrono::seconds((uint64_t)json_body["retry_after"].get<double>());
+		const auto tp = std::chrono::system_clock::now() + std::chrono::milliseconds((uint64_t)json_body["retry_after"].get<double>());
 		if (json_body["global"].get<bool>()) {
 			
 			//m_client->rate_limit_global(tp);
@@ -153,11 +153,11 @@ cerwy::task<bool> http_connection2::send_to_discord_(discord_request& r, boost::
 		&& it->value() == "0") 	{
 		
 		const auto time = std::chrono::system_clock::time_point(std::chrono::milliseconds([&]() {//iife
-			const auto it2 = res.find("X-RateLimit-Reset");
-			double seconds = 0;
-			std::from_chars(it2->value().begin(), it2->value().end(), seconds);
-			return (uint64_t)seconds;
-		}()));
+			const auto it2 = res.find("X-RateLimit-Reset-After");
+			double milliseconds = 0;
+			std::from_chars(it2->value().begin(), it2->value().end(), milliseconds);
+			return (uint64_t)milliseconds;
+		}()) + std::chrono::system_clock::now());
 		
 		const auto major_param_id_ = get_major_param_id(std::string_view(r.req.target().data(), r.req.target().size()));
 		m_rate_limiter.rate_limit(major_param_id_, time);

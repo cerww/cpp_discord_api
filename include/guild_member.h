@@ -27,14 +27,7 @@ struct guild_member :partial_guild_member {
 			}
 		});
 	}
-
-	// auto roles_sorted() const{
-	// 	if(!m_roles_are_sorted) {
-	// 		//ranges::sort(m_roles.begin(), m_roles.end(),std::less(),hof::flow(id_to_role_map(),&guild_role::position));			
-	// 	}
-	// 	return roles();
-	// }
-
+	
 private:
 	ref_count_ptr<Guild> m_guild = nullptr;
 	//mutable bool m_roles_are_sorted = false;

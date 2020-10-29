@@ -2,6 +2,9 @@
 #include "include/client.h"
 #include "include/webhook_client.h"
 #include "allowed_mentions.h"
+//#include <boost/multiprecision/number.hpp>
+//#include <boost/multiprecision/cpp_int.hpp>
+#include "common/sbo_vector.h"
 
 
 std::string getFileContents(const std::string& filePath, decltype(std::ios::in) mode = std::ios::in) {
@@ -18,17 +21,8 @@ std::string getFileContents(const std::string& filePath, decltype(std::ios::in) 
 	return fileContents;
 }
 
-inline void aihsjgdasiodgasidjasd() {
-	nlohmann::json v = allowed_mentions().add_roles(snowflake(111), snowflake(111)).add_roles(snowflake(111)).all_users();
-	v = allowed_mentions().all_users().all_roles();
-	std::cout << v.dump(4) << std::endl;
-	int aasdjhasd = 0;
-}
-
 int main() {
-	aihsjgdasiodgasidjasd();
-
-	
+		
 	webhook_client c2(snowflake(731786996493844591ull),"k8ElkHsnKrD83NkWiRniQhRHbR_JsXgiF038MecLLCem2bxcYaI2UuH74cOn6QwEWX9-");
 	c2.send("aaa").execute_and_ignore();
 	std::thread t([&]() {

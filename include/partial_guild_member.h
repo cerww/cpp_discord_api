@@ -5,6 +5,7 @@
 #include <range/v3/all.hpp>
 #include <span>
 #include <boost/container/small_vector.hpp>
+#include "../common/sbo_vector.h"
 
 struct partial_guild_member :user {
 	std::string_view nick() const noexcept;
@@ -21,7 +22,8 @@ struct partial_guild_member :user {
 	bool has_role(const guild_role& role) const noexcept;
 
 protected:
-	boost::container::small_vector<snowflake, 5> m_roles{};
+	//boost::container::small_vector<snowflake, 5> m_roles{};
+	sbo_vector<snowflake, 5> m_roles;
 	std::string m_nick{};
 	timestamp m_joined_at{};
 	bool m_deaf = false;

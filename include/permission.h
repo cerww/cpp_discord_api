@@ -85,7 +85,7 @@ private:
 
 inline void to_json(nlohmann::json& json, const permission& p) {
 	//json = p.data();
-	json = "0";
+	json = to_string(p.data());
 };
 
 inline void from_json(const nlohmann::json& json, permission& p) {
@@ -93,8 +93,7 @@ inline void from_json(const nlohmann::json& json, permission& p) {
 		return;
 	}
 	//p = permission(json.get<uint64_t>());
-	p.m_permission_bit_set = big_uint(json.get<std::string_view>());
-	
+	p.m_permission_bit_set = big_uint(json.get<std::string_view>());	
 }
 
 struct permissions {
