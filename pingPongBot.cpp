@@ -2,6 +2,7 @@
 #include "include/client.h"
 
 
+
 std::string getFileContents_(const std::string& filePath, decltype(std::ios::in) mode = std::ios::in) {
 	std::string fileContents;
 	std::ifstream file(filePath, mode);

@@ -237,7 +237,7 @@ struct async_queue_maybe_better {
 
 	void push(T thing) {
 		std::cout << (uint64_t)this << std::endl;
-		auto coro_to_resume = [&]()->std::experimental::coroutine_handle<> {//iife for lock_guard
+		auto coro_to_resume = [&]()->std::coroutine_handle<> {//iife for lock_guard
 			std::lock_guard lock(m_mut);
 
 			if (m_waiter) {
@@ -267,7 +267,7 @@ struct async_queue_maybe_better {
 			return false;
 		}
 
-		bool await_suspend(std::experimental::coroutine_handle<> t_coro) {
+		bool await_suspend(std::coroutine_handle<> t_coro) {
 			std::lock_guard guard(queue->m_mut);
 			coro = t_coro;
 			if (!queue->is_empty()) {
@@ -291,7 +291,7 @@ struct async_queue_maybe_better {
 		async_queue_maybe_better* queue = nullptr;
 		awaiter* next = nullptr;
 		std::variant<T,std::exception_ptr> thing;		
-		std::experimental::coroutine_handle<> coro;
+		std::coroutine_handle<> coro;
 	};
 
 	awaiter pop() {
@@ -344,7 +344,7 @@ struct async_queue_thread_unsafe {
 			return !queue->data().empty();
 		}
 
-		void await_suspend(std::experimental::coroutine_handle<> coroutine_handle) {
+		void await_suspend(std::coroutine_handle<> coroutine_handle) {
 			coro = coroutine_handle;
 			next = std::exchange(queue->m_waiter_stack, this);
 		}
@@ -365,7 +365,7 @@ struct async_queue_thread_unsafe {
 
 		async_queue_thread_unsafe* queue = nullptr;
 		awaiter* next = nullptr;
-		std::experimental::coroutine_handle<> coro;
+		std::coroutine_handle<> coro;
 		std::optional<T> next_in_queue;
 		std::optional<std::exception_ptr> exception;
 	};

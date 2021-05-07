@@ -4,6 +4,9 @@
 #include "discord_enums.h"
 #include "snowflake.h"
 #include <optional>
+#include <folly/FBString.h>
+#include "../common/json_conversions.h"
+
 
 struct user {
 	snowflake id() const noexcept;
@@ -17,7 +20,7 @@ struct user {
 		if (m_avatar.empty()) {
 			return std::nullopt;
 		} else {
-			return m_avatar;
+			return std::string_view(m_avatar.data(),m_avatar.size());
 		}
 	}
 
@@ -39,8 +42,10 @@ struct user {
 
 private:
 	snowflake m_id;
-	std::string m_username;
-	std::string m_avatar;
+	//std::string m_username;
+	//std::string m_avatar;
+	folly::fbstring m_username;	
+	folly::fbstring m_avatar;
 	int m_flags = 0;
 	int m_public_flags = 0;
 	int16_t m_discriminator = 0;

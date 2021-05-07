@@ -36,8 +36,9 @@ struct http_connection {
 	~http_connection() {
 		m_done.store(true);
 		m_request_queue.cancel();
-		if (m_thread.joinable())
+		if (m_thread.joinable()) {
 			m_thread.join();
+		}
 	}
 
 	void send(discord_request&& d) {
@@ -78,14 +79,14 @@ private:
 
 
 /*
-#include <experimental/coroutine>
+#include <coroutine>
 
 struct coro_discord_http_connection{
 	struct promise_type{
-		std::experimental::suspend_never initial_suspend() {
+		std::suspend_never initial_suspend() {
 			return {};
 		}
-		std::experimental::suspend_never final_suspend() {
+		std::suspend_never final_suspend() {
 			return {};
 		}
 		void unhandled_exception() {
@@ -94,7 +95,7 @@ struct coro_discord_http_connection{
 
 	};
 
-	std::experimental::coroutine_handle<promise_type> m_coro;
+	std::coroutine_handle<promise_type> m_coro;
 };
 
 namespace d{
@@ -107,7 +108,7 @@ namespace d{
 			bool await_ready() {
 				return false;
 			}
-			void await_suspend(std::experimental::coroutine_handle<> h) {
+			void await_suspend(std::coroutine_handle<> h) {
 				parent.stuff.push({ h,&eventu });
 			}
 			awaitable_iterator await_resume() {

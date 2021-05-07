@@ -120,14 +120,14 @@ struct parser<partial_emoji> {
 	parser(const guild_text_message& t_msg) :
 		msg(t_msg) { }
 
-	parse_result<partial_emoji> operator()(std::string_view s)const {
+	parse_result<partial_emoji> operator()(std::string_view s) const {
 		auto custom_emoji_parse_result = parser<emoji>(msg)(s);
 		if (custom_emoji_parse_result) {
 			return custom_emoji_parse_result.transform([](const emoji* emo) {
 				return partial_emoji(*emo);
 			});
 		} else {
-			return parse_consecutive(s, ':'_p, parse_until_char(':',' ','\n','\t','-'), ':'_p)//this might not work?
+			return parse_consecutive(s, ':'_p, parse_until_char(':', ' ', '\n', '\t', '-'), ':'_p)//this might not work?
 				   .transform(return_nth<1>())
 				   .transform([](std::string_view emoji_name) {
 					   return partial_emoji(std::string(emoji_name));
@@ -324,7 +324,7 @@ struct command_context {
 			//don't use string.find because i don't want npos, i want not-found to return the end
 			const auto idx_of_whitespace_or_end = std::distance(content.begin(), std::find_if(content.begin(), content.end(), &isspace));
 			const auto command_name = content.substr(0, idx_of_whitespace_or_end);
-					
+
 			const auto command_name_as_string = std::string(command_name);//usually SBO'd
 			if (m_command_groups.find(command_name_as_string) != m_command_groups.end()) {
 				content.remove_prefix(idx_of_whitespace_or_end);

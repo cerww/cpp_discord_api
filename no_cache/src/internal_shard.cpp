@@ -56,7 +56,7 @@ internal_shard::internal_shard(
 	m_heartbeat_context(*this),
 	m_ioc(ioc),
 	m_resolver(ioc),
-	m_socket(strand(), m_ssl_ctx),
+	m_socket(boost::asio::any_io_executor(strand()), m_ssl_ctx),
 	m_intents(intent) {
 	init_shard(shard_number, *this, ioc, gateway);
 }
@@ -348,6 +348,7 @@ void internal_shard::m_opcode8_guild_member_chunk(snowflake id) const {
 cerwy::task<void> internal_shard::m_opcode9_on_invalid_session(nlohmann::json d) {
 	boost::asio::steady_timer timer(strand(), std::chrono::steady_clock::now() + 5s);
 	auto ec = co_await timer.async_wait(use_task_return_ec);
+	//co_await resume_on_strand(strand());
 
 	if (d.get<bool>())
 		m_opcode6_send_resume();

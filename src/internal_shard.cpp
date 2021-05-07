@@ -166,6 +166,7 @@ void internal_shard::request_guild_members(Guild& g) const {
 void internal_shard::m_opcode0(nlohmann::json data, event_name event, uint64_t s) {
 	m_seq_num.store(std::max(s, m_seq_num.load(std::memory_order_relaxed)), std::memory_order_relaxed);
 	std::cout << m_seq_num << std::endl;
+	//std::cout << data << std::endl;	
 	//std::cout << data << std::endl;
 	//{
 	//auto lock = co_await m_events_mut.async_lock();//?
@@ -246,6 +247,7 @@ void internal_shard::m_opcode0(nlohmann::json data, event_name event, uint64_t s
 		}
 	} catch (...) {
 		//swallow
+		std::cout << "wat" << std::endl;
 	}
 }
 
@@ -312,13 +314,16 @@ void internal_shard::m_opcode8_guild_member_chunk(snowflake id) const {
 	s["d"]["guild_id"] = std::to_string(id.val);
 	s["d"]["query"] = "";
 	s["d"]["limit"] = 0;
-	std::cout << s << std::endl;
+	//std::cout << s << std::endl;
 	m_web_socket->send_thing(s.dump());
 }
 
 cerwy::task<void> internal_shard::m_opcode9_on_invalid_session(nlohmann::json d) {
 	boost::asio::steady_timer timer(strand(), std::chrono::steady_clock::now() + 5s);
 	const auto ec = co_await timer.async_wait(use_task_return_ec);
+	//co_await resume_on_strand(strand());
+
+	
 	if(ec) {
 		
 	}
@@ -376,7 +381,7 @@ void internal_shard::send_resume() const {
 void internal_shard::apply_presences(const nlohmann::json& presences, Guild& guild) {
 	for (const auto& presence : presences) {
 		const auto id = presence["user"]["id"].get<snowflake>();		
-		guild.m_activities.insert(std::make_pair(id, presences["activities"].get<std::vector<activity>>()));
+		guild.m_activities.insert(std::make_pair(id, presence["activities"].get<std::vector<activity>>()));
 		guild.m_status[id] = string_to_status(presence["status"].get_ref<const nlohmann::json::string_t&>());
 	}
 }
@@ -474,7 +479,7 @@ void internal_shard::procces_event<event_name::GUILD_CREATE>(nlohmann::json& dat
 	guild.m_text_channels.reserve(channels.capacity());
 	guild.m_voice_channels.reserve(guild.m_voice_channel_ids.capacity());
 	guild.m_channel_catagories.reserve(guild.m_channel_catagory_ids.capacity());
-
+	
 	for (const auto& channel_json : channels) {
 		if (const auto type = channel_json["type"].get<int>(); type == 0 || type == 5 || type == 6) {//text
 			auto& channel = guild.m_text_channels[channel_json["id"].get<snowflake>()];
@@ -541,11 +546,10 @@ void internal_shard::procces_event<event_name::GUILD_MEMBERS_CHUNK>(nlohmann::js
 	//std::cout << e.dump(0) << std::endl;
 	Guild& g = m_guilds[e["guild_id"].get<snowflake>()];//guild_id will always be in m_guilds?
 	for (const auto& i : e["members"]) {
-		auto temp_member = i.get<guild_member>();
-		//temp_member.m_roles.push_back(g.id());
-		const auto id = temp_member.id();
-		temp_member.m_guild = &g;
-		g.m_members[id] = std::move(temp_member);
+		auto member = i.get<guild_member>();		
+		const auto id = member.id();
+		member.m_guild = &g;
+		g.m_members[id] = std::move(member);
 	}
 
 	auto& chunks_left = m_chunks_left_for_guild[g.id()];

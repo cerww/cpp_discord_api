@@ -15,6 +15,8 @@ discord api for c++
 
 -fmt
 
+-folly
+
 -c++20 coroutines
 
 -C++20 Concepts

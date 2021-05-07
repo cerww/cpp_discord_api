@@ -19,4 +19,4 @@ std::span<const permission_overwrite> guild_channel::parent_overwrites() const n
 	return m_parent->permission_overwrites();
 }
 
-//std::experimental::generator<permission_overwrite> guild_channel::total_permissions() const
+//std::generator<permission_overwrite> guild_channel::total_permissions() const

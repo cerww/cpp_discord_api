@@ -10,4 +10,4 @@ void from_json(const nlohmann::json& json, guild_channel& g) {
 }
 
 }
-//std::experimental::generator<permission_overwrite> guild_channel::total_permissions() const
+//std::generator<permission_overwrite> guild_channel::total_permissions() const

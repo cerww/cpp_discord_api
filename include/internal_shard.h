@@ -35,7 +35,7 @@ struct voice_connection;
 struct internal_shard: shard {
 	static constexpr int large_threshold = 51;
 		
-	//not in here cuz shard.cpp would be too big to compile without /bigobj on vc ;-;
+	//not in here cuz shard.cpp would be too big to compile without /bigobj on vc++ ;-;
 	friend cerwy::task<void> init_shard(int shard_number, internal_shard& me, boost::asio::io_context& ioc, std::string_view gateway);
 
 	using wsClient = rename_later_5;
@@ -329,7 +329,7 @@ msg_t internal_shard::create_msg(channel_t& ch, const nlohmann::json& stuffs, ma
 
 
 	if constexpr (std::is_same_v<msg_t, guild_text_message>) {
-		retVal.m_mention_roles_ids = stuffs["mention_roles"].get<std::vector<snowflake>>();
+		retVal.m_mention_roles_ids = stuffs["mention_roles"].get<lol_wat_vector<snowflake>>();
 	}
 	return retVal;
 }

@@ -4,8 +4,9 @@
 #include "guild_role.h"
 #include <range/v3/all.hpp>
 #include <span>
-#include <boost/container/small_vector.hpp>
+//#include <boost/container/small_vector.hpp>
 #include "../common/sbo_vector.h"
+#include <folly/FBString.h>
 
 struct partial_guild_member :user {
 	std::string_view nick() const noexcept;
@@ -24,7 +25,7 @@ struct partial_guild_member :user {
 protected:
 	//boost::container::small_vector<snowflake, 5> m_roles{};
 	sbo_vector<snowflake, 5> m_roles;
-	std::string m_nick{};
+	folly::fbstring m_nick{};	
 	timestamp m_joined_at{};
 	bool m_deaf = false;
 	bool m_mute = false;
@@ -33,7 +34,7 @@ protected:
 	friend struct internal_shard;
 };
 
-constexpr int auidghsadjkashdiuas = sizeof(boost::container::small_vector<snowflake,5>);
+//constexpr int auidghsadjkashdiuas = sizeof(boost::container::small_vector<snowflake,5>);
 
 constexpr int ashsdgasdasd = sizeof(partial_guild_member);
 

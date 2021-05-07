@@ -2,9 +2,13 @@
 #include <fstream>
 #include "include/modify_guild_settings.h"
 #include "common/mp3_audio_source.h"
-#include "common/more_bad_vector.h"
+#include "common/lol_wat_vector.h"
 #include "common/never_sso_string.h"
 #include "common/big_uint.h"
+#include <coroutine>
+
+
+
 
 using namespace std::literals;
 
@@ -31,6 +35,7 @@ cerwy::task<void> thingy(const Guild& g, shard& s) {
 		boost::asio::steady_timer timer(s.strand());
 		timer.expires_after(20s);
 		co_await timer.async_wait(use_task);
+		//co_await resume_on_strand(s.strand());
 		
 		auto& role = g.roles()[snowflake(725880768659980330)];
 		//s.send_message(s.text_channels().at(snowflake(504562059279728640)), role.to_mentionable_string() + " flag starts soon");
@@ -39,21 +44,22 @@ cerwy::task<void> thingy(const Guild& g, shard& s) {
 
 void aujsdhasdasd() {
 	std::vector<int> aaa = {12, 3, 4, 5, 67, 7, 8};
-	more_bad_vector<int> y = aaa | ranges::to<more_bad_vector<int>>();
+	lol_wat_vector<int> y = aaa | ranges::to<lol_wat_vector<int>>();
 	assert(y[1] == aaa[1]);
 	auto x = std::move(y);
 	assert(y.size() == 0);
-	more_bad_vector<int> asdasd;
+	lol_wat_vector<int> asdasd;
 	assert(asdasd.size() == 0);
 	assert(asdasd.empty());
 
-	asdasd = more_bad_vector<int>(aaa.begin(), aaa.end());
-	//assert(ranges::equal(aaa, asdasd));
+	asdasd = lol_wat_vector<int>(aaa.begin(), aaa.end());
+	assert(ranges::equal(aaa, asdasd));	
 
 	std::span<int> wat = x;
 	std::vector<int> c = wat | ranges::to<std::vector>();
 	std::cout << (aaa == c) << std::endl;;
 
+	
 }
 
 
@@ -193,6 +199,12 @@ int main() {
 	//setlocale(LC_ALL, "");
 	//test_big_int();
 	//std::cin.get();
+	
+
+	// aujsdhasdasd();
+	// std::cin.get();
+
+	
 	client c;
 
 	cerwy::task<voice_connection> connashk;
@@ -279,10 +291,8 @@ int main() {
 								 || a.keys_that_are_bool.contains(a.key())
 								 || a.keys_that_are_string.contains(a.key())
 								 || a.keys_that_are_snowflake.contains(a.key());//only these keys cuz i need to format them
-
 					 })
 				) {
-
 					std::visit([&](const auto& old_value, const auto& new_value) {
 						using old_type = std::decay_t<decltype(old_value)>;
 						using new_type = std::decay_t<decltype(new_value)>;
@@ -290,7 +300,6 @@ int main() {
 						if constexpr (!std::is_same_v<old_type, new_type>) {
 							return;
 						} else {
-
 							using type = old_type;
 
 							if constexpr (
@@ -298,7 +307,6 @@ int main() {
 								std::is_same_v<type, std::optional<std::vector<permission_overwrite>>>) {
 
 								str += fmt::format("\t{:>30}, old:{:>20}, new:{:>20} \n", change.key(), "wat", "wat");
-
 							} else {
 								if (old_value.has_value() && new_value.has_value()) {
 									str += fmt::format("\t{:>30}, old:{:>20}, new:{:>20} \n", change.key(), old_value.value(), new_value.value());
@@ -314,7 +322,7 @@ int main() {
 					}, change.old_value(), change.new_value());
 				}
 			}
-			std::fstream file = std::fstream("abcd.txt", std::ios::out);
+			std::fstream file = std::fstream("abcd.txt", std::ios::trunc);
 
 			file << str;
 			file.close();
@@ -344,7 +352,7 @@ int main() {
 		//s.add_reaction(wat,wat.guild().emojis().back());
 
 	};
-	c.on_guild_typing_start = [&](const guild_member& member, const text_channel& channel, shard& s) {
+	c.on_guild_typing_start = [&](guild_member member, const text_channel& channel, shard& s) {
 		s.send_message(channel, "rawr").execute_and_ignore();
 		std::cout << "rawr" << std::endl;
 		/*
@@ -385,6 +393,7 @@ int main() {
 		boost::asio::steady_timer timer(s.strand());
 		timer.expires_after(5s);
 		co_await timer.async_wait(use_task);
+		
 		co_await s.delete_all_reactions(msg);
 		co_return;
 	};

@@ -8,23 +8,23 @@ struct get_current_coroutine_handle {
 		return false;
 	}
 
-	void await_suspend(std::experimental::coroutine_handle<> h) {
+	void await_suspend(std::coroutine_handle<> h) {
 		me = h;
 		me.resume();
 	}
 
-	std::experimental::coroutine_handle<> await_resume() const {
+	std::coroutine_handle<> await_resume() const {
 		return me;
 	}
 
-	std::experimental::coroutine_handle<> me;
+	std::coroutine_handle<> me;
 };
 
 struct resume_coro {
 	//resume_coro
 	cerwy::task<void> pause() {
 		auto current_coro = co_await get_current_coroutine_handle();
-		co_await std::experimental::suspend_always();
+		co_await std::suspend_always();
 	}
 
 	void resume() {
@@ -32,7 +32,7 @@ struct resume_coro {
 		t.resume();
 	}
 
-	std::experimental::coroutine_handle<> current_waiter = nullptr;
+	std::coroutine_handle<> current_waiter = nullptr;
 };
 
 struct async_mutex1 {
@@ -99,7 +99,7 @@ private:
 			t.set_value(lock_t(this));
 		}
 		while (!m_waiters.empty()) {
-			co_await std::experimental::suspend_always();
+			co_await std::suspend_always();
 			auto t = std::move(m_waiters.front());
 			m_waiters.erase(m_waiters.begin());
 			t.set_value(lock_t(this));
@@ -109,7 +109,7 @@ private:
 		m_is_locked = false;
 	}
 
-	std::experimental::coroutine_handle<> m_unlocker = nullptr;
+	std::coroutine_handle<> m_unlocker = nullptr;
 	std::vector<cerwy::promise<lock_t>> m_waiters;
 	bool m_is_locked = false;
 };
@@ -216,7 +216,7 @@ struct async_mutex {
 			return false;
 		}
 
-		bool await_suspend(std::experimental::coroutine_handle<> h) {
+		bool await_suspend(std::coroutine_handle<> h) {
 			m_handle = h;
 			auto old_state = m_parent->try_lock(this);
 			if (old_state == unlocked) {
@@ -243,7 +243,7 @@ struct async_mutex {
 			m_parent(p) {}
 
 		async_mutex* m_parent = nullptr;
-		std::experimental::coroutine_handle<> m_handle = nullptr;
+		std::coroutine_handle<> m_handle = nullptr;
 		awaiter_for_lock* m_next = nullptr;
 
 	};

@@ -95,9 +95,9 @@ std::vector<std::byte> discord_voice_connection_impl::encrypt_xsalsa20_poly1305(
 	std::copy(header.begin(), header.end(), return_val.begin());
 	
 	std::array<std::byte, crypto_secretbox_NONCEBYTES> nonce{{}};
-	std::fill(nonce.begin(), nonce.end(), std::byte(0));
+	std::ranges::fill(nonce, std::byte(0));
 	
-	std::copy(header.begin(), header.end(), nonce.begin());
+	std::ranges::copy(header, nonce.begin());
 	
 	(void)sodium_init();
 	

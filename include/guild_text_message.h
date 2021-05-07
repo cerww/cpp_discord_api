@@ -20,7 +20,7 @@ struct guild_text_message :partial_message {
 
 private:
 	guild_member m_author;
-	std::vector<snowflake> m_mention_roles_ids;
+	lol_wat_vector<snowflake> m_mention_roles_ids;
 	std::vector<guild_member> m_mentions;
 	ref_count_ptr<text_channel> m_channel = nullptr;
 

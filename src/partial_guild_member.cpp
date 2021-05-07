@@ -14,7 +14,7 @@ bool partial_guild_member::mute() const noexcept {
 }
 
 std::string_view partial_guild_member::nick() const noexcept {
-	return m_nick.empty() ? username() : m_nick;
+	return m_nick.empty() ? username() : std::string_view(m_nick.data(), m_nick.size());
 }
 
 bool partial_guild_member::has_role(const snowflake role_id) const noexcept {

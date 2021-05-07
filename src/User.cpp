@@ -9,7 +9,7 @@ bool user::is_bot() const noexcept {
 }
 
 std::string_view user::username() const noexcept {
-	return m_username;
+	return std::string_view(m_username.data(), m_username.size());
 }
 
 std::optional<int> user::discriminator() const noexcept {
@@ -33,14 +33,15 @@ void to_json(nlohmann::json& json, const user& other) {
 
 void from_json(const nlohmann::json& json, user& other) {
 	other.m_id = json["id"].get<snowflake>();
-	other.m_username = json["username"].get<std::string>();
+	other.m_username = json["username"].get<folly::fbstring>();
+	//other.m_username = json["username"].get<folly::fbstring>();
 	other.m_bot = json.value("bot", false);
 	other.m_discriminator = std::stoi(json.value("discriminator", "10000"));
 	const auto& a = json["avatar"];
 	if (a.is_null()) {
 		other.m_avatar = "";
 	} else {
-		other.m_avatar = a.get<std::string>();
+		other.m_avatar = a.get<folly::fbstring>();
 	}
 	other.m_flags = json.value("flags", 0);
 	other.m_public_flags = json.value("flags", 0);

@@ -11,11 +11,14 @@
 #include "guild.h"
 #include "dm_channel.h"
 #include "../common/higher_order_functions.h"
+#include "../common/lol_wat_vector.h"
 
 
 struct partial_message {
 
-	std::string_view content() const noexcept { return m_content; }
+	std::string_view content() const noexcept {
+		return std::string_view(m_content.data(),m_content.size());
+	}
 
 	snowflake id() const noexcept;
 	snowflake author_id() const noexcept;
@@ -43,10 +46,15 @@ private:
 	snowflake m_author_id;
 	snowflake m_id;
 	snowflake m_channel_id;
-	std::vector<embed> m_embeds;
-	std::vector<attachment> m_attachments;
-	std::vector<reaction> m_reactions;
-	std::string m_content;
+	// std::vector<embed> m_embeds;
+	// std::vector<attachment> m_attachments;
+	// std::vector<reaction> m_reactions;
+
+	lol_wat_vector<embed> m_embeds;
+	lol_wat_vector<attachment> m_attachments;
+	lol_wat_vector<reaction> m_reactions;
+	
+	folly::fbstring m_content;
 	//std::optional<timestamp> m_edited_timestamp;
 	timestamp m_timestamp;
 	bool m_tts = false;

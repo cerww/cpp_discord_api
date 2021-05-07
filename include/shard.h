@@ -202,16 +202,9 @@ public:
 		return webhook_client(wh.id(), std::string(wh.token().value()), m_strand);
 	}
 
-	template<typename fn>
-	void clear_deleted_data_if(fn&& pred) {
-		
-	}
-
 	bool will_have_guild(snowflake guild_id) const noexcept;
 
 protected:
-
-
 	using wsClient = rename_later_5;
 
 	cerwy::task<boost::beast::error_code> connect_http_connection();

@@ -1,7 +1,7 @@
 #pragma once
 #include <variant>
 #include <optional>
-#include <experimental/coroutine>
+#include <coroutine>
 #include <vector>
 #include "ref_count_ptr.h"
 #include "better_conditional.h"
@@ -86,7 +86,7 @@ using shared_state_base = better_conditional_t<std::is_void_v<T>, shared_state_b
 template<typename T>
 struct shared_shared_state_base :shared_state_base<T, false> {
 	
-	void on_await_suspend(const std::experimental::coroutine_handle<> h) {		
+	void on_await_suspend(const std::coroutine_handle<> h) {		
 		m_handles.push_back(h);
 	}
 
@@ -95,7 +95,7 @@ struct shared_shared_state_base :shared_state_base<T, false> {
 	}
 
 protected:
-	std::vector<std::experimental::coroutine_handle<>> m_handles;
+	std::vector<std::coroutine_handle<>> m_handles;
 };
 
 template<typename T>
@@ -142,7 +142,7 @@ struct shared_shared_state<void> :shared_shared_state_base<void> {
 
 template<typename T>
 struct non_shared_shared_state_base :shared_state_base<T, true> {
-	void on_await_suspend(std::experimental::coroutine_handle<> h) {
+	void on_await_suspend(std::coroutine_handle<> h) {
 		//[[assert:!m_awaiter]];
 		m_awaiter = h;
 	}
@@ -152,7 +152,7 @@ struct non_shared_shared_state_base :shared_state_base<T, true> {
 	}
 
 protected:
-	std::experimental::coroutine_handle<> m_awaiter;
+	std::coroutine_handle<> m_awaiter;
 };
 
 template<typename T>
@@ -211,7 +211,7 @@ struct templated_task :managed_shared_state<shared_state_t> {
 		return this->m_state->await_ready();
 	}
 
-	void await_suspend(std::experimental::coroutine_handle<> h) {
+	void await_suspend(std::coroutine_handle<> h) {
 		this->m_state->on_await_suspend(h);
 	}
 
@@ -318,11 +318,11 @@ struct promise_base<void, shared_state_t> :promise_base_common<shared_state_t> {
 
 template<typename shared_state_t>
 struct templated_task<shared_state_t>::promise_type :promise_base<value_type, shared_state_t> {
-	static std::experimental::suspend_never initial_suspend() {
+	static std::suspend_never initial_suspend() {
 		return {};
 	}
 
-	static std::experimental::suspend_never final_suspend() {
+	static std::suspend_never final_suspend() noexcept{
 		return {};
 	}
 };
@@ -387,11 +387,11 @@ struct unawaitable_action {
 			
 		}
 		
-		std::experimental::suspend_never initial_suspend() const noexcept {
+		std::suspend_never initial_suspend() const noexcept {
 			return {};
 		}
 
-		std::experimental::suspend_never final_suspend() const noexcept{
+		std::suspend_never final_suspend() const noexcept{
 			return {};
 		}
 		// ReSharper restore CppMemberFunctionMayBeStatic

@@ -8,14 +8,14 @@
 #include <span>
 
 template<typename T>
-struct more_bad_vector {
+struct lol_wat_vector {
 	using value_type = T;
 	using iterator = T*;
 	using const_iterator = const T*;
 	using reverse_iterator = std::reverse_iterator<T*>;
 	using const_reverse_iterator = std::reverse_iterator<const T*>;
 
-	more_bad_vector() = default;
+	lol_wat_vector() = default;
 
 	// template<typename U>requires !std::is_same_v<U, more_bad_vector<T>>
 	// explicit more_bad_vector(const U& other) {
@@ -25,7 +25,7 @@ struct more_bad_vector {
 	// }
 
 	template<typename I, typename S>
-	explicit more_bad_vector(I&& begin_t, S&& end_t) {
+	explicit lol_wat_vector(I&& begin_t, S&& end_t) {
 		resize_uninitialize(ranges::distance(begin_t, end_t));
 		std::uninitialized_copy(begin_t, end_t, this->begin());
 	}
@@ -38,25 +38,25 @@ struct more_bad_vector {
 	// }
 	//
 
-	explicit more_bad_vector(size_t init_size) {
+	explicit lol_wat_vector(size_t init_size) {
 		resize_uninitialize(init_size);
 		std::uninitialized_default_construct(begin(), end());
 	}
 
 	template<typename U>
-	explicit more_bad_vector(size_t init_size,const U& init) {
+	explicit lol_wat_vector(size_t init_size,const U& init) {
 		resize_uninitialize(init_size);
 		std::uninitialized_fill(begin(), end(), init);
 	}
 
-	more_bad_vector(const more_bad_vector& other) {
+	lol_wat_vector(const lol_wat_vector& other) {
 		if (other.size()) {
 			resize_uninitialize(other.size());
 			std::uninitialized_copy(other.begin(), other.end(), begin());
 		}
 	}
 
-	more_bad_vector& operator=(const more_bad_vector& other) {
+	lol_wat_vector& operator=(const lol_wat_vector& other) {
 		if (&other == this) {
 			return *this;
 		}
@@ -70,10 +70,10 @@ struct more_bad_vector {
 		return *this;
 	}
 
-	more_bad_vector(more_bad_vector&& other) noexcept:
+	lol_wat_vector(lol_wat_vector&& other) noexcept:
 		m_data(std::exchange(other.m_data, nullptr)) { }
 
-	more_bad_vector& operator=(more_bad_vector&& other) noexcept {
+	lol_wat_vector& operator=(lol_wat_vector&& other) noexcept {
 		if (&other == this) {
 			return *this;
 		}
@@ -82,7 +82,7 @@ struct more_bad_vector {
 		return *this;
 	}
 
-	~more_bad_vector() {
+	~lol_wat_vector() {
 		clear();
 	}
 
@@ -96,7 +96,7 @@ struct more_bad_vector {
 
 	T* end() {
 		if (m_data) {
-			return std::launder((T*)((m_data + 16) + size()));
+			return std::launder((T*)((m_data + 16)) + size());
 		} else {
 			return nullptr;
 		}
@@ -112,7 +112,7 @@ struct more_bad_vector {
 
 	const T* end() const {
 		if (m_data) {
-			return std::launder((T*)((m_data + 16) + size()));
+			return std::launder((T*)((m_data + 16)) + size());
 		} else {
 			return nullptr;
 		}
@@ -128,7 +128,7 @@ struct more_bad_vector {
 
 	const T* cend() const {
 		if (m_data) {
-			return std::launder((T*)((m_data + 16) + size()));
+			return std::launder((T*)((m_data + 16)) + size());
 		} else {
 			return nullptr;
 		}
@@ -186,18 +186,18 @@ struct more_bad_vector {
 	// 	std::uninitialized_move(from.begin(), from.end(), begin());
 	// }
 
-	void assign(const more_bad_vector& from) {
+	void assign(const lol_wat_vector& from) {
 		if (&from == this) {
 			return;
 		} else {
 			clear();
-			const auto size = std::size(from);
+			const auto size = from.size();
 			resize_uninitialize(size);
 			std::uninitialized_copy(from.begin(), from.end(), begin());
 		}
 	}
 
-	void assign(more_bad_vector&& from) {
+	void assign(lol_wat_vector&& from) {
 		if (&from == this) {
 			return;
 		} else {
@@ -265,13 +265,13 @@ struct more_bad_vector {
 	void resize(size_t new_size) {
 		const auto my_size = size();
 		if (new_size > my_size) {
-			more_bad_vector other;
+			lol_wat_vector other;
 			other.resize_uninitialize(new_size);
 			std::uninitialized_move(begin(), end(), other.begin());
 			std::uninitialized_default_construct(other.begin() + my_size, other.begin() + new_size);
 			std::swap(other.m_data, m_data);
 		}else if(new_size < my_size) {
-			more_bad_vector other;
+			lol_wat_vector other;
 			other.resize_uninitialize(new_size);
 			std::uninitialized_move(begin(), begin() + new_size, other.begin());
 			std::swap(other.m_data, m_data);
@@ -282,14 +282,14 @@ struct more_bad_vector {
 	void resize(size_t new_size,const U& init) {
 		const auto my_size = size();
 		if (new_size > my_size) {
-			more_bad_vector other;
+			lol_wat_vector other;
 			other.resize_uninitialize(new_size);
 			std::uninitialized_move(begin(), end(), other.begin());
 			std::uninitialized_fill(other.begin() + my_size, other.begin() + new_size, init);
 			std::swap(other.m_data, m_data);
 		}
 		else if (new_size < my_size) {
-			more_bad_vector other;
+			lol_wat_vector other;
 			other.resize_uninitialize(new_size);
 			std::uninitialized_move(begin(), begin() + new_size, other.begin());
 			std::swap(other.m_data, m_data);

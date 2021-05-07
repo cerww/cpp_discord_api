@@ -76,7 +76,7 @@ static constexpr int asuodjhasdasd = sizeof(shared_state2);
 // 	//rename some of these?
 // 	std::atomic<bool> done = false;
 // 	boost::asio::io_context::strand* strand = nullptr;
-// 	std::vector<std::experimental::coroutine_handle<>> waiters{};
+// 	std::vector<std::coroutine_handle<>> waiters{};
 // 	std::mutex ready_mut{};
 // 	std::mutex waiter_mut{};
 // 	std::condition_variable ready_cv{};
@@ -195,7 +195,7 @@ struct request_base :private crtp<request_t> {
 		return state.exception.has_value();
 	}
 
-	void await_suspend(std::experimental::coroutine_handle<> h) {
+	void await_suspend(std::coroutine_handle<> h) {
 		discord_request r;
 		r.req = std::move(state.req);
 		r.on_finish = [this,h](auto res) {
@@ -237,7 +237,7 @@ struct request_base :private crtp<request_t> {
 				return r.state.exception.has_value();
 			}
 
-			void await_suspend(std::experimental::coroutine_handle<> h) {
+			void await_suspend(std::coroutine_handle<> h) {
 				discord_request ret;
 				ret.req = std::move(r.state.req);
 				ret.on_finish = [this,h](auto res) {
@@ -262,7 +262,7 @@ struct request_base :private crtp<request_t> {
 			
 			request_t rq;
 			bool done = false;
-			std::experimental::coroutine_handle<> waiter;
+			std::coroutine_handle<> waiter;
 			std::mutex mut;
 		};
 		
@@ -272,7 +272,7 @@ struct request_base :private crtp<request_t> {
 				return shared_state->execption.has_value();
 			}
 
-			bool await_suspend(std::experimental::coroutine_handle<> h) {
+			bool await_suspend(std::coroutine_handle<> h) {
 				std::lock_guard lock(shared_state->mut);
 				if(shared_state->done) {					
 					return true;
@@ -377,7 +377,7 @@ protected:
 // 		return false;//await suspend checks instead
 // 	}
 //
-// 	void await_suspend(std::experimental::coroutine_handle<> h) const {
+// 	void await_suspend(std::coroutine_handle<> h) const {
 // 		std::unique_lock lock(state->waiter_mut);
 // 		if (ready()) {
 // 			lock.unlock();
@@ -418,7 +418,7 @@ protected:
 // 				return false;
 // 			}
 //
-// 			decltype(auto) await_suspend(std::experimental::coroutine_handle<> h) {
+// 			decltype(auto) await_suspend(std::coroutine_handle<> h) {
 // 				me->await_suspend(h);
 // 			}
 //
