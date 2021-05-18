@@ -9,6 +9,15 @@ struct channel_catagory;
 
 struct Guild;
 
+enum class guild_channel_type {
+	text,
+	voice,
+	thread,
+	catagory,
+	store,
+	
+};
+
 struct guild_channel :ref_counted ,partial_guild_channel {
 
 	const Guild& guild() const noexcept;

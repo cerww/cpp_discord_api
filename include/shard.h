@@ -190,8 +190,10 @@ public:
 		return m_strand;
 	}
 
-	discord_obj_map2<Guild> guilds() const noexcept {
-		return m_guilds;
+	auto guilds() const noexcept {
+		return map_transform(m_guilds,[this](const auto& a) {
+			return std::as_const(*a->guild);
+		});
 	}
 
 	webhook_client make_webhook_client(const webhook& wh) {
@@ -223,15 +225,12 @@ protected:
 	boost::asio::io_context::strand m_strand;
 	client* m_parent_client = nullptr;
 	std::string m_auth_token;
-	async_mutex m_events_mut;
 
-	ref_stable_map2<snowflake, Guild> m_guilds;
-	// ref_stable_map<snowflake, text_channel> m_text_channel_map;
-	// ref_stable_map<snowflake, voice_channel> m_voice_channel_map;
-	// ref_stable_map<snowflake, channel_catagory> m_channel_catagory_map;
+	ska::bytell_hash_map<snowflake, std::unique_ptr<guild_and_stuff>> m_guilds;
+	
 	ref_stable_map<snowflake, dm_channel> m_dm_channels;
 
-	std::vector<std::pair<std::chrono::steady_clock::time_point, ref_count_ptr<Guild>>> m_deleted_guilds;
+	//std::vector<std::pair<std::chrono::steady_clock::time_point, ref_count_ptr<Guild>>> m_deleted_guilds;
 	std::vector<std::pair<std::chrono::steady_clock::time_point, indirect<dm_channel>>> m_deleted_dm_channels;
 
 

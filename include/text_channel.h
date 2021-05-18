@@ -36,9 +36,6 @@ private:
 	
 	//snowflake m_last_message_id;
 	//timestamp m_last_pin_timestamp;	
-	//dynamic_item_cache<guild_text_message> m_msg_cache = dynamic_item_cache<guild_text_message>(10ull, false);
-
-	//guild_text_message& p_add_msg(guild_text_message msg);
 
 	friend void from_json(const nlohmann::json& json, text_channel& channel);
 	friend struct internal_shard;

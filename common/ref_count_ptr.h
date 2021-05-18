@@ -1,6 +1,7 @@
 #pragma once
 #include <atomic>
 #include <compare>
+#include <concepts>
 
 struct ref_counted {
 	ref_counted() = default;
@@ -179,7 +180,7 @@ private:
 	T* m_self = nullptr;
 };
 
-template<typename T, typename... args, std::enable_if_t<std::is_constructible_v<T, args...>, int>  = 0>
+template<typename T, typename... args>requires std::constructible_from<T,args...>
 ref_count_ptr<T> make_ref_count_ptr(args&&... Args) {
 	return ref_count_ptr<T>(new T(std::forward<args>(Args)...));
 }

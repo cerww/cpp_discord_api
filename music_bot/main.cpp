@@ -21,7 +21,7 @@ std::string getFileContents(const std::string& filePath, decltype(std::ios::in) 
 cerwy::task<void> play_stuffs(voice_connection& vc, async_queue_thread_unsafe<std::string>& queue) {
 	while (vc.is_connected()) {
 		auto next_query = co_await queue.pop();
-		co_await vc.send_async(ytdl_search_source(std::move(next_query), vc.strand().context()));			
+		co_await vc.send_async(ytdl_search_source(std::move(next_query), vc.strand()));	
 	}
 }
 

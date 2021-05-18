@@ -10,7 +10,7 @@
 struct Guild;
 
 struct guild_member :partial_guild_member {
-	const Guild& guild() const noexcept;;
+	const Guild& guild() const noexcept;
 
 	snowflake guild_id() const noexcept;
 
@@ -30,7 +30,6 @@ struct guild_member :partial_guild_member {
 	
 private:
 	ref_count_ptr<Guild> m_guild = nullptr;
-	//mutable bool m_roles_are_sorted = false;
 
 	discord_obj_map<guild_role> id_to_role_map() const noexcept;
 

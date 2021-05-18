@@ -88,18 +88,16 @@ cerwy::task<void> test_new_queue(async_queue_maybe_better<int>& queue) {
 
 void test_new_queuea() {
 	async_queue_maybe_better<int> queue;
-	auto t = std::thread([&]() {
+	auto t = std::jthread([&]() {
 		test_new_queue(queue);
 	});
 
-	auto t2 = std::thread([&]() {
+	auto t2 = std::jthread([&]() {
 		test_new_queue(queue);
 	});
 
 	test_queue1(queue);
 
-	t.join();
-	t2.join();
 	std::cout << "aaa" << std::endl;
 	std::cin.get();
 }

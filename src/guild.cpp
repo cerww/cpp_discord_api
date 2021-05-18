@@ -1,11 +1,6 @@
 #include "snowflake.h"
 #include "guild.h"
 
-const guild_member& Guild::owner() const {
-	throw_if_dead();
-	return m_members.at(owner_id());
-}
-
 timestamp Guild::joined_at() const noexcept { return m_joined_at; }
 
 bool Guild::large() const noexcept { return m_large; }
@@ -19,12 +14,12 @@ void from_json(const nlohmann::json& json, Guild& guild) {
 	guild.m_large = json["large"].get<bool>();
 	guild.m_unavailable = json["unavailable"].get<bool>();
 	guild.m_member_count = json["member_count"].get<int>();
-	guild.m_members.reserve(guild.m_member_count);
+	//guild.m_members.reserve(guild.m_member_count);
 	guild.m_voice_states = json["voice_states"].get<std::vector<voice_state>>();
 }
 
 const text_channel& Guild::system_channel() const {
-	return m_text_channels.at(system_channel_id());
+	return *m_stuff->text_channels.at(system_channel_id());
 }
 
 

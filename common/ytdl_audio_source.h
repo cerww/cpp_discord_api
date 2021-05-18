@@ -13,6 +13,10 @@ struct ytdl_source {
 		m_url(std::move(url)),
 		m_ioc(ioc) { }
 
+	explicit ytdl_source(std::string url, boost::asio::io_context::strand& ioc) :
+		m_url(std::move(url)),
+		m_ioc(ioc.context()) { }
+
 	struct async_thingy {
 		explicit async_thingy(std::string_view url, boost::asio::io_context& ioc,std::chrono::milliseconds t_time_frame) :
 			ioc_(ioc),
@@ -83,6 +87,10 @@ struct ytdl_search_source {
 	explicit ytdl_search_source(std::string query, boost::asio::io_context& ioc) :
 		m_search_query(std::move(query)),
 		m_ioc(ioc) { }
+
+	explicit ytdl_search_source(std::string query, boost::asio::io_context::strand& ioc) :
+		m_search_query(std::move(query)),
+		m_ioc(ioc.context()) { }
 
 	struct async_thingy {
 		explicit async_thingy(std::string_view query, boost::asio::io_context& ioc, std::chrono::milliseconds t_time_frame) :

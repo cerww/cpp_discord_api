@@ -32,6 +32,13 @@ struct client;
 
 struct voice_connection;
 
+struct shard_settings {
+	std::string_view gateway;
+	intents intent;
+	int shard_number = 0;
+	bool use_safe_mode = true;
+};
+
 struct internal_shard: shard {
 	static constexpr int large_threshold = 51;
 		
@@ -46,10 +53,10 @@ struct internal_shard: shard {
 	internal_shard(const internal_shard&) = delete;
 	internal_shard(internal_shard&&) = delete;
 
-	~internal_shard() noexcept {
+	virtual ~internal_shard() noexcept {
 		try {
 			for (auto&& [id, guild] : m_guilds) {
-				guild.set_dead();
+				guild->guild->set_dead();
 			}
 			m_web_socket->close(4000);
 			m_is_disconnected = true;
@@ -228,8 +235,8 @@ private:
 	guild_member make_member_from_msg(const nlohmann::json& user_json, const nlohmann::json& member_json) const;
 
 
-	template<typename msg_t, typename channel_t, typename map_t>
-	msg_t create_msg(channel_t&, const nlohmann::json&, map_t&&);
+	template<typename msg_t, typename channel_t>
+	msg_t create_msg(channel_t&, const nlohmann::json&);
 
 	template<typename msg_t, typename channel_t, typename map_t>
 	msg_t createMsgUpdate(channel_t&, const nlohmann::json&, map_t&&);
@@ -294,8 +301,8 @@ inline guild_member internal_shard::make_member_from_msg(const nlohmann::json& u
 	return ret;
 }
 
-template<typename msg_t, typename channel_t, typename map_t>
-msg_t internal_shard::create_msg(channel_t& ch, const nlohmann::json& stuffs, map_t&&) {
+template<typename msg_t, typename channel_t>
+msg_t internal_shard::create_msg(channel_t& ch, const nlohmann::json& stuffs) {
 	msg_t retVal;
 	stuffs.get_to(static_cast<partial_message&>(retVal));
 	retVal.m_channel = &ch;
