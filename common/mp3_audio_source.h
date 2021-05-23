@@ -63,7 +63,7 @@ struct mp3_audio_source {
 				if (samples_needed() > max_samples_size_for_stack_storage) {
 					//switch to vector if more space is needed
 					std::vector<int16_t> temp((int)MINIMP3_MAX_SAMPLES_PER_FRAME + samples_needed());
-					std::copy(pcm_for_init.begin(), pcm_for_init.end(), temp.begin());
+					std::ranges::copy(pcm_for_init, temp.begin());
 					m_pcm_variant = std::move(temp);
 				}
 
@@ -82,7 +82,6 @@ struct mp3_audio_source {
 
 			void next() {
 				remove_1_frame();
-
 				decode_enough_samples();
 			}
 			

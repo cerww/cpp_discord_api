@@ -12,7 +12,7 @@
 #include <type_traits>
 #include "../common/ref_stable_map.h"
 #include "discord_enums.h"
-#include "../common/task.h"
+#include "../common/eager_task.h"
 #include "rename_later_5.h"
 #include "attachment.h"
 #include "discord_voice_connection.h"
@@ -37,7 +37,7 @@ struct internal_shard :shard {
 
 
 	//not in here cuz shard.cpp would be too big to compile without /bigobj on vc ;-;
-	friend cerwy::task<void> init_shard(int shardN, internal_shard& t_parent, boost::asio::io_context& ioc, std::string_view gateway);
+	friend cerwy::eager_task<void> init_shard(int shardN, internal_shard& t_parent, boost::asio::io_context& ioc, std::string_view gateway);
 
 	using wsClient = rename_later_5;
 	explicit internal_shard(int shard_number, client* t_parent, boost::asio::io_context& ioc, std::string_view, intents);
@@ -63,8 +63,8 @@ struct internal_shard :shard {
 
 	nlohmann::json presence() const;
 
-	cerwy::task<voice_connection> connect_voice(const voice_channel&) override;
-	cerwy::task<voice_connection> connect_voice(snowflake, snowflake) override;
+	cerwy::eager_task<voice_connection> connect_voice(const voice_channel&) override;
+	cerwy::eager_task<voice_connection> connect_voice(snowflake, snowflake) override;
 
 
 	auto& resolver() {
@@ -96,10 +96,10 @@ struct internal_shard :shard {
 	std::atomic<uint64_t> m_seq_num = 0;
 
 	std::unique_ptr<wsClient> m_web_socket = nullptr;
-	cerwy::task<void> send_identity() const;
+	cerwy::eager_task<void> send_identity() const;
 	
 private:
-	cerwy::task<boost::beast::error_code> connect_http_connection();
+	cerwy::eager_task<boost::beast::error_code> connect_http_connection();
 
 	void doStuff(nlohmann::json, int);
 	void on_reconnect();
@@ -124,7 +124,7 @@ private:
 	//status update
 	void m_opcode3_send_presence() const;//update presence
 	//voice state
-	std::pair<cerwy::task<nlohmann::json>, cerwy::task<std::string>> m_opcode4(snowflake,snowflake);
+	std::pair<cerwy::eager_task<nlohmann::json>, cerwy::eager_task<std::string>> m_opcode4(snowflake,snowflake);
 	//resume
 	void m_opcode6_send_resume() const;
 	//reconnect
@@ -132,7 +132,7 @@ private:
 	//request guild members
 	void m_opcode8_guild_member_chunk(snowflake) const;
 	//invalid session
-	cerwy::task<void> m_opcode9_on_invalid_session(nlohmann::json);
+	cerwy::eager_task<void> m_opcode9_on_invalid_session(nlohmann::json);
 	//hello
 	void m_opcode10_on_hello(nlohmann::json&);
 	//heartbeat ack

@@ -3,7 +3,7 @@
 #include <vector>
 #include <boost/beast.hpp>
 #include <boost/beast/ssl.hpp>
-#include "task.h"
+#include "eager_task.h"
 #include "async_mutex.h"
 #include <iostream>
 //#include <ctime>
@@ -29,18 +29,18 @@ struct web_socket_session_impl :ref_counted {
 	std::function<void(std::string)> on_read = [](auto&&...) {};
 	std::function<void(std::vector<std::byte>)> on_binary = [](auto&&...) {};
 
-	std::function<cerwy::task<void>(boost::beast::error_code)> on_error = [](auto&&...) { return cerwy::make_ready_void_task(); };//reconsider task?
+	std::function<cerwy::eager_task<void>(boost::beast::error_code)> on_error = [](auto&&...) { return cerwy::make_ready_void_task(); };//reconsider task?
 
-	cerwy::task<void> reconnect(std::string uri);
-	cerwy::task<void> connect(std::string uri);
+	cerwy::eager_task<void> reconnect(std::string uri);
+	cerwy::eager_task<void> connect(std::string uri);
 
-	cerwy::task<void> send_thing(std::string);
+	cerwy::eager_task<void> send_thing(std::string);
 
-	cerwy::task<void> send_thing(std::vector<std::byte>);
+	cerwy::eager_task<void> send_thing(std::vector<std::byte>);
 
 	void close(int);
 
-	cerwy::task<void> start_reads();
+	cerwy::eager_task<void> start_reads();
 
 	bool is_reading() const {
 		return m_is_reading;
@@ -101,7 +101,7 @@ struct web_socket_session {
 		return m_me->on_binary;
 	}
 
-	std::function<cerwy::task<void>(boost::beast::error_code)>& on_error() {
+	std::function<cerwy::eager_task<void>(boost::beast::error_code)>& on_error() {
 		return m_me->on_error;
 	};
 
@@ -113,28 +113,28 @@ struct web_socket_session {
 		return m_me->on_binary;
 	}
 
-	const std::function<cerwy::task<void>(boost::beast::error_code)>& on_error() const {
+	const std::function<cerwy::eager_task<void>(boost::beast::error_code)>& on_error() const {
 		return m_me->on_error;
 	};
 
 	// ReSharper disable CppMemberFunctionMayBeConst
-	cerwy::task<void> reconnect(std::string uri) {
+	cerwy::eager_task<void> reconnect(std::string uri) {
 		// ReSharper restore CppMemberFunctionMayBeConst
 		return m_me->reconnect(std::move(uri));
 	};
 
 	/*
-	cerwy::task<void> connect(std::string uri) {		
+	cerwy::eager_task<void> connect(std::string uri) {		
 		return m_me->connect(std::move(uri));		
 	}
 	
 	*/
 
-	cerwy::task<void> send_thing(std::string what) const {
+	cerwy::eager_task<void> send_thing(std::string what) const {
 		return m_me->send_thing(std::move(what));
 	};
 
-	cerwy::task<void> send_thing(std::vector<std::byte> what) const {
+	cerwy::eager_task<void> send_thing(std::vector<std::byte> what) const {
 		return m_me->send_thing(std::move(what));
 	};
 
@@ -175,7 +175,7 @@ private:
 	ref_count_ptr<web_socket_session_impl> m_me = nullptr;;
 };
 
-cerwy::task<web_socket_session> create_session(
+cerwy::eager_task<web_socket_session> create_session(
 	std::string_view full_uri,
 	boost::asio::io_context& ioc,//make this any_io_executor?	
 	boost::asio::ssl::context_base::method c

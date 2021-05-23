@@ -20,7 +20,7 @@ struct rename_later_5 {
 		*m_is_alive = false;
 	}
 
-	cerwy::task<void> send_thing(std::string);
+	cerwy::eager_task<void> send_thing(std::string);
 
 	void close(int code) noexcept;
 

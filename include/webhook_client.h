@@ -2,7 +2,7 @@
 #include "webhook.h"
 #include <string>
 #include "requests.h"
-#include "../common/task.h"
+#include "../common/eager_task.h"
 #include "../common/concurrent_async_queue.h"
 #include <boost/asio/ssl.hpp>
 #include "../common/ref_or_inplace.h"
@@ -26,7 +26,7 @@ struct webhook_client_impl;
 // 		m_done.store(true);
 // 	}
 //
-// 	cerwy::task<boost::beast::error_code> async_connect();
+// 	cerwy::eager_task<boost::beast::error_code> async_connect();
 //
 // private:
 // 	webhook_client_impl* m_client = nullptr;
@@ -39,15 +39,15 @@ struct webhook_client_impl;
 // 	boost::asio::ssl::context m_ssl_ctx{boost::asio::ssl::context::tlsv12_client};
 // 	boost::asio::ssl::stream<boost::asio::ip::tcp::socket> m_socket;
 //
-// 	cerwy::task<void> send_to_discord(webhook_request);//major param id is always webhook id
+// 	cerwy::eager_task<void> send_to_discord(webhook_request);//major param id is always webhook id
 //
-// 	cerwy::task<bool> send_to_discord_(webhook_request&);
+// 	cerwy::eager_task<bool> send_to_discord_(webhook_request&);
 //
-// 	cerwy::task<void> start_sending();
+// 	cerwy::eager_task<void> start_sending();
 //
-// 	cerwy::task<void> reconnect();
+// 	cerwy::eager_task<void> reconnect();
 //
-// 	cerwy::task<void> send_rq(webhook_request&);
+// 	cerwy::eager_task<void> send_rq(webhook_request&);
 // };
 
 struct webhook_client_impl {
@@ -132,9 +132,9 @@ private:
 namespace rawrland2 {//rename later ;-;
 
 template<typename request_type, typename ... Args>
-rq::shared_state2 get_default_stuffs_for_request(Args&&... args) {
+rq::request_data get_default_stuffs_for_request(Args&&... args) {
 
-	rq::shared_state2 ret;	
+	rq::request_data ret;	
 	ret.req = request_type::request(std::forward<Args>(args)...);
 	if constexpr (rq::has_content_type_v<request_type>) {		
 		ret.req.set(boost::beast::http::field::content_type, request_type::content_type);

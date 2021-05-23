@@ -5,7 +5,7 @@
 #include <span>
 
 
-cerwy::task<void> web_socket_session_impl::reconnect(std::string uri) {
+cerwy::eager_task<void> web_socket_session_impl::reconnect(std::string uri) {
 	m_buffer.consume(m_buffer.size());
 	//m_socket = co_await wss_from_uri(uri, *m_resolver, *m_ssl_ctx);
 	boost::asio::ip::tcp::resolver resolver(m_socket.get_executor());
@@ -13,12 +13,12 @@ cerwy::task<void> web_socket_session_impl::reconnect(std::string uri) {
 	//m_is_reading = false;
 }
 
-cerwy::task<void> web_socket_session_impl::connect(std::string uri) {
+cerwy::eager_task<void> web_socket_session_impl::connect(std::string uri) {
 	boost::asio::ip::tcp::resolver resolver(m_socket.get_executor());
 	co_await reconnect_wss_from_url(m_socket, uri, resolver, m_ssl_ctx);
 }
 
-cerwy::task<void> web_socket_session_impl::send_thing(const std::string msg) {
+cerwy::eager_task<void> web_socket_session_impl::send_thing(const std::string msg) {
 	auto pin = ref_count_ptr(this);
 
 	auto lock = co_await m_mut.async_lock();
@@ -32,7 +32,7 @@ cerwy::task<void> web_socket_session_impl::send_thing(const std::string msg) {
 	}
 }
 
-cerwy::task<void> web_socket_session_impl::send_thing(const std::vector<std::byte> msg) {
+cerwy::eager_task<void> web_socket_session_impl::send_thing(const std::vector<std::byte> msg) {
 	auto pin = ref_count_ptr(this);
 
 	auto lock = co_await m_mut.async_lock();
@@ -53,7 +53,7 @@ void web_socket_session_impl::close(int code) {
 	m_is_alive = false;
 }
 
-cerwy::task<void> web_socket_session_impl::start_reads() {
+cerwy::eager_task<void> web_socket_session_impl::start_reads() {
 	auto pin = ref_count_ptr(this);
 	if (m_is_reading.exchange(true)) {
 		co_return;
@@ -96,7 +96,7 @@ void web_socket_session_impl::kill_me() {
 	m_is_alive = false;
 }
 
-cerwy::task<web_socket_session> create_session(
+cerwy::eager_task<web_socket_session> create_session(
 	std::string_view uri,
 	boost::asio::io_context& ioc,//TODO change this to any_io_executor or executor, watever is in boost 1.7.4
 	boost::asio::ssl::context_base::method c

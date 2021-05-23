@@ -3,7 +3,7 @@
 
 namespace cacheless {
 
-cerwy::task<void> rename_later_5::send_thing(std::string msg) {
+cerwy::eager_task<void> rename_later_5::send_thing(std::string msg) {
 	auto lock = co_await m_mut.async_lock();
 	auto [ec, n] = co_await m_socket.async_write(boost::asio::buffer(msg), use_task_return_tuple2);
 	//somehow make this different

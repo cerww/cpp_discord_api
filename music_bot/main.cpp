@@ -18,7 +18,7 @@ std::string getFileContents(const std::string& filePath, decltype(std::ios::in) 
 	return fileContents;
 }
 
-cerwy::task<void> play_stuffs(voice_connection& vc, async_queue_thread_unsafe<std::string>& queue) {
+cerwy::eager_task<void> play_stuffs(voice_connection& vc, async_queue_thread_unsafe<std::string>& queue) {
 	while (vc.is_connected()) {
 		auto next_query = co_await queue.pop();
 		co_await vc.send_async(ytdl_search_source(std::move(next_query), vc.strand()));	
@@ -33,7 +33,7 @@ struct connection_stuffs {
 
 	voice_connection vc;
 	async_queue_thread_unsafe<std::string> queue;
-	cerwy::task<void> thingy;
+	cerwy::eager_task<void> thingy;
 };
 
 //wat is asio.ssl.337690831
@@ -54,7 +54,7 @@ int main() {
 
 	std::unordered_map<snowflake, connection_stuffs> connections;
 
-	command_thingy["join"] += shiny::make_command([&](guild_text_message m,shard& s) ->cerwy::task<void> {
+	command_thingy["join"] += shiny::make_command([&](guild_text_message m,shard& s) ->cerwy::eager_task<void> {
 		const auto channel_ref = m.guild().voice_channel_for(m.author());
 		if (channel_ref.has_value()) {
 			auto connection = co_await s.connect_voice(channel_ref.value());

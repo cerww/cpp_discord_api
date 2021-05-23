@@ -38,7 +38,7 @@ https://youtu.be/RrGX7g9xsY0 for working example
 
 int main() {
 	client c;
-	c.on_guild_text_msg = [](const guild_text_message& msg, shard& s)->cerwy::task<void> {
+	c.on_guild_text_msg = [](const guild_text_message& msg, shard& s)->cerwy::eager_task<void> {
 		if(msg.content() == "ping") {
 			co_await s.send_message(msg.channel(),"pong");
 		}

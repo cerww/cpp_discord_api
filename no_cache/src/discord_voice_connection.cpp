@@ -17,7 +17,7 @@ discord_voice_connection_impl::discord_voice_connection_impl(web_socket_session 
 		on_msg_recv(std::move(json["d"]), opcode);
 	};
 
-	socket.on_error() = [this](boost::system::error_code ec) ->cerwy::task<void> {
+	socket.on_error() = [this](boost::system::error_code ec) ->cerwy::eager_task<void> {
 		std::cout << "error voice websocket " << ec << std::endl;
 		if (ec != boost::asio::error::operation_aborted) {
 			co_await socket.reconnect(web_socket_endpoint);
@@ -26,7 +26,7 @@ discord_voice_connection_impl::discord_voice_connection_impl(web_socket_session 
 	};
 }
 
-cerwy::task<void> discord_voice_connection_impl::control_speaking(int is_speaking) {
+cerwy::eager_task<void> discord_voice_connection_impl::control_speaking(int is_speaking) {
 	std::string msg = fmt::format(R"(
 {{
     "op": 5,
@@ -41,7 +41,7 @@ cerwy::task<void> discord_voice_connection_impl::control_speaking(int is_speakin
 	co_await socket.send_thing(std::move(msg));
 }
 
-cerwy::task<void> discord_voice_connection_impl::send_silent_frames() {
+cerwy::eager_task<void> discord_voice_connection_impl::send_silent_frames() {
 	//0xF8, 0xFF,0xFE
 	co_return;
 }
@@ -115,7 +115,7 @@ std::vector<std::byte> discord_voice_connection_impl::encrypt_xsalsa20_poly1305(
 	return return_val;
 }
 
-cerwy::task<void> discord_voice_connection_impl::send_heartbeat() {
+cerwy::eager_task<void> discord_voice_connection_impl::send_heartbeat() {
 	/*
 	heartbeat_sender->execute([me = ref_count_ptr(this)]() {
 		if(me->ref_count() > 1 &&me->socket.is_open()) {
@@ -254,7 +254,7 @@ void discord_voice_connection_impl::on_session_discription(nlohmann::json data) 
 	waiter->set_value();//finish setup
 }
 
-cerwy::task<void> discord_voice_connection_impl::connect_udp() {
+cerwy::eager_task<void> discord_voice_connection_impl::connect_udp() {
 	std::cout << m_ip << ' ' << m_port << std::endl;
 
 
@@ -279,7 +279,7 @@ cerwy::task<void> discord_voice_connection_impl::connect_udp() {
 	send_op1_select_protocol();
 }
 
-cerwy::task<void> discord_voice_connection_impl::do_ip_discovery() {
+cerwy::eager_task<void> discord_voice_connection_impl::do_ip_discovery() {
 	std::array<std::byte, 74> data_to_send{{}};
 	//(uint16_t&)data_to_send[0] = htons(0x1);
 	(uint8_t&)data_to_send[1] = 0x1;
@@ -307,12 +307,12 @@ cerwy::task<void> discord_voice_connection_impl::do_ip_discovery() {
 	co_return;
 }
 
-cerwy::task<boost::system::error_code> discord_voice_connection_impl::send_voice_data_udp(std::span<const std::byte> data) {
+cerwy::eager_task<boost::system::error_code> discord_voice_connection_impl::send_voice_data_udp(std::span<const std::byte> data) {
 	auto [ec, n] = co_await voice_socket.async_send(boost::asio::buffer(data.data(), data.size_bytes()), use_task_return_tuple2);
 	co_return ec;
 }
 
-cerwy::task<boost::system::error_code> discord_voice_connection_impl::wait(std::chrono::milliseconds time) {
+cerwy::eager_task<boost::system::error_code> discord_voice_connection_impl::wait(std::chrono::milliseconds time) {
 	boost::asio::steady_timer timer(context());
 	timer.expires_after(19ms);
 	auto ec3 = co_await timer.async_wait(use_task_return_ec);

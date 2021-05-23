@@ -37,7 +37,7 @@ int main() {
 			s.send_message(m.channel(), "wat {}, {}"_format(member, role)).execute_and_ignore();
 		});
 
-	command_thingy["join"] += shiny::make_command([](guild_text_message m,shard& s)->cerwy::task<void> {
+	command_thingy["join"] += shiny::make_command([](guild_text_message m,shard& s)->cerwy::eager_task<void> {
 		auto channel_opt = m.guild().voice_channel_for(m.author());
 		if (!channel_opt) {
 			co_await s.send_message(m.channel(), "not connected");

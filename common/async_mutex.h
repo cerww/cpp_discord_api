@@ -1,5 +1,5 @@
 #pragma once
-#include "task.h"
+#include "eager_task.h"
 #include <mutex>
 #include "concurrent_queue.h"
 
@@ -22,7 +22,7 @@ struct get_current_coroutine_handle {
 
 struct resume_coro {
 	//resume_coro
-	cerwy::task<void> pause() {
+	cerwy::eager_task<void> pause() {
 		auto current_coro = co_await get_current_coroutine_handle();
 		co_await std::suspend_always();
 	}
@@ -76,7 +76,7 @@ struct async_mutex1 {
 		}
 	}
 
-	cerwy::task<lock_t> lock() {
+	cerwy::eager_task<lock_t> lock() {
 		if (!m_is_locked) {
 			m_is_locked = true;
 			return cerwy::make_ready_task(lock_t(this));
@@ -90,7 +90,7 @@ struct async_mutex1 {
 	}
 
 private:
-	cerwy::task<void> unlock_impl() {
+	cerwy::eager_task<void> unlock_impl() {
 		m_unlocker = co_await get_current_coroutine_handle();
 
 		{//do once without the suspend
@@ -162,7 +162,7 @@ struct async_mutex2 {
 		++m_count_state;
 	}
 
-	cerwy::task<lock_t> lock() {
+	cerwy::eager_task<lock_t> lock() {
 		if (!m_is_locked) {
 			m_is_locked = true;
 			return cerwy::make_ready_task(lock_t(this));
@@ -327,14 +327,14 @@ private:
 
 /*
 
-cerwy::task<void> t1(async_mutex2& mut,cerwy::task<int> tasky) {
+cerwy::eager_task<void> t1(async_mutex2& mut,cerwy::eager_task<int> tasky) {
 	auto t = co_await mut.lock();
 	std::cout << "a" << std::endl;;
 	auto y = co_await tasky;
 	std::cout << "b" << std::endl;;
 }
 
-cerwy::task<void> t2(async_mutex2& mut) {
+cerwy::eager_task<void> t2(async_mutex2& mut) {
 	auto t = co_await mut.lock();
 	std::cout << "c" << std::endl;;
 }

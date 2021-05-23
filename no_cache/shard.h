@@ -139,8 +139,8 @@ public:
 		return m_id;
 	}
 
-	virtual cerwy::task<voice_connection> connect_voice(const voice_channel&) = 0;
-	virtual cerwy::task<voice_connection> connect_voice(snowflake, snowflake) = 0;
+	virtual cerwy::eager_task<voice_connection> connect_voice(const voice_channel&) = 0;
+	virtual cerwy::eager_task<voice_connection> connect_voice(snowflake, snowflake) = 0;
 
 	boost::asio::io_context::strand& strand() {
 		return m_strand;
@@ -188,7 +188,7 @@ protected:
 
 	bool will_have_guild(snowflake guild_id) const noexcept;
 
-	friend cerwy::task<void> init_shard(int shardN, internal_shard& t_parent, boost::asio::io_context& ioc, std::string_view gateway);
+	friend cerwy::eager_task<void> init_shard(int shardN, internal_shard& t_parent, boost::asio::io_context& ioc, std::string_view gateway);
 	friend struct client;
 };
 

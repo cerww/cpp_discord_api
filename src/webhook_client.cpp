@@ -6,7 +6,7 @@
 // 	m_request_queue.push(std::move(d));
 // }
 //
-// cerwy::task<boost::beast::error_code> webhook_http_client::async_connect() {
+// cerwy::eager_task<boost::beast::error_code> webhook_http_client::async_connect() {
 // 	boost::asio::ip::tcp::resolver resolver(m_client->ioc());
 // 	const auto [ec, results] = co_await resolver.async_resolve("discord.com", "https", use_task_return_tuple2);
 // 	if (ec) {
@@ -22,7 +22,7 @@
 // 	co_return ec3;
 // }
 //
-// cerwy::task<void> webhook_http_client::send_to_discord(webhook_request r) {
+// cerwy::eager_task<void> webhook_http_client::send_to_discord(webhook_request r) {
 // 	//don't check rate limit,if we're rate limted, just get 429, only 1 request is sent out anyways
 //
 // 	std::lock_guard<std::mutex> locky(r.state->ready_mut);
@@ -30,7 +30,7 @@
 // 		r.state->finish();
 // }
 //
-// cerwy::task<bool> webhook_http_client::send_to_discord_(webhook_request& r) {
+// cerwy::eager_task<bool> webhook_http_client::send_to_discord_(webhook_request& r) {
 // 	co_await send_rq(r);
 // 	
 // 	while (r.state->res.result_int() == 429) {
@@ -53,14 +53,14 @@
 // 	co_return true;
 // }
 //
-// cerwy::task<void> webhook_http_client::start_sending() {
+// cerwy::eager_task<void> webhook_http_client::start_sending() {
 // 	while(true) {
 // 		auto rq = co_await m_request_queue.pop();
 // 		(void)co_await send_to_discord(std::move(rq));
 // 	}
 // }
 //
-// cerwy::task<void> webhook_http_client::reconnect() {
+// cerwy::eager_task<void> webhook_http_client::reconnect() {
 // 	boost::asio::ip::tcp::resolver resolver(m_client->ioc());
 // 	
 // 	while (true) {
@@ -83,7 +83,7 @@
 // 	}
 // }
 //
-// cerwy::task<void> webhook_http_client::send_rq(webhook_request& request) {
+// cerwy::eager_task<void> webhook_http_client::send_rq(webhook_request& request) {
 // 	//TODO remove gotos
 // redo:
 // 	auto [ec, n] = co_await boost::beast::http::async_write(m_socket, request.req, use_task_return_tuple2);

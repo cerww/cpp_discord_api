@@ -39,7 +39,7 @@ boost::system::error_code connect_with_no_delay(boost::asio::ip::tcp::socket& so
 }
 
 template<typename results_t>
-cerwy::task<boost::system::error_code> async_connect_with_no_delay(boost::asio::ip::tcp::socket& sock, results_t&& results) {
+cerwy::eager_task<boost::system::error_code> async_connect_with_no_delay(boost::asio::ip::tcp::socket& sock, results_t&& results) {
 	boost::system::error_code ec;
 	for (auto&& thing : results) {
 		sock.open(thing.endpoint().protocol());
@@ -136,7 +136,7 @@ bool http_connection::send_to_discord_(discord_request& r, size_t major_param_id
 }
 
 
-cerwy::task<boost::beast::error_code> http_connection::async_connect() {
+cerwy::eager_task<boost::beast::error_code> http_connection::async_connect() {
 	const auto [ec, results] = co_await m_resolver.async_resolve("discord.com", "https", use_task_return_tuple2);
 	if (ec) {
 		co_return ec;
@@ -269,7 +269,7 @@ void http_connection2::send(discord_request&& d) {
 }
 
 
-cerwy::task<boost::beast::error_code> http_connection2::async_connect() {
+cerwy::eager_task<boost::beast::error_code> http_connection2::async_connect() {
 	const auto [ec, results] = co_await m_resolver.async_resolve("discord.com", "https", use_task_return_tuple2);
 	if (ec) {
 		co_return ec;
@@ -284,11 +284,11 @@ cerwy::task<boost::beast::error_code> http_connection2::async_connect() {
 	co_return ec3;
 }
 
-cerwy::task<void> http_connection2::send_to_discord(discord_request r) {
+cerwy::eager_task<void> http_connection2::send_to_discord(discord_request r) {
 	return send_to_discord(r, get_major_param_id(std::string_view(r.req.target().data(), r.req.target().size())));
 }
 
-cerwy::task<void> http_connection2::send_to_discord(discord_request r, uint64_t major_param_id_) {
+cerwy::eager_task<void> http_connection2::send_to_discord(discord_request r, uint64_t major_param_id_) {
 	auto lock = co_await m_mut.async_lock();//i don't think i need this if i use the queue
 
 	if (m_global_rate_limited.load()) {
@@ -312,7 +312,7 @@ cerwy::task<void> http_connection2::send_to_discord(discord_request r, uint64_t 
 
 //pre-con: request isn't rate-limited already
 //false => rate limited
-cerwy::task<bool> http_connection2::send_to_discord_(discord_request& r) {
+cerwy::eager_task<bool> http_connection2::send_to_discord_(discord_request& r) {
 	//std::lock_guard<std::mutex> locky(r.state->ready_mut);	
 	co_await send_rq(r);
 	//this is "while" loop not "if" because of global rate limits
@@ -366,7 +366,7 @@ cerwy::task<bool> http_connection2::send_to_discord_(discord_request& r) {
 	co_return true;
 }
 
-cerwy::task<void> http_connection2::start_sending() {
+cerwy::eager_task<void> http_connection2::start_sending() {
 	while (true) {
 		auto msg = co_await m_request_queue.pop();
 		co_await send_to_discord(std::move(msg));
@@ -433,7 +433,7 @@ void http_connection2::connect() {
 }
 */
 
-cerwy::task<void> http_connection2::reconnect() {
+cerwy::eager_task<void> http_connection2::reconnect() {
 	while (true) {
 		if (m_socket.next_layer().is_open()) {
 			co_await m_socket.async_shutdown(use_task);
@@ -454,7 +454,7 @@ cerwy::task<void> http_connection2::reconnect() {
 	}
 }
 
-cerwy::task<void> http_connection2::send_rq(discord_request& request) {
+cerwy::eager_task<void> http_connection2::send_rq(discord_request& request) {
 	//TODO remove gotos
 redo:
 	auto [ec, n] = co_await boost::beast::http::async_write(m_socket, request.req, use_task_return_tuple2);

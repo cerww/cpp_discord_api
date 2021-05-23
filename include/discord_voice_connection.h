@@ -34,14 +34,14 @@ struct discord_voice_connection_impl :
 		return socket.socket().get_executor();
 	}
 
-	cerwy::task<void> control_speaking(int is_speaking);
+	cerwy::eager_task<void> control_speaking(int is_speaking);
 
-	cerwy::task<void> send_silent_frames();
+	cerwy::eager_task<void> send_silent_frames();
 
 	void close();
 
 	template<typename T>
-	cerwy::task<void> send_voice(const T& data) {
+	cerwy::eager_task<void> send_voice(const T& data) {
 		using namespace std::literals;
 		using std::chrono::duration_cast;
 
@@ -86,7 +86,7 @@ struct discord_voice_connection_impl :
 	};
 
 	template<typename T>
-	cerwy::task<void> send_async(T&& async_source) {
+	cerwy::eager_task<void> send_async(T&& async_source) {
 		using namespace std::literals;
 		using std::chrono::duration_cast;
 
@@ -101,7 +101,7 @@ struct discord_voice_connection_impl :
 
 		//TODO change with for co_await when that is a thing
 		auto frames = async_source.frames(time_frame);
-		while (true) {			
+		while (true) {
 			std::optional<audio_frame> frame_opt = co_await frames.next();
 			if (!frame_opt) {
 				break;
@@ -137,7 +137,7 @@ struct discord_voice_connection_impl :
 		}
 	}
 
-	cerwy::task<void> cancel_current_data() {
+	cerwy::eager_task<void> cancel_current_data() {
 		if (!is_playing || is_canceled) {
 			return cerwy::make_ready_void_task();
 		}
@@ -160,10 +160,10 @@ struct discord_voice_connection_impl :
 
 	int heartbeat_interval = 0;
 	uint32_t ssrc = 0;
-	
+
 	ref_count_ptr<const Guild> guild;
-	
-	cerwy::promise<void>* waiter = nullptr;	
+
+	cerwy::promise<void>* waiter = nullptr;//only used in setup
 
 	int delay = 0;
 	std::atomic<bool> is_alive = true;
@@ -188,7 +188,7 @@ private:
 	//header is nonce
 	std::vector<std::byte> encrypt_xsalsa20_poly1305(std::array<std::byte, 12> header, std::span<const std::byte> audio_data);
 
-	cerwy::task<void> send_heartbeat();
+	cerwy::eager_task<void> send_heartbeat();
 
 	void on_msg_recv(nlohmann::json data, int opcode);
 	void on_hello(nlohmann::json d);
@@ -197,15 +197,15 @@ private:
 	void send_op1_select_protocol() const;
 	void on_session_discription(nlohmann::json data);
 
-	cerwy::task<void> connect_udp();
-	cerwy::task<void> do_ip_discovery();
+	cerwy::eager_task<void> connect_udp();
+	cerwy::eager_task<void> do_ip_discovery();
 
 	//TODO remove these once i get modules
-	[[nodiscard]] cerwy::task<boost::system::error_code> send_voice_data_udp(std::span<const std::byte>);
+	[[nodiscard]] cerwy::eager_task<boost::system::error_code> send_voice_data_udp(std::span<const std::byte>);
 
-	[[nodiscard]] cerwy::task<boost::system::error_code> wait(std::chrono::milliseconds);
+	[[nodiscard]] cerwy::eager_task<boost::system::error_code> wait(std::chrono::milliseconds);
 
-	cerwy::task<void> send_frame(const audio_frame& frame, uint16_t sqeuence_number, uint32_t ssrc_big_end) {
+	cerwy::eager_task<void> send_frame(const audio_frame& frame, uint16_t sqeuence_number, uint32_t ssrc_big_end) {
 		std::array<std::byte, 12> header{{}};
 
 		(uint8_t&)header[0] = 0x80;
@@ -223,6 +223,22 @@ private:
 		co_await send_voice_data_udp(encrypted_voice_data);//don't acually need to check if data was sent?
 		m_timestamp += frame.frame_size;
 	}
+};
+
+template<typename T>
+concept async_audio_source = requires(T s)
+{
+	{ s.frames(std::chrono::milliseconds(1)) };
+	{ s.frames().next().await_resume() }-> std::convertible_to<bool>;
+	{ *s.frames().next().await_resume() }-> std::same_as<audio_frame>;
+	{ s.frames().next().await_ready() }-> std::convertible_to<bool>;
+};
+
+template<typename T>
+concept audio_source = requires(T s)
+{
+	{ s.frames(std::chrono::milliseconds(1)) }->std::ranges::range;
+	{ *s.frames(std::chrono::milliseconds(1)).begin() }-> std::convertible_to<audio_frame>;
 };
 
 struct voice_connection {
@@ -252,17 +268,17 @@ public:
 	}
 
 	template<typename T>//audio_source
-	cerwy::task<void> send(const T& data) {
+	cerwy::eager_task<void> send(const T& data) {
 		return m_connection->send_voice(data);
 	};
 
 	template<typename T>//audio_source
-	cerwy::task<void> send_async(T&& data) {
+	cerwy::eager_task<void> send_async(T&& data) {
 		return m_connection->send_async(std::forward<T>(data));
 	};
 
 	//todo: rename
-	cerwy::task<void> cancel_current_data() {
+	cerwy::eager_task<void> cancel_current_data() {
 		return m_connection->cancel_current_data();
 	}
 
@@ -294,11 +310,11 @@ public:
 		return *m_connection->strand;
 	}
 
-	bool is_connected() const noexcept{
+	bool is_connected() const noexcept {
 		return m_connection != nullptr;
 	}
 
 private:
 	ref_count_ptr<discord_voice_connection_impl> m_connection = nullptr;
-	friend cerwy::task<voice_connection> voice_connect_impl(internal_shard& me, const voice_channel& ch, std::string endpoint, std::string token, std::string session_id);
+	friend cerwy::eager_task<voice_connection> voice_connect_impl(internal_shard& me, const voice_channel& ch, std::string endpoint, std::string token, std::string session_id);
 };

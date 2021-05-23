@@ -13,7 +13,7 @@
 #include <type_traits>
 #include "../common/range-like-stuffs.h"
 #include "discord_enums.h"
-#include "../common/task.h"
+#include "../common/eager_task.h"
 #include "rename_later_5.h"
 #include "attachment.h"
 #include "discord_voice_connection.h"
@@ -43,7 +43,7 @@ struct internal_shard: shard {
 	static constexpr int large_threshold = 51;
 		
 	//not in here cuz shard.cpp would be too big to compile without /bigobj on vc++ ;-;
-	friend cerwy::task<void> init_shard(int shard_number, internal_shard& me, boost::asio::io_context& ioc, std::string_view gateway);
+	friend cerwy::eager_task<void> init_shard(int shard_number, internal_shard& me, boost::asio::io_context& ioc, std::string_view gateway);
 
 	using wsClient = rename_later_5;
 	explicit internal_shard(int shard_number, client* t_parent, boost::asio::io_context& ioc, std::string_view, intents);
@@ -77,7 +77,7 @@ struct internal_shard: shard {
 
 	nlohmann::json presence() const;
 
-	cerwy::task<voice_connection> connect_voice(const voice_channel&) override;
+	cerwy::eager_task<voice_connection> connect_voice(const voice_channel&) override;
 
 	auto& resolver() {
 		return m_resolver;
@@ -111,10 +111,10 @@ struct internal_shard: shard {
 		
 	ska::bytell_hash_set<snowflake> guilds_connected_to_vc;
 	
-	cerwy::task<void> send_identity() const;
+	cerwy::eager_task<void> send_identity() const;
 	
 private:
-	cerwy::task<boost::beast::error_code> connect_http_connection();
+	cerwy::eager_task<boost::beast::error_code> connect_http_connection();
 
 	void doStuff(nlohmann::json, int);
 	void on_reconnect();
@@ -138,7 +138,7 @@ private:
 	//status update
 	void m_opcode3_send_presence() const;//update presence
 	//voice state
-	std::pair<cerwy::task<nlohmann::json>, cerwy::task<std::string>> m_opcode4(const voice_channel&);
+	std::pair<cerwy::eager_task<nlohmann::json>, cerwy::eager_task<std::string>> m_opcode4(const voice_channel&);
 	//resume
 	void m_opcode6_send_resume() const;
 	//reconnect
@@ -146,7 +146,7 @@ private:
 	//request guild members
 	void m_opcode8_guild_member_chunk(snowflake) const;
 	//invalid session
-	cerwy::task<void> m_opcode9_on_invalid_session(nlohmann::json);
+	cerwy::eager_task<void> m_opcode9_on_invalid_session(nlohmann::json);
 	//hello
 	void m_opcode10_on_hello(nlohmann::json&);
 	//heartbeat ack
@@ -232,11 +232,6 @@ private:
 	// static reaction& remove_reaction(std::vector<reaction>&, partial_emoji&, snowflake, snowflake);
 
 	
-	guild_member make_member_from_msg(const nlohmann::json& user_json, const nlohmann::json& member_json) const;
-
-
-	template<typename msg_t, typename channel_t>
-	msg_t create_msg(channel_t&, const nlohmann::json&);
 
 	template<typename msg_t, typename channel_t, typename map_t>
 	msg_t createMsgUpdate(channel_t&, const nlohmann::json&, map_t&&);
@@ -279,67 +274,6 @@ void internal_shard::procces_event(nlohmann::json&) {
 	//static_assert(false);
 }
 
-inline guild_member internal_shard::make_member_from_msg(const nlohmann::json& user_json, const nlohmann::json& member_json) const {
-	guild_member ret;
-	from_json(user_json, (user&)ret);
-	
-	const auto it = member_json.find("nick");
-	if (it != member_json.end()) {
-		ret.m_nick = it->is_null() ? "" : it->get<std::string>();
-	}
-
-	auto& member_roles_json = member_json["roles"];
-	//ret.m_roles.reserve(member_roles_json.size() + 1);
-	ranges::push_back(ret.m_roles, member_roles_json| ranges::views::transform(&nlohmann::json::get<snowflake>));
-	//ret.m_roles = member_roles_json | ranges::views::transform(&nlohmann::json::get<snowflake>) | ranges::to<std::vector>();
-
-	//out.m_joined_at = in["joined_at"].get<timestamp>();
-
-	ret.m_deaf = member_json["deaf"].get<bool>();
-	ret.m_mute = member_json["mute"].get<bool>();
-
-	return ret;
-}
-
-template<typename msg_t, typename channel_t>
-msg_t internal_shard::create_msg(channel_t& ch, const nlohmann::json& stuffs) {
-	msg_t retVal;
-	stuffs.get_to(static_cast<partial_message&>(retVal));
-	retVal.m_channel = &ch;
-	
-	constexpr bool is_guild_msg = std::is_same_v<msg_t, guild_text_message>;
-
-	if constexpr (is_guild_msg) {
-		if (stuffs.contains("webhook_id")) {
-			from_json(stuffs["author"], static_cast<user&>(retVal.m_author));
-			retVal.m_author.m_guild = ch.m_guild;
-		}
-		else {
-			retVal.m_author = make_member_from_msg(stuffs["author"], stuffs["member"]);
-			retVal.m_author.m_guild = ch.m_guild;
-			//retVal.m_author.m_roles.push_back(ch.m_guild->id());
-		}
-	} else {
-		retVal.m_author = stuffs["author"].get<user>();
-	}
-
-	if constexpr (is_guild_msg) {
-		retVal.m_mentions.reserve(stuffs["mentions"].size());
-		for (const auto& mention : stuffs["mentions"]) {
-			auto& member = retVal.m_mentions.emplace_back(make_member_from_msg(mention, mention["member"]));
-			member.m_guild = ch.m_guild;
-			//member.m_roles.push_back(ch.m_guild->id());
-		}
-	}else {
-		retVal.m_mentions = stuffs["mentions"].get<std::vector<user>>();
-	}
-
-
-	if constexpr (std::is_same_v<msg_t, guild_text_message>) {
-		retVal.m_mention_roles_ids = stuffs["mention_roles"].get<lol_wat_vector<snowflake>>();
-	}
-	return retVal;
-}
 
 template<typename msg_t, typename channel_t, typename map_t>
 msg_t internal_shard::createMsgUpdate(channel_t& ch, const nlohmann::json& stuffs, map_t&& members) {

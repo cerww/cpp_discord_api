@@ -72,7 +72,7 @@ nlohmann::json internal_shard::presence() const {
 	return retVal;
 }
 
-cerwy::task<voice_connection> internal_shard::connect_voice(const voice_channel& channel) {
+cerwy::eager_task<voice_connection> internal_shard::connect_voice(const voice_channel& channel) {
 	const auto channel_id = channel.id;
 	const auto guild_id = channel.guild_id;
 	auto [endpoint, session_id_task] = m_opcode4(channel.guild_id, channel_id);
@@ -87,7 +87,7 @@ cerwy::task<voice_connection> internal_shard::connect_voice(const voice_channel&
 	co_return co_await voice_connect_impl(*this, channel, std::move(gateway), ep_json["token"].get<std::string>(), std::move(session_id));
 }
 
-cerwy::task<voice_connection> internal_shard::connect_voice(snowflake guild_id, snowflake channel_id) {
+cerwy::eager_task<voice_connection> internal_shard::connect_voice(snowflake guild_id, snowflake channel_id) {
 	auto [endpoint, session_id_task] = m_opcode4(guild_id, channel_id);
 	auto ep_json = co_await endpoint;
 	auto session_id = co_await session_id_task;
@@ -100,7 +100,7 @@ cerwy::task<voice_connection> internal_shard::connect_voice(snowflake guild_id, 
 	co_return co_await voice_connect_impl(*this, guild_id, channel_id, std::move(gateway), ep_json["token"].get<std::string>(), std::move(session_id));
 }
 
-cerwy::task<void> internal_shard::send_identity() const {
+cerwy::eager_task<void> internal_shard::send_identity() const {
 	auto identity = fmt::format(R"(
 {{
 "op":2,
@@ -130,7 +130,7 @@ cerwy::task<void> internal_shard::send_identity() const {
 	m_parent_client->notify_identified();
 }
 
-cerwy::task<boost::beast::error_code> internal_shard::connect_http_connection() {
+cerwy::eager_task<boost::beast::error_code> internal_shard::connect_http_connection() {
 	auto ec = co_await m_http_connection.async_connect();
 	int tries = 1;
 	//TODO: do something else
@@ -300,7 +300,7 @@ void internal_shard::m_opcode3_send_presence() const {
 	m_web_socket->send_thing(val.dump());
 }
 
-std::pair<cerwy::task<nlohmann::json>, cerwy::task<std::string>> internal_shard::m_opcode4(snowflake guild_id, snowflake channel_id) {
+std::pair<cerwy::eager_task<nlohmann::json>, cerwy::eager_task<std::string>> internal_shard::m_opcode4(snowflake guild_id, snowflake channel_id) {
 	cerwy::promise<nlohmann::json> name_promise;
 	cerwy::promise<std::string> session_id_promise;
 
@@ -345,7 +345,7 @@ void internal_shard::m_opcode8_guild_member_chunk(snowflake id) const {
 	m_web_socket->send_thing(s.dump());
 }
 
-cerwy::task<void> internal_shard::m_opcode9_on_invalid_session(nlohmann::json d) {
+cerwy::eager_task<void> internal_shard::m_opcode9_on_invalid_session(nlohmann::json d) {
 	boost::asio::steady_timer timer(strand(), std::chrono::steady_clock::now() + 5s);
 	auto ec = co_await timer.async_wait(use_task_return_ec);
 	//co_await resume_on_strand(strand());

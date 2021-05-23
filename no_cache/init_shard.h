@@ -1,12 +1,12 @@
 #pragma once
 #include "internal_shard.h"
-#include "../common/task.h"
+#include "../common/eager_task.h"
 
 
 //gotta move functions outside of internal_shard.cpp, it's too big to compile without /bigobj on vs
 
 namespace cacheless {
-cerwy::task<void> init_shard(
+cerwy::eager_task<void> init_shard(
 	int shardN,
 	internal_shard& t_parent,
 	boost::asio::io_context& ioc,

@@ -31,7 +31,7 @@ int main() {
 	
 	client c;
 	
-	c.on_guild_text_msg = [](const guild_text_message& msg, shard& s)-> cerwy::task<void> {
+	c.on_guild_text_msg = [](const guild_text_message& msg, shard& s)-> cerwy::eager_task<void> {
 		if (msg.content() == "rawrly") {
 			const auto hook = co_await s.create_webhook(msg.channel(), "bester_hook");
 			co_await s.send_with_webhook(hook, "rawrworld");

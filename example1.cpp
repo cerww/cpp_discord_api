@@ -6,8 +6,8 @@
 #include "common/never_sso_string.h"
 #include "common/big_uint.h"
 #include <coroutine>
-
-
+#include "common/lazy_task.h"
+#include "common/cow_string.h"
 
 
 using namespace std::literals;
@@ -24,13 +24,13 @@ std::string getFileContents(const std::string& filePath, decltype(std::ios::in) 
 	return fileContents;
 }
 
-cerwy::task<void> do_audio_thingy(cerwy::task<voice_connection> vc_task) {
+cerwy::eager_task<void> do_audio_thingy(cerwy::eager_task<voice_connection> vc_task) {
 	voice_connection channel = co_await vc_task;
 	//co_await channel.send(audio_from_mp3("C:/Users/cerw/Downloads/a2.mp3"));
 	co_await channel.send(mp3_audio_source(from_file{"C:/Users/cerw/Downloads/a.mp3"}));	
 }
 
-cerwy::task<void> thingy(const Guild& g, shard& s) {
+cerwy::eager_task<void> thingy(const Guild& g, shard& s) {
 	while (true) {
 		boost::asio::steady_timer timer(s.strand());
 		timer.expires_after(20s);
@@ -69,7 +69,7 @@ void test_never_sso_string() {
 	std::string s1_real_str = "aaaa";
 }
 
-cerwy::task<void> test_queue1(async_queue_maybe_better<int>& queue) {
+cerwy::eager_task<void> test_queue1(async_queue_maybe_better<int>& queue) {
 	for (int i = 0; i < 20001; ++i) {
 		const int a = co_await queue.pop();
 		//assert(a == i);
@@ -77,7 +77,7 @@ cerwy::task<void> test_queue1(async_queue_maybe_better<int>& queue) {
 	std::cout << "bbb" << std::endl;
 }
 
-cerwy::task<void> test_new_queue(async_queue_maybe_better<int>& queue) {
+cerwy::eager_task<void> test_new_queue(async_queue_maybe_better<int>& queue) {
 
 	for (int i = 0; i < 10000; ++i) {
 		queue.push(i);
@@ -191,8 +191,40 @@ void test_big_uint_bug() {
 	assert(qwee != big_uint("15241578752687113569975836365441"));
 }
 
+cerwy::eager_task<int> watland123() {
+	co_return 123;
+}
+
+cerwy::lazy_task<int> lazy_task_test2() {
+	co_return co_await watland123();
+}
+
+cerwy::lazy_task<int> lazy_task_test() {
+	const int a = co_await lazy_task_test2();
+	std::cout << "b" << a << std::endl;
+	co_return 1;
+}
+
+cerwy::eager_task<void> test_lazy_task_thing() {
+	const auto a = lazy_task_test();
+	std::cout << "a" << std::endl;
+	std::cout << co_await a << std::endl;
+}
+
+void test_cow_string() {
+	cow_string rawr = "wat";
+	auto c = rawr;
+	
+	std::cout << std::string_view(c) << std::endl;
+	
+}
+
 //spam bot
 int main() {
+
+	test_cow_string();
+	std::cin.get();
+	//test_lazy_task_thing();
 	//test_big_uint_bug();
 	//setlocale(LC_ALL, "");
 	//test_big_int();
@@ -205,7 +237,7 @@ int main() {
 	
 	client c;
 
-	cerwy::task<voice_connection> connashk;
+	cerwy::eager_task<voice_connection> connashk;
 	std::vector<partial_message> msgs;
 
 	c.on_guild_ready = [&](const Guild& g, shard& s) {
@@ -216,7 +248,7 @@ int main() {
 
 	//c.on_guild_ready = &thingy;
 	
-	c.on_guild_text_msg = [&](guild_text_message msg, shard& s)->cerwy::task<void> {
+	c.on_guild_text_msg = [&](guild_text_message msg, shard& s)->cerwy::eager_task<void> {
 		if (msg.content() == "rawrmander") {
 			do_audio_thingy(s.connect_voice(msg.guild().voice_channels_list()[0]));
 		} else if (msg.content() == "watland") {
@@ -272,7 +304,9 @@ int main() {
 		} else if (msg.content() == "at petery") {
 			s.send_message(msg.channel(), "<@188547243911938048>", disable_mentions).execute_and_ignore();
 		} else if (msg.content() == "hello kitty") {
-			const auto new_msg = co_await s.send_message(msg.channel(), "charmanderworld");
+			const guild_text_message new_msg = co_await s.send_message(msg.channel(), "charmanderworld");
+			std::cout << new_msg.content() << std::endl;
+			std::cout << new_msg.author().id().val << std::endl;
 			co_await s.add_reaction(new_msg, msg.guild().emojis().front());
 			co_return;
 
@@ -352,18 +386,7 @@ int main() {
 	};
 	c.on_guild_typing_start = [&](guild_member member, const text_channel& channel, shard& s) {
 		s.send_message(channel, "rawr").execute_and_ignore();
-		std::cout << "rawr" << std::endl;
-		/*
-		msgs.push_back(s.send_message(channel,member.username()+ " has started typing").get());
-		s.send_message(channel, member.username() + " has started typing");
-		s.send_message(channel, member.username() + " has started typing");
-		s.send_message(channel, member.username() + " has started typing");
-		s.send_message(channel, member.username() + " has started typing");
-		s.send_message(channel, member.username() + " has started typing");
-		s.send_message(channel, member.username() + " has started typing");
-		s.send_message(channel, member.username() + " has started typing").wait();
-		member.guild().roles();
-		*/
+		std::cout << "rawr" << std::endl;		
 	};
 
 	c.on_guild_member_add = [&](const guild_member& member, shard& s) {
@@ -379,7 +402,7 @@ int main() {
 		}
 	};
 
-	c.on_guild_reaction_add = [](guild_member who, const text_channel& channel, snowflake msg_id, partial_emoji emoji, shard& s) ->cerwy::task<void> {
+	c.on_guild_reaction_add = [](guild_member who, const text_channel& channel, snowflake msg_id, partial_emoji emoji, shard& s) ->cerwy::eager_task<void> {
 		if (who.id() == s.self_user().id()) {
 			co_return;
 		}
@@ -400,8 +423,8 @@ int main() {
 		std::cout << "reaction_removed" << std::endl;
 	};
 
-	c.on_guild_text_channel_create = [](const text_channel& channel,shard& s) ->cerwy::task<void> {
-		co_await s.send_message(channel, "wat");
+	c.on_guild_text_channel_create = [](const text_channel& channel,shard& s) ->cerwy::eager_task<void> {
+		(void)co_await s.send_message(channel, "wat");
 	};
 
 	c.set_token(getFileContents("token.txt"));

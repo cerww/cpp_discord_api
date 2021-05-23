@@ -16,6 +16,7 @@
 #include <fmt/compile.h>
 #include <algorithm>
 #include "dm_channel.h"
+#include "guild_text_message.h"
 #include "partial_message.h"
 #include "text_channel.h"
 #include "http_connection.h"
@@ -62,7 +63,7 @@ struct server_error final :std::exception {
 	}
 };
 
-struct shared_state2 {	
+struct request_data {	
 	std::optional<std::exception_ptr> exception;//rename?
 	boost::asio::io_context::strand* strand = nullptr;
 	boost::beast::http::request<boost::beast::http::string_body> req;
@@ -70,7 +71,7 @@ struct shared_state2 {
 	http_connection2* http_connection = nullptr;
 };
 
-static constexpr int asuodjhasdasd = sizeof(shared_state2);
+static constexpr int asuodjhasdasd = sizeof(request_data);
 
 // struct shared_state :ref_counted {
 // 	//rename some of these?
@@ -146,17 +147,16 @@ struct with_exception {
 };
 
 template<typename request_t>
-struct request_base :private crtp<request_t> {
+struct request_base :crtp<request_t> {
 	request_base() = default;
 
-	explicit request_base(shared_state2 t_state) :
+	explicit request_base(request_data t_state) :
 		state(std::move(t_state)) {}
 
 	template<typename T>
 	explicit request_base(with_exception<T> e, boost::asio::io_context::strand* strand) {
 		state.strand = strand;		
-		state.exception = std::make_exception_ptr(e.exception);
-		
+		state.exception = std::make_exception_ptr(e.exception);		
 	}
 
 	template<typename ...Ts>
@@ -217,8 +217,9 @@ struct request_base :private crtp<request_t> {
 	}
 
 	decltype(auto) await_resume() const {
-		if constexpr (!std::is_void_v<typename request_t::return_type>)
+		if constexpr (!std::is_void_v<typename request_t::return_type>) {
 			return value();
+		}
 	}	
 
 	void execute_and_ignore() {
@@ -231,7 +232,7 @@ struct request_base :private crtp<request_t> {
 
 	auto ignoring_result() {
 		struct awaiter {
-			request_base r;
+			request_t r;
 
 			bool await_ready() {
 				return r.state.exception.has_value();
@@ -252,7 +253,7 @@ struct request_base :private crtp<request_t> {
 			}
 			
 		};		
-		return awaiter{ std::move(*this) };
+		return awaiter{ std::move(this->self()) };
 	}
 
 	auto execute_await_later() {
@@ -284,8 +285,7 @@ struct request_base :private crtp<request_t> {
 
 			decltype(auto) await_resume() {
 				return shared_state->rq.await_ready();
-			};
-
+			}
 			
 			std::shared_ptr<stuffs> shared_state;
 		};
@@ -312,7 +312,7 @@ struct request_base :private crtp<request_t> {
 	}
 	
 protected:
-	shared_state2 state;
+	request_data state;
 };
 
 // template<typename reqeust>
@@ -462,12 +462,42 @@ struct send_message :
 	using return_type = partial_message;
 
 	static std::string target(const partial_channel& channel) {		
-		return fmt::format(FMT_STRING("/channels/{}/messages"),channel.id());
+		return fmt::format(FMT_COMPILE("/channels/{}/messages"),channel.id());
 	}
 
 	static std::string target(const partial_message& msg) {		
-		return fmt::format(FMT_STRING("/channels/{}/messages"), msg.channel_id());
+		return fmt::format(FMT_COMPILE("/channels/{}/messages"), msg.channel_id());
 	}
+};
+
+template<typename fn>
+struct send_guild_message :
+	request_base<send_guild_message<fn>>,
+	json_content_type,
+	post_verb {
+
+	send_guild_message() = default;
+	
+	send_guild_message(request_data wat,fn f):
+		request_base<send_guild_message<fn>>(std::move(wat)),
+		m_f(std::move(f)) { }
+	
+	using return_type = guild_text_message;
+
+	auto overload_value() const{
+		return m_f(this->state.res.body());
+	}	
+
+	static std::string target(const partial_channel& channel) {
+		return fmt::format(FMT_COMPILE("/channels/{}/messages"), channel.id());
+	}
+
+	static std::string target(const partial_message& msg) {
+		return fmt::format(FMT_COMPILE("/channels/{}/messages"), msg.channel_id());
+	}
+
+private:
+	fn m_f;
 };
 
 struct send_message_with_file :
@@ -931,7 +961,7 @@ struct list_guild_members :
 		get_verb,
 		json_content_type {
 	using request_base::request_base;
-	using return_type = std::vector<guild_member>;
+	using return_type = std::vector<partial_guild_member>;
 
 	static std::string target(const partial_guild& g) {
 		return "/guilds/{}/members"_format(g.id());
@@ -1160,7 +1190,7 @@ struct get_audit_log :
 	}
 };
 
-//not needed ;-;
+//not needed? ;-;
 struct get_guild_channels :
 		request_base<get_guild_channels>,
 		get_verb {

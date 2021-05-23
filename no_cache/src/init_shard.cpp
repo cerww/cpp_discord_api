@@ -21,7 +21,7 @@ namespace discord_ec {
 	constexpr int sharding_required = 4011;
 }
 
-cerwy::task<void> init_shard(const int shard_number, internal_shard& me, boost::asio::io_context& ioc, std::string_view gateway) {
+cerwy::eager_task<void> init_shard(const int shard_number, internal_shard& me, boost::asio::io_context& ioc, std::string_view gateway) {
 	try {
 		auto& strand = me.strand();
 

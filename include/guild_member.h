@@ -36,6 +36,7 @@ private:
 
 	friend void from_json(const nlohmann::json& in, guild_member& out);
 	friend struct internal_shard;
+	friend struct shard;
 };
 
 void from_json(const nlohmann::json& in, guild_member& out);

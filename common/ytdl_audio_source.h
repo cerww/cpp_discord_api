@@ -3,7 +3,7 @@
 #include <boost/asio.hpp>
 #include <boost/process.hpp>
 #include "audio_source.h"
-#include "task.h"
+#include "eager_task.h"
 #include "task_completion_handler.h"
 #include <optional>
 
@@ -23,7 +23,8 @@ struct ytdl_source {
 			ytdl_pipe(std::make_unique<boost::process::async_pipe>(ioc)),
 			ffmpeg_pipe(std::make_unique<boost::process::async_pipe>(ioc)),
 			ytdl_child(
-				fmt::format("youtube-dl -f bestaudio  \"{}\" -o - --buffer-size 8192", url), boost::process::std_out > *ytdl_pipe,
+				fmt::format("youtube-dl -f bestaudio  \"{}\" -o - --buffer-size 8192", url), 
+				boost::process::std_out > *ytdl_pipe,
 				//boost::process::std_err > stderr, 
 				boost::process::std_err.null(),
 				ioc),
@@ -35,7 +36,7 @@ struct ytdl_source {
 				ioc),
 			time_frame(t_time_frame){ }
 
-		cerwy::task<std::optional<audio_frame>> next() const{
+		cerwy::eager_task<std::optional<audio_frame>> next() const{
 			//samples needed = 1920 = frame_time * 48000n * 20/1000 * 2 /sizeof(int16_t) 
 			constexpr int channel_count = 2;
 			constexpr int sampling_rate = 48000;
@@ -108,7 +109,7 @@ struct ytdl_search_source {
 				ioc),
 			time_frame(t_time_frame) { }
 
-		cerwy::task<std::optional<audio_frame>> next()const {
+		cerwy::eager_task<std::optional<audio_frame>> next()const {
 			//samples needed = 1920 = frame_time * 48000n * 20/1000 * 2 /sizeof(int16_t) 
 			constexpr int channel_count = 2;
 			constexpr int sampling_rate = 48000;

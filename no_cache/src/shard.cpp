@@ -16,7 +16,7 @@ bool shard::will_have_guild(snowflake guild_id) const noexcept {
 	return (guild_id.val >> 22) % m_parent_client->num_shards() == m_shard_number;
 }
 
-// cerwy::task<boost::beast::error_code> shard::connect_http_connection() {
+// cerwy::eager_task<boost::beast::error_code> shard::connect_http_connection() {
 // 	auto ec = co_await m_http_connection.async_connect();
 // 	int tries = 1;
 // 	//TODO: change this

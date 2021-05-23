@@ -39,6 +39,7 @@ private:
 	ref_count_ptr<Guild> m_guild = nullptr;	
 
 	friend struct internal_shard;
+	friend struct shard;
 	friend void from_json(const nlohmann::json&, guild_channel& g);
 };
 

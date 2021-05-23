@@ -1,5 +1,5 @@
 #pragma once
-#include "task.h"
+#include "eager_task.h"
 #include <boost/asio/async_result.hpp>
 #include <boost/system/system_error.hpp>
 
@@ -42,7 +42,7 @@ template<typename ...sig>
 struct use_task_return_tuple3_t {
 	use_task_return_tuple3_t() = default;
 
-	cerwy::task<std::tuple<sig...>> get_task() {
+	cerwy::eager_task<std::tuple<sig...>> get_task() {
 		return m_promise.get_task();
 	}
 
@@ -58,7 +58,7 @@ namespace boost::asio {
 	template<typename R>
 	class async_result<use_task_t, void(system::error_code, R)> {
 	public:
-		using return_type = cerwy::task<R>;
+		using return_type = cerwy::eager_task<R>;
 
 		struct completion_handler_type {
 			explicit completion_handler_type(use_task_t) {}
@@ -77,13 +77,13 @@ namespace boost::asio {
 		return_type get() { return std::move(m_return_obj); }
 
 	private:
-		cerwy::task<R> m_return_obj;
+		cerwy::eager_task<R> m_return_obj;
 	};
 
 	template<>
 	class async_result<use_task_t, void(system::error_code)> {
 	public:
-		using return_type = cerwy::task<void>;
+		using return_type = cerwy::eager_task<void>;
 
 		struct completion_handler_type {
 			explicit completion_handler_type(use_task_t) {}
@@ -104,13 +104,13 @@ namespace boost::asio {
 		return_type get() { return std::move(m_return_obj); }
 
 	private:
-		cerwy::task<void> m_return_obj;
+		cerwy::eager_task<void> m_return_obj;
 	};
 
 	template<>
 	class async_result<use_task_return_ec_t, void(system::error_code)> {
 	public:
-		using return_type = cerwy::task<system::error_code>;
+		using return_type = cerwy::eager_task<system::error_code>;
 
 		struct completion_handler_type {
 			explicit completion_handler_type(use_task_return_ec_t) {}
@@ -128,14 +128,14 @@ namespace boost::asio {
 		return_type get() { return std::move(m_return_obj); }
 
 	private:
-		cerwy::task<system::error_code> m_return_obj;
+		cerwy::eager_task<system::error_code> m_return_obj;
 	};
 
 	template<typename fn, typename... sig_args>
 	class async_result<packaged_task_t<fn>, void(sig_args ...)> {
 	public:
 		using task_return_type = std::invoke_result_t<fn, sig_args...>;
-		using return_type = cerwy::task<task_return_type>;
+		using return_type = cerwy::eager_task<task_return_type>;
 
 		struct completion_handler_type {
 			explicit completion_handler_type(packaged_task_t<fn> pa):
@@ -161,7 +161,7 @@ namespace boost::asio {
 		return_type get() { return std::move(m_return_obj); }
 
 	private:
-		cerwy::task<task_return_type> m_return_obj;
+		cerwy::eager_task<task_return_type> m_return_obj;
 	};
 
 	template<typename... sig_args>
@@ -169,7 +169,7 @@ namespace boost::asio {
 	public:
 		using task_return_type = std::tuple<std::decay_t<sig_args>...>;
 
-		using return_type = cerwy::task<task_return_type>;
+		using return_type = cerwy::eager_task<task_return_type>;
 
 		struct completion_handler_type {
 			explicit completion_handler_type(use_task_return_tuple2_t pa) {}
@@ -197,13 +197,13 @@ namespace boost::asio {
 
 	private:
 		//async_result(const async_result&) = delete;
-		cerwy::task<task_return_type> m_return_obj;
+		cerwy::eager_task<task_return_type> m_return_obj;
 	};
 
 	template<typename...sig, typename ...realsig>
 	class async_result<use_task_return_tuple3_t<sig...>, void(realsig ...)> {
 	public:
-		using return_type = cerwy::task<std::tuple<sig...>>;
+		using return_type = cerwy::eager_task<std::tuple<sig...>>;
 		using completion_handler_type = use_task_return_tuple3_t<sig...>;
 
 		async_result(completion_handler_type& c):

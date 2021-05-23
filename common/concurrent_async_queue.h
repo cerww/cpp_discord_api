@@ -1,5 +1,5 @@
 #pragma once
-#include "task.h"
+#include "eager_task.h"
 #include <mutex>
 //#include <boost/container/deque.hpp>
 #include <span>
@@ -11,7 +11,7 @@
 template<typename T>
 struct concurrent_async_queue {
 
-	cerwy::task<T> pop() {
+	cerwy::eager_task<T> pop() {
 		std::lock_guard lock(m_mut);
 		if (!m_data.empty()) {
 			auto top = std::move(m_data.front());
@@ -84,7 +84,7 @@ private:
 template<typename T>
 struct mpsc_concurrent_async_queue {
 
-	cerwy::task<T> pop() {
+	cerwy::eager_task<T> pop() {
 		std::lock_guard lock(m_mut);
 		if (!m_data.empty()) {
 			auto top = std::move(m_data.front());

@@ -37,9 +37,9 @@ struct discord_voice_connection_impl :
 		return socket.socket().get_executor();
 	}
 
-	cerwy::task<void> control_speaking(int is_speaking);
+	cerwy::eager_task<void> control_speaking(int is_speaking);
 
-	cerwy::task<void> send_silent_frames();
+	cerwy::eager_task<void> send_silent_frames();
 
 	void close() {
 		is_alive = false;
@@ -47,7 +47,7 @@ struct discord_voice_connection_impl :
 	}
 
 	template<typename T>
-	cerwy::task<void> send_voice(const T& data) {
+	cerwy::eager_task<void> send_voice(const T& data) {
 		using namespace std::literals;
 		using std::chrono::duration_cast;
 
@@ -104,7 +104,7 @@ struct discord_voice_connection_impl :
 	};
 
 
-	cerwy::task<void> cancel_current_data() {
+	cerwy::eager_task<void> cancel_current_data() {
 		if (!is_playing || is_canceled) {
 			cerwy::make_ready_void_task();
 		}
@@ -157,7 +157,7 @@ private:
 	//header is nonce
 	std::vector<std::byte> encrypt_xsalsa20_poly1305(std::array<std::byte, 12> header, std::span<const std::byte> audio_data);
 
-	cerwy::task<void> send_heartbeat();
+	cerwy::eager_task<void> send_heartbeat();
 
 	void on_msg_recv(nlohmann::json data, int opcode);
 
@@ -171,14 +171,14 @@ private:
 
 	void on_session_discription(nlohmann::json data);
 
-	cerwy::task<void> connect_udp();
+	cerwy::eager_task<void> connect_udp();
 
-	cerwy::task<void> do_ip_discovery();
+	cerwy::eager_task<void> do_ip_discovery();
 
 	//TODO remove these once i get modules
-	[[nodiscard]] cerwy::task<boost::system::error_code> send_voice_data_udp(std::span<const std::byte>);
+	[[nodiscard]] cerwy::eager_task<boost::system::error_code> send_voice_data_udp(std::span<const std::byte>);
 
-	[[nodiscard]] cerwy::task<boost::system::error_code> wait(std::chrono::milliseconds);
+	[[nodiscard]] cerwy::eager_task<boost::system::error_code> wait(std::chrono::milliseconds);
 };
 
 struct voice_connection {
@@ -208,12 +208,12 @@ public:
 	}
 
 	template<typename T>//audio_source
-	cerwy::task<void> send(const T& data) {
+	cerwy::eager_task<void> send(const T& data) {
 		return m_connection->send_voice(data);
 	};
 
 	//todo: rename
-	cerwy::task<void> cancel_current_data() {
+	cerwy::eager_task<void> cancel_current_data() {
 		return m_connection->cancel_current_data();
 	}
 
@@ -224,7 +224,7 @@ public:
 
 private:
 	ref_count_ptr<discord_voice_connection_impl> m_connection = nullptr;
-	friend cerwy::task<voice_connection> voice_connect_impl(internal_shard& me, const voice_channel& ch, std::string endpoint, std::string token, std::string session_id);
-	friend cerwy::task<voice_connection> voice_connect_impl(internal_shard& me, snowflake,snowflake, std::string endpoint, std::string token, std::string session_id);
+	friend cerwy::eager_task<voice_connection> voice_connect_impl(internal_shard& me, const voice_channel& ch, std::string endpoint, std::string token, std::string session_id);
+	friend cerwy::eager_task<voice_connection> voice_connect_impl(internal_shard& me, snowflake,snowflake, std::string endpoint, std::string token, std::string session_id);
 };
 }

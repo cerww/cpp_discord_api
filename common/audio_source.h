@@ -15,13 +15,7 @@ struct audio_frame {
 	std::vector<int16_t> optional_data_storage = {};
 };
 
-//*
-template<typename T>
-concept audio_source = requires(T a) {
-	{a.frames()}->std::ranges::range;
-}&& std::is_convertible<std::ranges::range_reference_t<T>, audio_frame>;
 
-//*/
 
 inline audio_frame resample_meh(const audio_frame& frame, int new_channel_count, int new_sampling_rate) {
 	if (new_channel_count == frame.channel_count && new_sampling_rate == frame.sampling_rate) {
@@ -173,12 +167,12 @@ struct audio_data :audio_source_base {
 				m_audio_pcm
 				| ranges::views::take(m_audio_pcm.size() / frame_size * frame_size)//this ensures the size is a multiple of frame_size,so it doesn't read beyond the buffer, 
 				| ranges::views::chunk(frame_size)
-				| ranges::views::transform([=/*vars go out of scope, only copying ints*/](auto a) {
+				| ranges::views::transform([=, sampling_rate = m_sampling_rate, channel_count = m_channel_count,bit_rate = m_bit_rate](auto a) {
 					return audio_frame{
 						.frame_data = std::span<int16_t>((int16_t*)&a[0], frame_size),
-						.sampling_rate = m_sampling_rate,
-						.channel_count = m_channel_count,
-						.bit_rate = m_bit_rate,
+						.sampling_rate = sampling_rate,
+						.channel_count = channel_count,
+						.bit_rate = bit_rate,
 						.frame_size = samples_per_frame
 					};
 				});

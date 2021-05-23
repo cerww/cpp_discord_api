@@ -413,6 +413,9 @@ private:
 template<typename... Fns>
 logical_disjunction(Fns&&...)->logical_disjunction<Fns...>;
 
+template<typename... Fns>
+using logical_or = logical_disjunction<Fns...>;
+
 template<typename fn>
 struct logical_negate_t {
 	constexpr logical_negate_t() = default;

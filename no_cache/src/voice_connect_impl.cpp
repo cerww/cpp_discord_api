@@ -8,7 +8,7 @@
 using namespace boost::asio;
 
 namespace cacheless {
-cerwy::task<voice_connection> voice_connect_impl(internal_shard& me, const voice_channel& ch, std::string endpoint, std::string token, std::string session_id) {
+cerwy::eager_task<voice_connection> voice_connect_impl(internal_shard& me, const voice_channel& ch, std::string endpoint, std::string token, std::string session_id) {
 	const auto channel_id = ch.id;
 	const auto guild_id = ch.guild_id;
 	//const auto my_id = me.self_user().id;
@@ -40,7 +40,7 @@ cerwy::task<voice_connection> voice_connect_impl(internal_shard& me, const voice
 	co_return voice_connection(std::move(vc));
 }
 
-cerwy::task<voice_connection> voice_connect_impl(internal_shard& me, snowflake guild_id,snowflake channel_id, std::string endpoint, std::string token, std::string session_id) {
+cerwy::eager_task<voice_connection> voice_connect_impl(internal_shard& me, snowflake guild_id,snowflake channel_id, std::string endpoint, std::string token, std::string session_id) {
 	//const auto my_id = me.self_user().id;
 	//runs on strand until here
 	auto web_socket = co_await create_session(endpoint, me.strand().context(), ssl::context_base::method::sslv23);

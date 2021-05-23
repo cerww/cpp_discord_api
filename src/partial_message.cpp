@@ -28,6 +28,8 @@ void from_json(const nlohmann::json& json, partial_message& msg) {
 	msg.m_attachments = json["attachments"].get<lol_wat_vector<attachment>>();
 	msg.m_reactions = json.value("reactions", lol_wat_vector<reaction>());
 	msg.m_embeds = json["embeds"].get<lol_wat_vector<embed>>();
+	msg.m_type = (message_type)json["type"].get<int>();
+	
 	// msg.m_attachments = json["attachments"].get<std::vector<attachment>>();
 	// msg.m_reactions = json.value("reactions", std::vector<reaction>());
 	// msg.m_embeds = json["embeds"].get<std::vector<embed>>();

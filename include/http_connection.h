@@ -2,8 +2,8 @@
 #include <boost/asio.hpp>
 #include <boost/asio/ssl.hpp>
 #include <boost/beast.hpp>
-#include "concurrent_queue.h"
-#include "../common/task.h"
+//#include "concurrent_queue.h"
+#include "../common/eager_task.h"
 #include "../common/async_mutex.h"
 #include "../common/concurrent_async_queue.h"
 #include "../common/rate_limiter.h"
@@ -18,7 +18,7 @@ struct http_connection2 {
 		//this is thread safe?
 		m_rate_limted_until = time_point;
 		m_global_rate_limited.store(true);
-	};
+	}
 
 	http_connection2() = delete;
 	http_connection2(http_connection2&&) = delete;
@@ -39,7 +39,7 @@ struct http_connection2 {
 		m_done.store(true);
 	}
 
-	cerwy::task<boost::beast::error_code> async_connect();
+	cerwy::eager_task<boost::beast::error_code> async_connect();
 
 	void set_global_ratelimit_fn(std::function<void(std::chrono::system_clock::time_point)> f) {
 		m_on_global_ratelimit = std::move(f);		
@@ -63,12 +63,12 @@ private:
 	//mpsc_concurrent_async_queue<discord_request> m_request_queue = {};
 	async_queue_maybe_better<discord_request> m_request_queue = {};	
 
-	cerwy::task<void> send_to_discord(discord_request);
-	cerwy::task<void> send_to_discord(discord_request, uint64_t major_param_id_);
+	cerwy::eager_task<void> send_to_discord(discord_request);
+	cerwy::eager_task<void> send_to_discord(discord_request, uint64_t major_param_id_);
 	
-	cerwy::task<bool> send_to_discord_(discord_request&, boost::beast::http::response<boost::beast::http::string_body>&);
+	cerwy::eager_task<bool> send_to_discord_(discord_request&, boost::beast::http::response<boost::beast::http::string_body>&);
 
-	cerwy::task<void> start_sending();
+	cerwy::eager_task<void> start_sending();
 	
 	// void resend_rate_limted_requests_for(uint64_t);
 	// void rate_limit_id(uint64_t major_param_id_, std::chrono::system_clock::time_point, std::optional<discord_request>);
@@ -76,9 +76,9 @@ private:
 	
 	
 	//void connect();
-	cerwy::task<void> reconnect();
+	cerwy::eager_task<void> reconnect();
 
-	cerwy::task<void> send_rq(discord_request&,boost::beast::http::response<boost::beast::http::string_body>&);
+	cerwy::eager_task<void> send_rq(discord_request&,boost::beast::http::response<boost::beast::http::string_body>&);
 
 	rate_limiter<uint64_t, discord_request, std::chrono::system_clock> m_rate_limiter;
 };
@@ -114,7 +114,7 @@ static constexpr int audhaskjdasd = sizeof(std::function<void()>);
 // 		m_done.store(true);
 // 	}
 //
-// 	cerwy::task<boost::beast::error_code> async_connect();
+// 	cerwy::eager_task<boost::beast::error_code> async_connect();
 //
 // private:
 // 	std::chrono::system_clock::time_point m_rate_limted_until = {};

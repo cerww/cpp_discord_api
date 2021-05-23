@@ -4,8 +4,8 @@
 #include <boost/beast.hpp>
 #include <thread>
 #include "requests.h"
-#include "concurrent_queue.h"
-#include "../common/task.h"
+//#include "concurrent_queue.h"
+#include "../common/eager_task.h"
 #include "../common/async_mutex.h"
 #include "../common/concurrent_async_queue.h"
 //#include <variant>
@@ -49,7 +49,7 @@ struct http_connection {
 		m_done.store(true);
 	}
 
-	cerwy::task<boost::beast::error_code> async_connect();
+	cerwy::eager_task<boost::beast::error_code> async_connect();
 
 private:
 	std::chrono::system_clock::time_point m_rate_limted_until = {};
@@ -202,7 +202,7 @@ struct http_connection2 {
 		m_done.store(true);
 	}
 
-	cerwy::task<boost::beast::error_code> async_connect();
+	cerwy::eager_task<boost::beast::error_code> async_connect();
 
 private:
 	std::chrono::system_clock::time_point m_rate_limted_until = {};
@@ -223,21 +223,21 @@ private:
 	mpsc_concurrent_async_queue<discord_request> m_request_queue = {};
 	client* m_client = nullptr;
 
-	cerwy::task<void> send_to_discord(discord_request);
-	cerwy::task<void> send_to_discord(discord_request, uint64_t major_param_id_);
+	cerwy::eager_task<void> send_to_discord(discord_request);
+	cerwy::eager_task<void> send_to_discord(discord_request, uint64_t major_param_id_);
 
-	cerwy::task<bool> send_to_discord_(discord_request&);
+	cerwy::eager_task<bool> send_to_discord_(discord_request&);
 
-	cerwy::task<void> start_sending();
+	cerwy::eager_task<void> start_sending();
 
 	void resend_rate_limted_requests_for(uint64_t);
 	void rate_limit_id(uint64_t major_param_id_, std::chrono::system_clock::time_point, std::optional<discord_request>);
 	bool check_rate_limit(uint64_t id, discord_request& rq);
 
 	//void connect();
-	cerwy::task<void> reconnect();
+	cerwy::eager_task<void> reconnect();
 
-	cerwy::task<void> send_rq(discord_request&);
+	cerwy::eager_task<void> send_rq(discord_request&);
 
 
 	//sorted by order of coming off the queue

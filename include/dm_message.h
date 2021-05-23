@@ -14,6 +14,7 @@ private:
 	std::vector<user> m_mentions;
 	dm_channel* m_channel = nullptr;
 	friend struct internal_shard;
+	friend struct shard;	
 	friend struct msg_update_access;
 };
 

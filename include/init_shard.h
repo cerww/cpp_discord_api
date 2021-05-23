@@ -3,7 +3,7 @@
 
 
 //gotta move functions outside of internal_shard.cpp, it's too big to compile without /bigobj on vs;-;
-cerwy::task<void> init_shard(
+cerwy::eager_task<void> init_shard(
 	int shardN,
 	internal_shard& t_parent,
 	boost::asio::io_context& ioc, 

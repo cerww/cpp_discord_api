@@ -37,6 +37,7 @@ private:
 
 	friend void from_json(const nlohmann::json& json, dm_channel& channel);
 	friend struct internal_shard;
+	friend struct shard;
 };
 
 void to_json(nlohmann::json& json, const dm_channel& channel);

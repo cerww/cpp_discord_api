@@ -61,7 +61,7 @@ namespace rawr {
 
 }
 
-cerwy::task<boost::beast::websocket::stream<boost::asio::ip::tcp::socket>> ws_from_uri(std::string_view full_uri, boost::asio::ip::tcp::resolver& resolver) {
+cerwy::eager_task<boost::beast::websocket::stream<boost::asio::ip::tcp::socket>> ws_from_uri(std::string_view full_uri, boost::asio::ip::tcp::resolver& resolver) {
 	auto [port, uri, path] = rawr::parse_uri(full_uri);
 
 	auto [ec, results] = co_await resolver.async_resolve(uri, port, use_task_return_tuple2);
@@ -92,7 +92,7 @@ cerwy::task<boost::beast::websocket::stream<boost::asio::ip::tcp::socket>> ws_fr
 
 constexpr int asdasda = sizeof(boost::asio::ssl::context);
 
-cerwy::task<boost::beast::websocket::stream<boost::beast::ssl_stream<boost::asio::ip::tcp::socket>>> wss_from_uri(
+cerwy::eager_task<boost::beast::websocket::stream<boost::beast::ssl_stream<boost::asio::ip::tcp::socket>>> wss_from_uri(
 	std::string_view full_uri,
 	boost::asio::ip::tcp::resolver& resolver,
 	boost::asio::ssl::context& ssl_ctx) {
@@ -131,7 +131,7 @@ cerwy::task<boost::beast::websocket::stream<boost::beast::ssl_stream<boost::asio
 	co_return std::move(web_socket);
 }
 
-cerwy::task<void> reconnect_wss_from_url(
+cerwy::eager_task<void> reconnect_wss_from_url(
 	boost::beast::websocket::stream<boost::beast::ssl_stream<boost::asio::ip::tcp::socket>>& socket,
 	std::string_view full_uri,
 	boost::asio::ip::tcp::resolver& resolver,
