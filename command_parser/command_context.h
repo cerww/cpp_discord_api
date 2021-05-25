@@ -314,7 +314,7 @@ struct command_group {
 //rename?
 struct command_context {
 
-	std::string prefix = "";
+	std::string prefix;
 
 	void do_command(guild_text_message msg, shard& s) {
 		if (msg.content().starts_with(prefix)) {

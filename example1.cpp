@@ -2,7 +2,7 @@
 #include <fstream>
 #include "include/modify_guild_settings.h"
 #include "common/mp3_audio_source.h"
-#include "common/lol_wat_vector.h"
+#include "common/usually_empty_vector.h"
 #include "common/never_sso_string.h"
 #include "common/big_uint.h"
 #include <coroutine>
@@ -44,15 +44,15 @@ cerwy::eager_task<void> thingy(const Guild& g, shard& s) {
 
 void aujsdhasdasd() {
 	std::vector<int> aaa = {12, 3, 4, 5, 67, 7, 8};
-	lol_wat_vector<int> y = aaa | ranges::to<lol_wat_vector<int>>();
+	usually_empty_vector<int> y = aaa | ranges::to<usually_empty_vector<int>>();
 	assert(y[1] == aaa[1]);
 	auto x = std::move(y);
 	assert(y.size() == 0);
-	lol_wat_vector<int> asdasd;
+	usually_empty_vector<int> asdasd;
 	assert(asdasd.size() == 0);
 	assert(asdasd.empty());
 
-	asdasd = lol_wat_vector<int>(aaa.begin(), aaa.end());
+	asdasd = usually_empty_vector<int>(aaa.begin(), aaa.end());
 	assert(ranges::equal(aaa, asdasd));	
 
 	std::span<int> wat = x;
@@ -214,8 +214,15 @@ cerwy::eager_task<void> test_lazy_task_thing() {
 void test_cow_string() {
 	cow_string rawr = "wat";
 	auto c = rawr;
+
+	std::cout << (&c[0] == &rawr[0]) << std::endl;
+	rawr = cow_string("bonkland"sv);
+
+
+	
 	
 	std::cout << std::string_view(c) << std::endl;
+	std::cout << (c == "wat") << std::endl;
 	
 }
 
@@ -223,7 +230,7 @@ void test_cow_string() {
 int main() {
 
 	test_cow_string();
-	std::cin.get();
+	//std::cin.get();
 	//test_lazy_task_thing();
 	//test_big_uint_bug();
 	//setlocale(LC_ALL, "");
@@ -304,12 +311,11 @@ int main() {
 		} else if (msg.content() == "at petery") {
 			s.send_message(msg.channel(), "<@188547243911938048>", disable_mentions).execute_and_ignore();
 		} else if (msg.content() == "hello kitty") {
-			const guild_text_message new_msg = co_await s.send_message(msg.channel(), "charmanderworld");
+			const auto new_msg = co_await s.send_message(msg.channel(), "charmanderworld");
 			std::cout << new_msg.content() << std::endl;
-			std::cout << new_msg.author().id().val << std::endl;
+			//std::cout << new_msg.author().id().val << std::endl;
 			co_await s.add_reaction(new_msg, msg.guild().emojis().front());
 			co_return;
-
 		} else if (msg.content() == "formosaland") {
 			auto logs = co_await s.get_audit_log(msg.guild());
 			std::string str;
@@ -375,13 +381,18 @@ int main() {
 
 
 		for (const auto& i : msg.mentions()) {
-			s.change_nick(i, std::string(msg.content())).execute_and_ignore();
+			//s.change_nick(i, std::string(msg.content())).execute_and_ignore();
 		}
 
 		if (msg.author().id() != s.self_user().id()) {
 			s.send_message(msg.channel(), std::to_string(msg.author().id().val)).execute_and_ignore();
 		}
 		//s.add_reaction(wat,wat.guild().emojis().back());
+		if(msg.referenced_message()) {
+			std::cout << msg.referenced_message().value().author().id().as_int() << std::endl;;
+			std::cout << msg.referenced_message().value().content() << std::endl;
+			s.send_message(msg.channel(), std::string(msg.referenced_message().value().content())).execute_and_ignore();
+		}
 
 	};
 	c.on_guild_typing_start = [&](guild_member member, const text_channel& channel, shard& s) {

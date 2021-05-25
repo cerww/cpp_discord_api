@@ -16,7 +16,8 @@ void from_json(const nlohmann::json& json, partial_message& msg) {
 	msg.m_id = json["id"].get<snowflake>();
 	msg.m_channel_id = json["channel_id"].get<snowflake>();
 	
-	msg.m_content = json["content"].get<std::string>();
+	//msg.m_content = json["content"].get<std::string>();
+	msg.m_content = cow_string(json["content"].get<std::string_view>());
 	//msg.m_content.reserve(sizeof(std::string));//disable SBO
 	
 	msg.m_mention_everyone = json["mention_everyone"].get<bool>();
@@ -25,14 +26,11 @@ void from_json(const nlohmann::json& json, partial_message& msg) {
 	//msg.m_edited_timestamp = json["edited_timestamp"].get<std::optional<timestamp>>();
 	msg.m_tts = json["tts"].get<bool>();
 	msg.m_mention_everyone = json["mention_everyone"].get<bool>();
-	msg.m_attachments = json["attachments"].get<lol_wat_vector<attachment>>();
-	msg.m_reactions = json.value("reactions", lol_wat_vector<reaction>());
-	msg.m_embeds = json["embeds"].get<lol_wat_vector<embed>>();
+	msg.m_attachments = json["attachments"].get<usually_empty_vector<attachment>>();
+	msg.m_reactions = json.value("reactions", usually_empty_vector<reaction>());
+	msg.m_embeds = json["embeds"].get<usually_empty_vector<embed>>();
 	msg.m_type = (message_type)json["type"].get<int>();
-	
-	// msg.m_attachments = json["attachments"].get<std::vector<attachment>>();
-	// msg.m_reactions = json.value("reactions", std::vector<reaction>());
-	// msg.m_embeds = json["embeds"].get<std::vector<embed>>();
+	msg.m_message_reference = json.value("message_reference", ::message_reference());
 }
 
 snowflake msg_update::id() const noexcept {
@@ -65,5 +63,6 @@ void from_json(const nlohmann::json& json, msg_update& msg) {
 	msg.m_mention_everyone = json.value("mention_everyone", std::optional<bool>());
 	msg.m_attachments = json.value("attachments", std::vector<attachment>());
 	msg.m_reactions = json.value("reactions", std::vector<reaction>());
+
 }
 

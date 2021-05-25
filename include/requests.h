@@ -20,7 +20,7 @@
 #include "partial_message.h"
 #include "text_channel.h"
 #include "http_connection.h"
-
+#include "partial_guild_message.h"
 
 // clang-format off
 namespace rq {
@@ -482,7 +482,7 @@ struct send_guild_message :
 		request_base<send_guild_message<fn>>(std::move(wat)),
 		m_f(std::move(f)) { }
 	
-	using return_type = guild_text_message;
+	using return_type = sent_guild_message;
 
 	auto overload_value() const{
 		return m_f(this->state.res.body());

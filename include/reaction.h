@@ -3,7 +3,7 @@
 #include "emoji.h"
 
 struct reaction{
-	int count() const noexcept;;
+	int count() const noexcept;
 	bool me() const noexcept;
 	const partial_emoji& emoji() const noexcept;
 private:

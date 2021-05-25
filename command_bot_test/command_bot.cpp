@@ -40,7 +40,7 @@ int main() {
 	command_thingy["join"] += shiny::make_command([](guild_text_message m,shard& s)->cerwy::eager_task<void> {
 		auto channel_opt = m.guild().voice_channel_for(m.author());
 		if (!channel_opt) {
-			co_await s.send_message(m.channel(), "not connected");
+			(void)co_await s.send_message(m.channel(), "not connected");
 		} else {
 			auto connection = co_await s.connect_voice(channel_opt.value());
 			co_await connection.send_async(ytdl_source("https://www.youtube.com/watch?v=5lfLO3ZWfAg", s.strand().context()));

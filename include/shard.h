@@ -23,6 +23,8 @@
 #include "modifies_message_json.h"
 #include "guild_text_message.h"
 #include "dm_message.h"
+#include "partial_guild_message.h"
+
 
 namespace rawrland {//rename later ;-;
 
@@ -86,7 +88,7 @@ public:
 		body["content"] = std::move(content);
 		body["embed"] = embed;
 
-		return create_request<rq::send_message>(body.dump(), channel);
+		return create_request<rq::send_guild_message>(body.dump(), channel);
 	};
 
 	template<typename... modifiers>
@@ -96,7 +98,7 @@ public:
 		body["content"] = std::move(content);
 		(modifers_.modify_message_json(body), ...);
 
-		return create_request<rq::send_message>(body.dump(), channel);;
+		return create_request<rq::send_guild_message>(body.dump(), channel);;
 	};
 
 	template<typename... modifiers>
@@ -107,7 +109,7 @@ public:
 		(modifers_.modify_message_json(body), ...);
 		body["embed"] = embed;
 
-		return create_request<rq::send_message>(body.dump(), channel);
+		return create_request<rq::send_guild_message>(body.dump(), channel);
 	};
 	
 
@@ -303,6 +305,32 @@ protected:
 		shard* me = nullptr;
 	};
 
+	template<>
+	struct dependant_cb<sent_guild_message> {
+		dependant_cb() = delete;
+		explicit dependant_cb(shard* a) :me(a) {}
+
+		auto operator()(std::string_view s) const {
+			auto json = nlohmann::json::parse(s);
+			const auto guild_id = json.value("guild_id", snowflake());
+			const auto channel_id = json["channel_id"].get<snowflake>();
+			auto& guild_and_stuff = me->m_guilds.at(guild_id);
+			auto& guild = *guild_and_stuff->guild;
+
+			const auto it = guild_and_stuff->text_channels.find(channel_id);
+
+			if (it == guild_and_stuff->text_channels.end()) {
+				throw std::runtime_error(";-;");
+			}
+
+			text_channel& ch = *it->second;
+			return me->create_msg<sent_guild_message>(ch, json);
+		}
+
+		shard* me = nullptr;
+	};
+
+
 	template<template<typename>typename T, typename ... args> requires rq::has_content_type_v<T<int>>
 	auto create_request(std::string&& body, args&&... Args)  {
 		auto r = rawrland::get_default_stuffs_for_request<T<int>>(std::forward<args>(Args)...);
@@ -372,9 +400,13 @@ msg_t shard::create_msg(channel_t& ch, const nlohmann::json& stuffs) {
 	stuffs.get_to(static_cast<partial_message&>(retVal));
 	retVal.m_channel = &ch;
 
-	constexpr bool is_guild_msg = std::is_same_v<msg_t, guild_text_message>;
+	constexpr bool is_guild_msg = std::is_same_v<msg_t, guild_text_message> || std::is_same_v<msg_t, sent_guild_message>
+		|| std::is_same_v<msg_t, referenced_guild_message>;
 
-	if constexpr (is_guild_msg) {
+	constexpr bool is_referenced_message = std::is_same_v<msg_t, referenced_guild_message> || std::is_same_v<msg_t, referenced_message>
+		|| std::is_same_v<msg_t,referenced_dm_message>;
+
+	if constexpr (std::is_same_v<msg_t, guild_text_message>) {
 		if (stuffs.contains("webhook_id")) {
 			from_json(stuffs["author"], static_cast<user&>(retVal.m_author));
 			retVal.m_author.m_guild = ch.m_guild;
@@ -383,25 +415,37 @@ msg_t shard::create_msg(channel_t& ch, const nlohmann::json& stuffs) {
 			retVal.m_author = make_member_from_msg(stuffs["author"], stuffs["member"]);
 			retVal.m_author.m_guild = ch.m_guild;
 		}
-	}
-	else {
+	} else {
 		retVal.m_author = stuffs["author"].get<user>();
 	}
 
-	if constexpr (is_guild_msg) {
+	if constexpr (std::is_same_v<msg_t, guild_text_message>) {
 		retVal.m_mentions.reserve(stuffs["mentions"].size());
 		for (const auto& mention : stuffs["mentions"]) {
 			auto& member = retVal.m_mentions.emplace_back(make_member_from_msg(mention, mention["member"]));
 			member.m_guild = ch.m_guild;
 		}
-	}
-	else {
-		retVal.m_mentions = stuffs["mentions"].get<std::vector<user>>();
+	} else {
+		retVal.m_mentions = stuffs["mentions"].get<usually_empty_vector<user>>();
 	}
 
-	if constexpr (std::is_same_v<msg_t, guild_text_message>) {
-		retVal.m_mention_roles_ids = stuffs["mention_roles"].get<lol_wat_vector<snowflake>>();
+	if constexpr (is_guild_msg) {
+		retVal.m_mention_roles_ids = stuffs["mention_roles"].get<usually_empty_vector<snowflake>>();
 	}
+
+	if constexpr (!is_referenced_message) {
+		const auto it = stuffs.find("referenced_message");
+		if(it != stuffs.end()) {
+			const auto& referenced_message_json = *it;
+			if(!referenced_message_json.is_null()) {
+				using referenced_message_type = std::remove_cvref_t<decltype(*retVal.m_referenced_message)>;
+				retVal.m_referenced_message = make_ref_count_ptr<referenced_message_type>(create_msg<referenced_message_type>(ch, referenced_message_json));
+			}
+		}
+	}else {
+		
+	}
+	
 	return retVal;
 }
 
