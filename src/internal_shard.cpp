@@ -71,6 +71,7 @@ internal_shard::internal_shard(
 	m_resolver(ioc),
 	m_socket(strand(), m_ssl_ctx),
 	m_intents(intent) {
+	
 	init_shard(shard_number, *this, ioc, gateway);
 }
 
@@ -107,7 +108,7 @@ cerwy::eager_task<voice_connection> internal_shard::connect_voice(const voice_ch
 	co_return co_await voice_connect_impl(*this, channel, std::move(gateway), ep_json["token"].get<std::string>(), std::move(session_id));
 }
 
-cerwy::eager_task<boost::beast::error_code> internal_shard::connect_http_connection() {
+cerwy::lazy_task<boost::beast::error_code> internal_shard::connect_http_connection() {
 	auto ec = co_await m_http_connection.async_connect();
 	int tries = 1;
 	//TODO: do something else
@@ -355,8 +356,10 @@ cerwy::eager_task<void> internal_shard::m_opcode9_on_invalid_session(nlohmann::j
 void internal_shard::m_opcode10_on_hello(nlohmann::json& stuff) {
 	m_heartbeat_context.hb_interval = stuff["heartbeat_interval"].get<int>();
 	m_heartbeat_context.start();
+	
 	//(void)send_identity();
-	m_parent_client->queue_to_identify(*this);
+	//m_parent_client->queue_to_identify(*this);
+	m_hello_promise.set_value();
 }
 
 void internal_shard::m_opcode11(nlohmann::json& data) {
@@ -432,7 +435,7 @@ cerwy::eager_task<void> internal_shard::send_identity() const {
 	// 	m_web_socket->send_thing(std::move(str));
 	// });
 	co_await m_web_socket->send_thing(std::move(identity));
-	m_parent_client->notify_identified();
+	//m_parent_client->notify_identified(m_shard_number);
 }
 
 template<>
@@ -695,13 +698,12 @@ void internal_shard::procces_event<event_name::CHANNEL_CREATE>(nlohmann::json& c
 		auto& guild_and_stuff = guild_it->second;
 		auto& guild = *guild_and_stuff->guild;
 		
-
 		if (!guild.m_is_ready) {
 			m_backed_up_events[guild_id].emplace_back(std::move(channel_json), event_name::CHANNEL_CREATE);
 			return;
 		}
 		const auto id = channel_json["id"].get<snowflake>();
-		if (type == 0 || type == 5 || type == 6) {//text
+		if (type == 0 || type == 5 || type == 6 || type == 11||type==12 || type==10) {//text
 			auto& channel = *guild_and_stuff->text_channels.insert(std::make_pair(id, make_ref_count_ptr<text_channel>())).first->second;
 			channel_json.get_to(channel);
 			guild.m_text_channel_ids.push_back(id);
@@ -725,7 +727,7 @@ void internal_shard::procces_event<event_name::CHANNEL_CREATE>(nlohmann::json& c
 			guild.m_voice_channel_ids.push_back(id);
 
 			channel.m_guild = &guild;
-			channel.m_parent = *ptr_or_null(guild_and_stuff->channel_catagories, channel.m_parent_id);
+			channel.m_parent = *ptr_or_null(guild_and_stuff->channel_catagories, channel.m_parent_id);			
 			if (m_parent_client->on_guild_voice_channel_create.has_value()) {
 				m_parent_client->on_guild_voice_channel_create.value()(channel, *this);
 			}
@@ -746,8 +748,6 @@ void internal_shard::procces_event<event_name::CHANNEL_CREATE>(nlohmann::json& c
 			m_parent_client->on_dm_channel_create.value()(channel, *this);
 		}
 	}
-
-
 }
 
 template<>
@@ -761,8 +761,7 @@ void internal_shard::procces_event<event_name::CHANNEL_DELETE>(nlohmann::json& e
 		}
 		auto& guild_and_stuff = *guild_it->second;
 		Guild& guild = *guild_and_stuff.guild;
-
-		
+				
 		if (!guild.m_is_ready) {
 			m_backed_up_events[guild_id].emplace_back(std::move(e), event_name::CHANNEL_DELETE);
 			return;
@@ -797,14 +796,14 @@ void internal_shard::procces_event<event_name::CHANNEL_DELETE>(nlohmann::json& e
 			const auto channel_ptr = std::move(channel_it->second);
 			guild_and_stuff.channel_catagories.erase(channel_it);
 
-			for (text_channel& t_channel : guild.m_text_channel_ids | ranges::views::transform(hof::map_with(guild_and_stuff.text_channels)) | ranges::views::transform(dereference)) {
+			for (text_channel& t_channel : guild.m_text_channel_ids | ranges::views::transform(hof::map_with(guild_and_stuff.text_channels)) | ranges::views::transform(hof::dereference)) {
 				if (t_channel.m_parent_id == channel_id) {
 					t_channel.m_parent = nullptr;
 					t_channel.m_parent_id = snowflake();
 				}
 			}
 
-			for (voice_channel& t_channel : guild.m_voice_channel_ids | ranges::views::transform(hof::map_with(guild_and_stuff.voice_channels)) | ranges::views::transform(dereference)) {
+			for (voice_channel& t_channel : guild.m_voice_channel_ids | ranges::views::transform(hof::map_with(guild_and_stuff.voice_channels)) | ranges::views::transform(hof::dereference)) {
 				if (t_channel.m_parent_id == channel_id) {
 					t_channel.m_parent = nullptr;
 					t_channel.m_parent_id = snowflake();

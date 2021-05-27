@@ -160,7 +160,7 @@ struct parse_result {
 	}
 
 	//*
-	template<typename U, std::enable_if_t<std::is_convertible_v<T, U>, int> = 0>
+	template<typename U>requires std::is_convertible_v<T, U>
 	operator parse_result<U>() const & {
 		if (bool(*this)) {
 			return parse_result<U>(U(value()), rest());
@@ -176,7 +176,7 @@ struct parse_result {
 		}
 	}
 
-	template<typename U, std::enable_if_t<std::is_convertible_v<T, U>, int> = 0>
+	template<typename U>requires std::is_convertible_v<T, U>
 	operator parse_result<U>() & {
 		if (bool(*this)) {
 			return parse_result<U>(U(value()), rest());
@@ -192,7 +192,7 @@ struct parse_result {
 		}
 	}
 
-	template<typename U, std::enable_if_t<std::is_convertible_v<T, U>, int> = 0>
+	template<typename U> requires std::is_convertible_v<T, U>
 	operator parse_result<U>() && {
 		if (bool(*this)) {
 			return parse_result<U>(U(std::move(value())), rest());
@@ -208,7 +208,7 @@ struct parse_result {
 		}
 	}
 
-	template<typename U, std::enable_if_t<std::is_convertible_v<T, U>, int> = 0>
+	template<typename U>requires std::is_convertible_v<T, U>
 	operator parse_result<U>()const && {
 		if (bool(*this)) {
 			return parse_result<U>(U(value()), rest());
@@ -418,7 +418,7 @@ consecutive_parser(P1&&, P2&&, fn&&)->consecutive_parser<P1, P2, fn>;
 
 template<size_t i, size_t max = std::numeric_limits<size_t>::max()>
 struct return_nth {
-	template<typename...Args, std::enable_if_t<sizeof...(Args) <= max && (sizeof...(Args) > i), int> = 0>
+	template<typename...Args>requires (sizeof...(Args) <= max && (sizeof...(Args) > i))
 	constexpr auto operator()(Args && ... stuff)noexcept(noexcept(std::get<i>(std::forward_as_tuple(std::forward<Args>(stuff)...))))
 		->std::tuple_element_t<i, decltype(std::forward_as_tuple(std::forward<Args>(stuff)...))>
 	{

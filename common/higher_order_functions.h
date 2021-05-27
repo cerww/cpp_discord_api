@@ -187,14 +187,14 @@ struct compose :private compose<Rest...> {
 		return std::invoke(first_fn, static_cast<compose<Rest...>&>(*this)(std::forward<Args>(args)...));
 	}
 
-	template<typename ...Args, std::enable_if_t<!std::is_invocable_v<First, std::invoke_result_t<const compose<Rest...>, Args...>>, int>  = 0>
+	template<typename ...Args> requires !std::is_invocable_v<First, std::invoke_result_t<const compose<Rest...>, Args...>>
 	constexpr auto operator()(Args&& ... args) const
 	->decltype(std::apply(std::declval<const First>(), static_cast<const compose<Rest...>&>(*this)(std::forward<Args>(args)...))) {
 
 		return std::apply(first_fn, static_cast<const compose<Rest...>&>(*this)(std::forward<Args>(args)...));
 	}
 
-	template<typename ...Args, std::enable_if_t<!std::is_invocable_v<First, std::invoke_result_t<compose<Rest...>, Args...>>, int>  = 0>
+	template<typename ...Args>requires !std::is_invocable_v<First, std::invoke_result_t<compose<Rest...>, Args...>>
 	constexpr auto operator()(Args&& ... args)
 	->decltype(std::apply(std::declval<First>(), static_cast<compose<Rest...>&>(*this)(std::forward<Args>(args)...))) {
 
@@ -208,29 +208,29 @@ template<typename Last>
 struct compose<Last> {
 	constexpr compose() = default;
 
-	template<typename L, std::enable_if_t<!std::is_same_v<std::decay<L>, compose<Last>>, int>  = 0>
+	template<typename L> requires !std::is_same_v<std::decay<L>, compose<Last>>
 	constexpr explicit compose(L&& last) :
 		last_fn(std::forward<L>(last)) {}
 
-	template<typename... Args, std::enable_if_t<std::is_invocable_v<Last, Args...>, int>  = 0>
+	template<typename... Args> requires std::is_invocable_v<Last, Args...>
 	constexpr auto operator()(Args&& ... args)->decltype(std::invoke(std::declval<Last>(), std::forward<Args>(args)...)) {
 
 		return std::invoke(last_fn, std::forward<Args>(args)...);
 	}
 
-	template<typename... Args, std::enable_if_t<std::is_invocable_v<const Last, Args...>, int>  = 0>
+	template<typename... Args>requires std::is_invocable_v<const Last, Args...>
 	constexpr auto operator()(Args&& ... args) const->decltype(std::invoke(std::declval<const Last>(), std::forward<Args>(args)...)) {
 
 		return std::invoke(last_fn, std::forward<Args>(args)...);
 	}
 
-	template<typename ...Args, std::enable_if_t<!std::is_invocable_v<Last, Args...>, int>  = 0>
+	template<typename ...Args>requires !std::is_invocable_v<Last, Args...>
 	constexpr auto operator()(Args&& ... args) const->decltype(std::apply(std::declval<Last>(), std::forward<Args>(args)...)) {
 
 		return std::apply(last_fn, std::forward<Args>(args)...);
 	}
 
-	template<typename ...Args, std::enable_if_t<!std::is_invocable_v<const Last, Args...>, int>  = 0>
+	template<typename ...Args>requires !std::is_invocable_v<const Last, Args...>
 	constexpr auto operator()(Args&& ... args) const->decltype(std::apply(std::declval<const Last>(), std::forward<Args>(args)...)) {
 
 		return std::apply(last_fn, std::forward<Args>(args)...);
@@ -270,14 +270,14 @@ struct flow :private flow<Rest...> {
 		return static_cast<const flow<Rest...>&>(*this)(std::invoke(first_fn, std::forward<Args>(args)...));
 	}
 
-	template<typename ...Args, std::enable_if_t<!std::is_invocable_v<First, Args...>, int>  = 0>
+	template<typename ...Args>requires !std::invocable<First, Args...>
 	constexpr auto operator()(Args&& ... args)
 	->decltype(static_cast<flow<Rest...>&>(*this)(std::apply(std::declval<First>(), std::forward<Args>(args)...))) {
 
 		return static_cast<flow<Rest...>&>(*this)(std::apply(first_fn, std::forward<Args>(args)...));
 	}
 
-	template<typename ...Args, std::enable_if_t<!std::is_invocable_v<const First, Args...>, int>  = 0>
+	template<typename ...Args> requires !std::invocable<const First, Args...>
 	constexpr auto operator()(Args&& ... args) const
 	->decltype(static_cast<const flow<Rest...>&>(*this)(std::apply(std::declval<const First>(), std::forward<Args>(args)...))) {
 
@@ -291,32 +291,32 @@ template<typename Last>
 struct flow<Last> {
 	constexpr flow() = default;
 
-	template<typename L, std::enable_if_t<!std::is_same_v<std::decay_t<L>, flow<Last>>, int>  = 0>
+	template<typename L> requires !std::same_as<std::decay_t<L>, flow<Last>>
 	constexpr explicit flow(L&& last) :
 		last_fn(std::forward<L>(last)) {}
 
-	template<typename... Args, std::enable_if_t<std::is_invocable_v<Last, Args...>, int>  = 0>
+	template<typename... Args> requires std::invocable<Last, Args...>
 	constexpr auto operator()(Args&& ... args)
 	->decltype(std::invoke(std::declval<Last>(), std::forward<Args>(args)...)) {
 
 		return std::invoke(last_fn, std::forward<Args>(args)...);
 	}
 
-	template<typename... Args, std::enable_if_t<std::is_invocable_v<const Last, Args...>, int>  = 0>
+	template<typename... Args> requires std::invocable<const Last, Args...>
 	constexpr auto operator()(Args&& ... args) const
 	->decltype(std::invoke(std::declval<const Last>(), std::forward<Args>(args)...)) {
 
 		return std::invoke(last_fn, std::forward<Args>(args)...);
 	}
 
-	template<typename ...Args, std::enable_if_t<!std::is_invocable_v<Last, Args...>, int>  = 0>
+	template<typename ...Args>requires !std::invocable<Last, Args...>
 	constexpr auto operator()(Args&& ... args)
 	->decltype(std::apply(std::declval<Last>(), std::forward<Args>(args)...)) {
 
 		return std::apply(last_fn, std::forward<Args>(args)...);
 	}
 
-	template<typename ...Args, std::enable_if_t<!std::is_invocable_v<const Last, Args...>, int>  = 0>
+	template<typename ...Args>requires !std::invocable<const Last, Args...>
 	constexpr auto operator()(Args&& ... args) const
 	->decltype(std::apply(std::declval<const Last>(), std::forward<Args>(args)...)) {
 
@@ -501,6 +501,15 @@ struct dereference_t {
 };
 
 constexpr static dereference_t dereference = {};
+
+struct dereference_const_t {
+	template<typename T>
+	constexpr auto operator()(T&& t) const noexcept(noexcept(*t))->const auto& {
+		return *t;
+	}
+};
+
+constexpr static dereference_const_t dereference_const = {};
 
 static constexpr auto always = [](auto&& a) {
 	return [b = std::forward<decltype(a)>(a)](auto&&...)->decltype(auto) {

@@ -13,8 +13,8 @@ inline permission combined_permissions(const permission& p1, const permission& p
 	return p1 | p2;
 }
 
-template<typename range>
-std::enable_if_t<is_range_of_v<range, permission_overwrite>, permission> combined_permissions(permission return_val, range&& overwrites) {
+template<typename range> requires is_range_of_v<range,permission_overwrite>
+permission combined_permissions(permission return_val, range&& overwrites) {
 	for (auto&& overwrite : overwrites) {
 		return_val.add_permissions(overwrite.allow());
 		return_val.remove_permissions(overwrite.deny());
@@ -23,9 +23,10 @@ std::enable_if_t<is_range_of_v<range, permission_overwrite>, permission> combine
 }
 
 template<typename roles_range, typename overwrite_range_t>//TODO replace with concepts
-std::enable_if_t<
-	is_range_of_v<overwrite_range_t, permission_overwrite>
-	&& is_range_of_v<roles_range, guild_role>, permission> combined_permissions(roles_range&& roles , overwrite_range_t&& overwrites, const Guild& guild) {
+requires
+	(is_range_of_v<overwrite_range_t, permission_overwrite>
+	&& is_range_of_v<roles_range, guild_role>)
+permission combined_permissions(roles_range&& roles , overwrite_range_t&& overwrites, const Guild& guild) {
 	
 	std::vector<std::variant<const guild_role*, const permission_overwrite*>> perms_list_all;
 
@@ -102,8 +103,8 @@ inline permission combined_permissions(const guild_member& member) {
 	return std::accumulate(perms.begin(), perms.end(), permission());
 }
 
-template<typename rng>
-std::enable_if_t<is_range_of_v<rng, permission_overwrite>, permission> combined_permissions(const guild_member& member, rng&& range) {
+template<typename rng> requires is_range_of_v<rng, permission_overwrite>
+permission combined_permissions(const guild_member& member, rng&& range) {
 	return combined_permissions(member.roles(), range | ranges::views::filter([&](const permission_overwrite& p) {
 		if (p.type() == overwrite_type::member) {
 			return member.id() == p.id();

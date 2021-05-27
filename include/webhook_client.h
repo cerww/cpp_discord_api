@@ -121,11 +121,11 @@ private:
 		req.keep_alive(true);
 	}
 
-	template<typename T, typename...args>
-	std::enable_if_t<!rq::has_content_type_v<T>, T> send_request(args&&... Args);
+	template<typename T, typename...args> requires !rq::has_content_type_v<T>
+	T send_request(args&&... Args);
 
-	template<typename T, typename...args>
-	std::enable_if_t<rq::has_content_type_v<T>, T> send_request(std::string&&, args&&... Args);
+	template<typename T, typename...args> requires rq::has_content_type_v<T>
+	T send_request(std::string&&, args&&... Args);
 
 };
 
@@ -144,8 +144,8 @@ rq::request_data get_default_stuffs_for_request(Args&&... args) {
 
 }
 
-template<typename T, typename ... args>
-std::enable_if_t<rq::has_content_type_v<T>, T> webhook_client_impl::send_request(std::string&& body, args&&... Args) {
+template<typename T, typename ... args> requires rq::has_content_type_v<T>
+T webhook_client_impl::send_request(std::string&& body, args&&... Args) {
 	auto r = rawrland2::get_default_stuffs_for_request<T>(std::forward<args>(Args)...);
 	r.req.body() = std::move(body);
 	r.req.prepare_payload();
@@ -155,8 +155,8 @@ std::enable_if_t<rq::has_content_type_v<T>, T> webhook_client_impl::send_request
 	return T(r);
 }
 
-template<typename T, typename ... args>
-std::enable_if_t<!rq::has_content_type_v<T>, T> webhook_client_impl::send_request(args&&... Args) {
+template<typename T, typename ... args> requires !rq::has_content_type_v<T>
+T webhook_client_impl::send_request(args&&... Args) {
 	auto r = rawrland2::get_default_stuffs_for_request<T>(std::forward<args>(Args)...);	
 	r.req.prepare_payload();
 	r.strand = &m_strand.value();

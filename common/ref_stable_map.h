@@ -43,7 +43,7 @@ struct ref_stable_map {
 		templated_iterator(iterator_t it):
 			m_it(std::move(it)) {}
 
-		template<typename value_t2, typename iterator_t2, std::enable_if_t<std::is_convertible_v<iterator_t2, iterator_t>>  = 0>
+		template<typename value_t2, typename iterator_t2>requires std::is_convertible_v<iterator_t2, iterator_t>
 		explicit templated_iterator(templated_iterator<value_t2, iterator_t2> other):
 			templated_iterator(other.m_it) {}
 

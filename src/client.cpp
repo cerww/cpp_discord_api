@@ -6,20 +6,16 @@
 
 client::client(int threads, intents intents):
 	m_intents(intents),
-	m_extra_threads(std::max(threads-1,0)),
-	m_ioc(std::in_place_type<boost::asio::io_context>,threads)
-{
-	
-}
+	m_extra_threads(std::max(threads - 1, 0)),
+	m_ioc(std::in_place_type<boost::asio::io_context>, threads) { }
 
 client::client(boost::asio::io_context& ioc, intents intents):
-m_intents(intents),
-m_ioc(std::in_place_type<boost::asio::io_context*>,&ioc){
-	
-}
+	m_intents(intents),
+	m_ioc(std::in_place_type<boost::asio::io_context*>, &ioc) { }
 
 void client::run() {
 
+	//boost::asio::post([this]() { do_gateway_stuff(); });
 	do_gateway_stuff();
 	//m_th
 
@@ -63,18 +59,18 @@ void client::set_token(std::string token, const token_type type/* = token_type::
 
 
 void client::rate_limit_global(const std::chrono::system_clock::time_point tp) {
-	const std::unique_lock<std::mutex> locky(m_global_rate_limit_mut,std::try_to_lock);
+	const std::unique_lock<std::mutex> locky(m_global_rate_limit_mut, std::try_to_lock);
 	//only 1 shard needs to call this to rate limit every shard
-	if(!locky) {
+	if (!locky) {
 		return;
 	}
 	const auto now = std::chrono::system_clock::now();
-	if (m_last_global_rate_limit - now < std::chrono::seconds(3)){//so i don't rate_limit myself twice
+	if (m_last_global_rate_limit - now < std::chrono::seconds(3)) {//so i don't rate_limit myself twice
 		m_last_global_rate_limit = now;
 		for (auto& shard : m_shards) {
 			shard->rate_limit(tp);
 		}
-	}	
+	}
 }
 
 void client::do_gateway_stuff() {
@@ -85,14 +81,18 @@ void client::do_gateway_stuff() {
 	for (size_t i = 0; i < m_num_shards; ++i) {
 		m_shards.emplace_back(std::make_unique<internal_shard>((int)i, this, context(), m_gateway, m_intents));
 	}
+
+	do_identifies();
+
+
 }
 
 void client::m_getGateway() {
 	boost::asio::io_context ioc;
-	boost::asio::ip::tcp::resolver resolver{ ioc };
+	boost::asio::ip::tcp::resolver resolver{ioc};
 
-	boost::asio::ssl::context ssl_context{ boost::asio::ssl::context::tlsv12_client };
-	boost::asio::ssl::stream<boost::asio::ip::tcp::socket> ssl_socket{ ioc, ssl_context };
+	boost::asio::ssl::context ssl_context{boost::asio::ssl::context::tlsv12_client};
+	boost::asio::ssl::stream<boost::asio::ip::tcp::socket> ssl_socket{ioc, ssl_context};
 	boost::beast::flat_buffer buffer;
 
 	boost::asio::connect(ssl_socket.next_layer(), resolver.resolve("discord.com", "https"));
@@ -103,7 +103,7 @@ void client::m_getGateway() {
 	request.set("Host", "discord.com"s);
 	request.set("Upgrade-Insecure-Requests", "1");
 	request.set(boost::beast::http::field::user_agent, "potato_world");
-		
+
 	request.keep_alive(true);
 
 	request.set(boost::beast::http::field::accept, "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
@@ -116,19 +116,41 @@ void client::m_getGateway() {
 	boost::beast::http::response<boost::beast::http::string_body> response;
 
 	boost::beast::http::read(ssl_socket, buffer, response);
-	if(response.result_int() == 401) {
+	if (response.result_int() == 401) {
 		throw std::runtime_error("unauthorized. bad token?");
 	}
 	nlohmann::json yay = nlohmann::json::parse(response.body());
-	
-	m_gateway = yay["url"].get<std::string>() +"/?v=8&encoding=json";
+
+	m_gateway = yay["url"].get<std::string>() + "/?v=8&encoding=json";
 	if (m_num_shards == 0) {
 		m_num_shards = yay["shards"].get<int>();
 	}
+	m_max_concurrency = yay["session_start_limit"]["max_concurrency"].get<int>();
 	//m_num_shards = 2;
 	//std::cout << m_gateway << std::endl;
 	fmt::print(m_gateway);
 	fmt::print("\n");
+
+}
+
+cerwy::eager_task<void> client::do_identifies() {
+	std::vector<cerwy::eager_task<void>> concurrent_connection_tasks;
+	concurrent_connection_tasks.reserve(m_max_concurrency);
+	for(auto&& chunk: m_shards | ranges::views::chunk(m_max_concurrency)) {
+		for (auto& shard_ptr:chunk) {
+			co_await shard_ptr->m_hello_waiter;
+			concurrent_connection_tasks.push_back(shard_ptr->send_identity());
+		}
+
+		for (auto& task : concurrent_connection_tasks) {
+			co_await task;
+		}
+
+		concurrent_connection_tasks.clear();
+		boost::asio::steady_timer timer(context());
+		timer.expires_after(5s);
+		co_await timer.async_wait(use_task);
+	}
 	
 }
 

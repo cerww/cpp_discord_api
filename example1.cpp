@@ -421,7 +421,6 @@ int main() {
 		co_await s.delete_user_reaction(msg, emoji, who);
 		co_await s.add_reaction(msg, emoji);
 
-
 		boost::asio::steady_timer timer(s.strand());
 		timer.expires_after(5s);
 		co_await timer.async_wait(use_task);

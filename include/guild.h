@@ -68,9 +68,9 @@ struct Guild :ref_counted, partial_guild {
 
 	~Guild() = default;
 
-	using text_channel_map = decltype(map_transform(std::declval<const ska::bytell_hash_map<snowflake, ref_count_ptr<text_channel>>&>(), dereference));
-	using voice_channel_map = decltype(map_transform(std::declval<const ska::bytell_hash_map<snowflake, ref_count_ptr<voice_channel>>&>(), dereference));
-	using channel_catagory_map = decltype(map_transform(std::declval<const ska::bytell_hash_map<snowflake, ref_count_ptr<channel_catagory>>&>(), dereference));
+	using text_channel_map = decltype(map_transform(std::declval<const ska::bytell_hash_map<snowflake, ref_count_ptr<text_channel>>&>(), hof::dereference_const));
+	using voice_channel_map = decltype(map_transform(std::declval<const ska::bytell_hash_map<snowflake, ref_count_ptr<voice_channel>>&>(), hof::dereference_const));
+	using channel_catagory_map = decltype(map_transform(std::declval<const ska::bytell_hash_map<snowflake, ref_count_ptr<channel_catagory>>&>(), hof::dereference_const));
 
 	timestamp joined_at() const noexcept;
 	bool large() const noexcept;
@@ -105,22 +105,22 @@ struct Guild :ref_counted, partial_guild {
 
 	auto channel_catagories_list() const {
 		throw_if_dead();
-		return m_channel_catagory_ids | ranges::views::transform(hof::map_with(channel_catagories()));
+		return m_channel_catagory_ids | ranges::views::transform(hof::map_with(channel_catagories()));		
 	}
 
 	text_channel_map text_channels() const {
 		throw_if_dead();
-		return map_transform(std::as_const(m_stuff->text_channels), dereference);
+		return map_transform(std::as_const(m_stuff->text_channels), hof::dereference_const);
 	}
 
 	voice_channel_map voice_channels() const {
 		throw_if_dead();
-		return map_transform(std::as_const(m_stuff->voice_channels), dereference);
+		return map_transform(std::as_const(m_stuff->voice_channels), hof::dereference_const);
 	}
 
 	channel_catagory_map channel_catagories() const {
 		throw_if_dead();
-		return map_transform(std::as_const(m_stuff->channel_catagories), dereference);
+		return map_transform(std::as_const(m_stuff->channel_catagories), hof::dereference_const);
 	}
 
 	std::span<const snowflake> text_channel_ids() const noexcept {

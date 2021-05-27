@@ -10,6 +10,7 @@
 #include "dm_channel.h"
 #include "../common/optional_ref.h"
 #include "intents.h"
+#include "../common/lazy_task.h"
 
 
 using namespace std::literals;
@@ -141,7 +142,7 @@ struct client {//<(^.^)>
 		}
 	}
 
-	virtual void notify_identified() {
+	virtual void notify_identified(int shard_number) {
 		std::lock_guard lock(m_identify_mut);
 		m_last_identify = std::chrono::steady_clock::now();
 
@@ -179,7 +180,10 @@ struct client {//<(^.^)>
 
 protected:
 	void m_getGateway();
+	cerwy::eager_task<void> do_identifies();
 	std::chrono::system_clock::time_point m_last_global_rate_limit = std::chrono::system_clock::now();
+	int m_max_concurrency = 0;
+	
 	
 	//1 identify every 5s, -6s is so we don't wait 5s for the first one
 	std::chrono::steady_clock::time_point m_last_identify = std::chrono::steady_clock::now() - std::chrono::seconds(6);
@@ -191,13 +195,12 @@ protected:
 
 	intents m_intents = {};
 
-
 	std::string m_endpoint;
 
 	std::string m_authToken;
 	std::string m_gateway = ""s;
 	size_t m_num_shards = 0;
-	std::string m_token = "";
+	std::string m_token;
 	//
 	std::mutex m_global_rate_limit_mut;
 
@@ -205,6 +208,7 @@ protected:
 	std::vector<std::unique_ptr<internal_shard>> m_shards;
 	std::vector<std::thread> m_extra_threads;
 
+	
 	std::variant<boost::asio::io_context, boost::asio::io_context*> m_ioc{};
 
 

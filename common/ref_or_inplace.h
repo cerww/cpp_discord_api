@@ -27,7 +27,7 @@ struct ref_or_inplace {
 	ref_or_inplace(T&& t) :
 		m_data(std::move(t)) { }
 
-	template<typename... Args,std::enable_if_t<std::is_constructible_v<T,Args...>,int> = 0>
+	template<typename... Args>requires std::constructible_from<T,Args...>
 	explicit ref_or_inplace(Args&&... args):
 		m_data(std::in_place_type<T>,std::forward<Args>(args)...) {
 		

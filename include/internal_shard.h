@@ -22,6 +22,7 @@
 #include "intents.h"
 #include "shard.h"
 #include "heartbeat_context.h"
+#include "../common/lazy_task.h"
 
 
 
@@ -114,7 +115,7 @@ struct internal_shard: shard {
 	cerwy::eager_task<void> send_identity() const;
 	
 private:
-	cerwy::eager_task<boost::beast::error_code> connect_http_connection();
+	cerwy::lazy_task<boost::beast::error_code> connect_http_connection();
 
 	void doStuff(nlohmann::json, int);
 	void on_reconnect();
@@ -265,6 +266,10 @@ private:
 	ska::bytell_hash_map<snowflake, cerwy::promise<std::string>> m_things_waiting_for_voice_endpoint2;
 
 	intents m_intents = {};
+
+	cerwy::promise<void> m_hello_promise;
+	cerwy::eager_task<void> m_hello_waiter = m_hello_promise.get_task();
+	
 	friend struct client;
 };
 

@@ -318,7 +318,6 @@ struct command_context {
 
 	void do_command(guild_text_message msg, shard& s) {
 		if (msg.content().starts_with(prefix)) {
-			msg.force_heap_allocated();//so i can take string_views to .content make a no_sbo_string?
 			auto content = msg.content();
 			content.remove_prefix(prefix.size());
 			//don't use string.find because i don't want npos, i want not-found to return the end
@@ -346,8 +345,7 @@ struct command_context {
 	auto& operator[](const char* s) {//;-;
 		return (*this)[std::string(s)];
 	}
-
-
+	
 	const auto& groups() const noexcept {
 		return m_command_groups;
 	}
@@ -370,7 +368,7 @@ command make_command(fn&& f) {
 	command ret;
 	if constexpr (sizeof...(Format) == 0) {
 		ret.try_invoke_with = [f_ = std::forward<fn>(f)](std::string_view content, guild_text_message& c, shard& s) mutable {
-			std::invoke(f_, c, s);
+			std::invoke(f_, std::move(c), s);
 			return true;
 		};
 	} else {

@@ -107,11 +107,6 @@ struct partial_message {
 		return m_embeds;
 	}
 
-	
-	void force_heap_allocated() {//TODO remove this sometime
-		//m_content.reserve(sizeof(m_content) + 1); // NOLINT
-	}
-
 	message_type type() const noexcept {
 		return m_type;
 	}
