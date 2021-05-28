@@ -93,6 +93,7 @@ cerwy::eager_task<boost::beast::websocket::stream<boost::asio::ip::tcp::socket>>
 constexpr int asdasda = sizeof(boost::asio::ssl::context);
 
 cerwy::eager_task<boost::beast::websocket::stream<boost::beast::ssl_stream<boost::asio::ip::tcp::socket>>> wss_from_uri(
+	boost::asio::any_io_executor ioc,
 	std::string_view full_uri,
 	boost::asio::ip::tcp::resolver& resolver,
 	boost::asio::ssl::context& ssl_ctx) {
@@ -109,7 +110,7 @@ cerwy::eager_task<boost::beast::websocket::stream<boost::beast::ssl_stream<boost
 	if (ec) {
 		throw std::runtime_error(";-;");
 	}
-	boost::asio::ip::tcp::socket socket(resolver.get_executor());
+	boost::asio::ip::tcp::socket socket(ioc);
 
 	auto [ec2,ep] = co_await boost::asio::async_connect(socket, results, use_task_return_tuple2);
 	

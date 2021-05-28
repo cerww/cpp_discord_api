@@ -107,13 +107,12 @@ static constexpr int asuodjhasdasd = sizeof(request_data);
 
 constexpr static int ajkdhas = sizeof(std::condition_variable);
 
-template<typename U, typename = void>
-struct has_overload_value :std::false_type {};
+template<typename T>
+concept has_overload_value = requires(T t)
+{
+	{t.overload_value()};
+};
 
-template<typename U>
-struct has_overload_value<U, std::void_t<decltype(std::declval<U>().overload_value(
-	std::declval<boost::beast::http::response<boost::beast::http::string_body>>()))
->> :std::true_type {};
 
 static constexpr const char* application_json = "application/json";
 
@@ -208,18 +207,16 @@ struct request_base :crtp<request_t> {
 	decltype(auto) value() const {
 		// ReSharper disable CppRedundantTemplateKeyword
 		handle_errors();
-		if constexpr (has_overload_value<request_t>::value)
-			return this->self().overload_value(state.res);
-		else if constexpr (!std::is_void_v<typename request_t::return_type>) {
+		if constexpr (has_overload_value<request_t>) {
+			return this->self().overload_value();
+		} else if constexpr (!std::is_void_v<typename request_t::return_type>) {
 			return nlohmann::json::parse(state.res.body()).template get<typename request_t::return_type>();
 		}		
 		// ReSharper restore CppRedundantTemplateKeyword		
 	}
 
 	decltype(auto) await_resume() const {
-		if constexpr (!std::is_void_v<typename request_t::return_type>) {
-			return value();
-		}
+		return value();
 	}	
 
 	void execute_and_ignore() {
@@ -315,133 +312,23 @@ protected:
 	request_data state;
 };
 
-// template<typename reqeust>
-// struct request_base2 :private crtp<reqeust> {
-// 	request_base2() = default;
-//
-// 	explicit request_base2(ref_count_ptr<shared_state> t_state):
-// 		state(std::move(t_state)) {}
-//
-// 	template<typename T>
-// 	explicit request_base2(with_exception<T> e, boost::asio::io_context::strand* strand):
-// 		request_base2(make_ref_count_ptr<shared_state>()) {
-// 		state->strand = strand;
-// 		state->done = true;
-// 		state->exception = std::make_exception_ptr(e.exception);
-// 	}
-//
-// 	template<typename ...Ts>
-// 	static auto request(Ts&&... t) {
-// 		return boost::beast::http::request<boost::beast::http::string_body>(
-// 			reqeust::verb,
-// 			"/api/v6" + reqeust::target(std::forward<Ts>(t)...),
-// 			11
-// 		);
-// 	}
-//
-// 	void handle_errors() const {
-// 		if (state->exception.has_value()) {
-// 			std::rethrow_exception(state->exception.value());
-// 		}else if(state->is_canceled) {
-// 			throw std::runtime_error("canceled");
-// 		}
-// 		const auto status = state->res.result_int();
-// 		if (status == 400)
-// 			throw bad_request(";-;");
-// 		if (status == 401)
-// 			throw unauthorized();
-// 		if (status == 403)
-// 			throw forbidden();
-// 		if (status == 404)
-// 			throw not_found();
-// 		if (status == 405)
-// 			throw method_not_allowed();
-// 		if (status == 502)
-// 			throw gateway_unavailable();
-// 		if (status >= 500)
-// 			throw server_error();
-// 	}
-//
-// 	void wait() {
-// 		std::unique_lock<std::mutex> lock{state->ready_mut};
-// 		state->ready_cv.wait(lock, [this]()->bool { return ready(); });
-// 	}
-//
-// 	bool ready() const noexcept {
-// 		return state->done.load(std::memory_order_relaxed);
-// 	}
-//
-// 	// ReSharper disable CppMemberFunctionMayBeStatic
-// 	bool await_ready() const noexcept {
-// 		// ReSharper restore CppMemberFunctionMayBeStatic
-// 		return false;//await suspend checks instead
-// 	}
-//
-// 	void await_suspend(std::coroutine_handle<> h) const {
-// 		std::unique_lock lock(state->waiter_mut);
-// 		if (ready()) {
-// 			lock.unlock();
-// 			h.resume();
-// 		} else {
-// 			state->waiters.push_back(h);
-// 		}
-// 	}
-//
-// 	decltype(auto) await_resume() const {
-// 		if constexpr (!std::is_void_v<typename reqeust::return_type>)
-// 			return value();
-// 	}
-//
-// 	decltype(auto) value() const {
-// 		handle_errors();
-// 		if constexpr (has_overload_value<reqeust>::value)
-// 			return this->self().overload_value(state->res);
-// 		else if constexpr (!std::is_void_v<typename reqeust::return_type>)
-// 			return nlohmann::json::parse(state->res.body()).template get<typename reqeust::return_type>();
-// 	}
-// 		
-// 	//remove along with wait?
-// 	decltype(auto) get() {
-// 		wait();
-// 		handle_errors();
-// 		if constexpr (!std::is_void_v<typename reqeust::return_type>) {
-// 			return value();
-// 		}
-// 	}
-// 		
-// 	//returns awaitable and ignores the value returned from discord's api
-// 	auto async_wait() {
-// 		struct r {
-// 			request_base* me = nullptr;
-//
-// 			bool await_ready() {
-// 				return false;
-// 			}
-//
-// 			decltype(auto) await_suspend(std::coroutine_handle<> h) {
-// 				me->await_suspend(h);
-// 			}
-//
-// 			// ReSharper disable once CppMemberFunctionMayBeStatic
-// 			decltype(auto) await_resume() {
-// 				//me->handle_errors();
-// 				//return me->await_resume();
-// 			}
-//
-// 		};
-// 		return r{this};
-// 	}
-//
-// 	void cancel() const{
-// 		//don't set to canceled if already finished
-// 		if (!state->done) {
-// 			state->is_canceled = true;
-// 		}
-// 	}
-//
-// protected:
-// 	ref_count_ptr<shared_state> state;
-// };
+template<typename T,typename fn>
+struct dependant_cb_request_base:
+	request_base<T>{
+
+	dependant_cb_request_base() = default;
+	
+	dependant_cb_request_base(request_data r,fn f):
+		request_base<T>(std::move(r)),
+		m_f(std::forward<fn>(f)) {}
+
+	auto overload_value() const {
+		return m_f(this->state.res.body());
+	}
+
+private:
+	fn m_f;	
+};
 
 struct get_guild :
 		request_base<get_guild>,
@@ -472,32 +359,24 @@ struct send_message :
 
 template<typename fn>
 struct send_guild_message :
-	request_base<send_guild_message<fn>>,
+	dependant_cb_request_base<send_guild_message<fn>,fn>,
 	json_content_type,
 	post_verb {
 
 	send_guild_message() = default;
 	
 	send_guild_message(request_data wat,fn f):
-		request_base<send_guild_message<fn>>(std::move(wat)),
-		m_f(std::move(f)) { }
+		dependant_cb_request_base<send_guild_message<fn>, fn>(std::move(wat),std::forward<fn>(f)){}
 	
 	using return_type = sent_guild_message;
-
-	auto overload_value() const{
-		return m_f(this->state.res.body());
-	}	
 
 	static std::string target(const partial_channel& channel) {
 		return fmt::format(FMT_COMPILE("/channels/{}/messages"), channel.id());
 	}
 
-	static std::string target(const partial_message& msg) {
+	static std::string target(const guild_message_base& msg) {
 		return fmt::format(FMT_COMPILE("/channels/{}/messages"), msg.channel_id());
 	}
-
-private:
-	fn m_f;
 };
 
 struct send_message_with_file :
@@ -645,6 +524,25 @@ struct get_messages :
 		get_verb {
 	using request_base::request_base;
 	using return_type = std::vector<partial_message>;
+
+	static std::string target(const partial_channel& channel) {
+		return "/channels/{}/messages"_format(channel.id());
+	}
+};
+
+template<typename fn>
+struct get_guild_messages :
+	dependant_cb_request_base<get_guild_messages<fn>, fn>,
+	json_content_type,
+	get_verb {
+	//using request_base<get_guild_messages<fn>>::request_base;
+
+	get_guild_messages() = default;
+
+	get_guild_messages(request_data r, fn f) :
+		dependant_cb_request_base<get_guild_messages<fn>, fn>(std::move(r), std::forward<fn>(f)) {}
+
+	using return_type = std::vector<sent_guild_message>;
 
 	static std::string target(const partial_channel& channel) {
 		return "/channels/{}/messages"_format(channel.id());

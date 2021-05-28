@@ -32,8 +32,6 @@ private:
 	ref_count_ptr<Guild> m_guild = nullptr;
 
 	discord_obj_map<guild_role> id_to_role_map() const noexcept;
-
-
 	friend void from_json(const nlohmann::json& in, guild_member& out);
 	friend struct internal_shard;
 	friend struct shard;

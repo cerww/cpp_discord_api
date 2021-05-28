@@ -63,7 +63,9 @@ cerwy::eager_task<void> web_socket_session_impl::start_reads() {
 		auto [ec, n] = co_await m_socket.async_read(m_buffer, use_task_return_tuple2);
 		if (ec) {
 			m_buffer.consume(n);
-			co_await on_error(ec);
+			m_is_reading = false;
+			on_error(ec);
+			co_return;
 		} else {
 			auto data = m_buffer.data();
 			if (m_socket.got_text()) {
@@ -98,15 +100,15 @@ void web_socket_session_impl::kill_me() {
 
 cerwy::eager_task<web_socket_session> create_session(
 	std::string_view uri,
-	boost::asio::io_context& ioc,//TODO change this to any_io_executor or executor, watever is in boost 1.7.4
+	boost::asio::any_io_executor ioc,
 	boost::asio::ssl::context_base::method c
 ) {
 	boost::asio::ip::tcp::resolver resolver(ioc);
 
 	boost::asio::ssl::context ssl_ctx(c);
 
-	auto sock = co_await wss_from_uri(uri, resolver, ssl_ctx);
-
+	auto sock = co_await wss_from_uri(ioc, uri, resolver, ssl_ctx);
+	
 	co_return web_socket_session(
 		make_ref_count_ptr<web_socket_session_impl>(
 			std::move(sock),
@@ -114,3 +116,22 @@ cerwy::eager_task<web_socket_session> create_session(
 		)
 	);
 }
+
+cerwy::eager_task<web_socket_session> create_session(
+	std::string_view uri,
+	boost::asio::any_io_executor ioc,
+	boost::asio::ssl::context_base::method c,
+	boost::asio::ip::tcp::resolver& resolver
+) {
+	boost::asio::ssl::context ssl_ctx(c);
+
+	auto sock = co_await wss_from_uri(ioc,uri, resolver, ssl_ctx);
+
+	co_return web_socket_session(
+		make_ref_count_ptr<web_socket_session_impl>(
+			std::move(sock),
+			std::move(ssl_ctx)
+			)
+	);
+}
+

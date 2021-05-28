@@ -20,7 +20,8 @@ discord_voice_connection_impl::discord_voice_connection_impl(web_socket_session 
 		std::cout << "error voice websocket "<< ec << std::endl;	
 		if (ec != boost::asio::error::operation_aborted) {
 			if(ec.value() != 4014) {//check if its a websocket error too, idk how
-				co_await socket.reconnect(web_socket_endpoint);				
+				co_await socket.reconnect(web_socket_endpoint);
+				socket.start_reads();
 			}
 		}
 		co_return;

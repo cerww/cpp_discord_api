@@ -11,6 +11,7 @@
 #include "../common/resume_on_strand.h"
 
 
+
 struct discord_voice_connection_impl :
 		ref_counted {
 
@@ -316,5 +317,5 @@ public:
 
 private:
 	ref_count_ptr<discord_voice_connection_impl> m_connection = nullptr;
-	friend cerwy::eager_task<voice_connection> voice_connect_impl(internal_shard& me, const voice_channel& ch, std::string endpoint, std::string token, std::string session_id);
+	friend cerwy::eager_task<std::pair<voice_connection, ref_count_ptr<discord_voice_connection_impl>>> voice_connect_impl(internal_shard& me, const voice_channel& ch, std::string endpoint, std::string token, std::string session_id);
 };

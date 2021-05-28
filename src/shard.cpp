@@ -192,14 +192,14 @@ rq::get_messages shard::get_messages_around(const partial_channel& channel, snow
 rq::get_messages shard::get_messages_before(const partial_channel& channel, const partial_message& msg, int n) {
 	nlohmann::json body;
 	body["limit"] = n;
-	body["around"] = msg.id();
+	body["before"] = msg.id();
 	return create_request<rq::get_messages>(body.dump(), channel);
 }
 
 rq::get_messages shard::get_messages_after(const partial_channel& channel, const partial_message& msg, int n) {
 	nlohmann::json body;
 	body["limit"] = n;
-	body["around"] = msg.id();
+	body["after"] = msg.id();
 	return create_request<rq::get_messages>(body.dump(), channel);
 }
 

@@ -11,6 +11,7 @@
 cerwy::eager_task<boost::beast::websocket::stream<boost::asio::ip::tcp::socket>> ws_from_uri(std::string_view full_uri, boost::asio::ip::tcp::resolver& resolver);
 
 cerwy::eager_task<boost::beast::websocket::stream<boost::beast::ssl_stream<boost::asio::ip::tcp::socket>>> wss_from_uri(
+	boost::asio::any_io_executor,
 	std::string_view full_uri,
 	boost::asio::ip::tcp::resolver& resolver,
 	boost::asio::ssl::context& ssl_ctx

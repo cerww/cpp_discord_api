@@ -1,14 +1,20 @@
 #pragma once
 #include "partial_message.h"
 
-struct referenced_guild_message :referenced_message {
-	const text_channel& channel() const noexcept {
-		return *m_channel;
-	}
-	
-	const Guild& guild() const noexcept {
+struct guild_message_base:partial_message {
+	const Guild& guild()const noexcept {
 		return m_channel->guild();
 	}
+
+	const text_channel& channel()const noexcept {
+		return *m_channel;
+	}
+protected:
+	ref_count_ptr<text_channel> m_channel = nullptr;
+	friend struct shard;
+};
+
+struct referenced_guild_message :guild_message_base,ref_counted {
 
 	std::span<const snowflake> mention_roles_ids() const noexcept {
 		return m_mention_roles_ids;
@@ -21,19 +27,21 @@ struct referenced_guild_message :referenced_message {
 	auto mention_roles() const noexcept {
 		return m_mention_roles_ids | ranges::views::transform(hof::map_with(guild().roles()));
 	}
+
+	const user& author()const noexcept {
+		return m_author;
+	}
 	
 private:
 	usually_empty_vector<snowflake> m_mention_roles_ids;
 	usually_empty_vector<user> m_mentions;
-	ref_count_ptr<text_channel> m_channel = nullptr;
+	//ref_count_ptr<text_channel> m_channel = nullptr;
+	user m_author;
 
 	friend struct shard;
-	
 };
 
-struct guild_text_message :partial_message {
-	const text_channel& channel() const noexcept;
-	const Guild& guild() const noexcept;
+struct guild_text_message :guild_message_base {
 	const guild_member& author() const noexcept;
 
 	std::span<const snowflake> mention_roles_ids() const noexcept {
@@ -48,7 +56,7 @@ struct guild_text_message :partial_message {
 		return m_mention_roles_ids | ranges::views::transform(hof::map_with(guild().roles()));
 	}
 
-	optional_ref<referenced_guild_message> referenced_message()const {
+	optional_ref<const referenced_guild_message> referenced_message()const {
 		if (m_referenced_message) {
 			return *m_referenced_message;
 		}
@@ -62,7 +70,8 @@ private:
 	guild_member m_author;
 	usually_empty_vector<snowflake> m_mention_roles_ids;
 	std::vector<guild_member> m_mentions;
-	ref_count_ptr<text_channel> m_channel = nullptr;
+	
+	//ref_count_ptr<text_channel> m_channel = nullptr;
 
 	ref_count_ptr<referenced_guild_message> m_referenced_message;
 

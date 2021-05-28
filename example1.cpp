@@ -311,7 +311,7 @@ int main() {
 		} else if (msg.content() == "at petery") {
 			s.send_message(msg.channel(), "<@188547243911938048>", disable_mentions).execute_and_ignore();
 		} else if (msg.content() == "hello kitty") {
-			const auto new_msg = co_await s.send_message(msg.channel(), "charmanderworld");
+			const sent_guild_message new_msg = co_await s.send_message(msg.channel(), "charmanderworld");
 			std::cout << new_msg.content() << std::endl;
 			//std::cout << new_msg.author().id().val << std::endl;
 			co_await s.add_reaction(new_msg, msg.guild().emojis().front());
@@ -331,9 +331,9 @@ int main() {
 								 || a.keys_that_are_snowflake.contains(a.key());//only these keys cuz i need to format them
 					 })
 				) {
-					std::visit([&](const auto& old_value, const auto& new_value) {
-						using old_type = std::decay_t<decltype(old_value)>;
-						using new_type = std::decay_t<decltype(new_value)>;
+					std::visit([&]<typename T0, typename T1>(const T0& old_value, const T1& new_value) {
+						using old_type = std::decay_t<T0>;
+						using new_type = std::decay_t<T1>;
 
 						if constexpr (!std::is_same_v<old_type, new_type>) {
 							return;
@@ -376,6 +376,10 @@ int main() {
 			//auto a = L"後生仔傾吓偈"s;
 			
 			//s.send_message(msg.channel(), ).execute_and_ignore();
+		}else if(msg.content()=="rpland") {
+			s.reply_to(msg, "rpland").execute_and_ignore();
+		}else if(msg.content() =="bonky") {
+			const std::vector<sent_guild_message> msgs = co_await s.get_messages(msg.channel());
 		}
 		//s.change_nick(wat.author(), wat.content());
 
@@ -389,7 +393,7 @@ int main() {
 		}
 		//s.add_reaction(wat,wat.guild().emojis().back());
 		if(msg.referenced_message()) {
-			std::cout << msg.referenced_message().value().author().id().as_int() << std::endl;;
+			std::cout << msg.referenced_message().value().author().id().as_int() << std::endl;
 			std::cout << msg.referenced_message().value().content() << std::endl;
 			s.send_message(msg.channel(), std::string(msg.referenced_message().value().content())).execute_and_ignore();
 		}

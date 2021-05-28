@@ -18,9 +18,12 @@ std::string_view partial_guild_member::nick() const noexcept {
 }
 
 bool partial_guild_member::has_role(const snowflake role_id) const noexcept {
-	return std::find(m_roles.begin(), m_roles.end(), role_id) != m_roles.end();
+	return std::ranges::find(m_roles, role_id) != m_roles.end();
 }
 
 bool partial_guild_member::has_role(const guild_role& role) const noexcept {
 	return has_role(role.id());
 }
+
+
+

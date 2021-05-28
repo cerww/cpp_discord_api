@@ -13,7 +13,7 @@ cerwy::eager_task<voice_connection> voice_connect_impl(internal_shard& me, const
 	const auto guild_id = ch.guild_id;
 	//const auto my_id = me.self_user().id;
 	//runs on strand until here
-	auto web_socket = co_await create_session(endpoint, me.strand().context(), ssl::context_base::method::sslv23);
+	auto web_socket = co_await create_session(endpoint, me.strand().context().get_executor(), ssl::context_base::method::sslv23);
 	//doesn't run on strand
 	auto vc = make_ref_count_ptr<discord_voice_connection_impl>(std::move(web_socket), me.parent_client().context());
 
@@ -43,7 +43,7 @@ cerwy::eager_task<voice_connection> voice_connect_impl(internal_shard& me, const
 cerwy::eager_task<voice_connection> voice_connect_impl(internal_shard& me, snowflake guild_id,snowflake channel_id, std::string endpoint, std::string token, std::string session_id) {
 	//const auto my_id = me.self_user().id;
 	//runs on strand until here
-	auto web_socket = co_await create_session(endpoint, me.strand().context(), ssl::context_base::method::sslv23);
+	auto web_socket = co_await create_session(endpoint, me.strand().context().get_executor(), ssl::context_base::method::sslv23);
 	//doesn't run on strand
 	auto vc = make_ref_count_ptr<discord_voice_connection_impl>(std::move(web_socket), me.parent_client().context());
 

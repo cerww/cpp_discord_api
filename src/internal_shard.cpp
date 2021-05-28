@@ -105,7 +105,8 @@ cerwy::eager_task<voice_connection> internal_shard::connect_voice(const voice_ch
 
 	m_things_waiting_for_voice_endpoint2.erase(channel.guild_id());
 	m_things_waiting_for_voice_endpoint.erase(channel.guild_id());
-	co_return co_await voice_connect_impl(*this, channel, std::move(gateway), ep_json["token"].get<std::string>(), std::move(session_id));
+	auto [r,ptr] = co_await voice_connect_impl(*this, channel, std::move(gateway), ep_json["token"].get<std::string>(), std::move(session_id));
+	co_return std::move(r);
 }
 
 cerwy::lazy_task<boost::beast::error_code> internal_shard::connect_http_connection() {
@@ -168,8 +169,6 @@ void internal_shard::close_connection(int code) {
 
 void internal_shard::request_guild_members(Guild& g) const {
 	m_opcode8_guild_member_chunk(g.id());
-	//g.m_members.clear();
-	//g.m_members.reserve(g.m_member_count);
 }
 
 void internal_shard::m_opcode0(nlohmann::json data, event_name event, uint64_t s) {
@@ -330,26 +329,15 @@ void internal_shard::m_opcode8_guild_member_chunk(snowflake id) const {
 cerwy::eager_task<void> internal_shard::m_opcode9_on_invalid_session(nlohmann::json d) {
 	boost::asio::steady_timer timer(strand(), std::chrono::steady_clock::now() + 5s);
 	const auto ec = co_await timer.async_wait(use_task_return_ec);
-	//co_await resume_on_strand(strand());
-	
 	if(ec) {
-		
+		//??????????
 	}
 
-	if (d.get<bool>())
+	if (d.get<bool>()) {
 		m_opcode6_send_resume();
-	else
+	} else {
 		m_opcode2_send_identity();
-
-	/*
-	std::this_thread::sleep_for(5s);
-
-	if (d.get<bool>())
-		m_opcode6_send_resume();
-	else
-		m_opcode2_send_identity();
-
-	*/
+	}
 }
 
 
@@ -1436,8 +1424,6 @@ void internal_shard::procces_event<event_name::TYPING_START>(nlohmann::json& e) 
 		//don't bother doing anything if tnere isn't a callback to do
 		return;
 	}
-	//e now has optional member field
-
 	const auto guild_id = e.value("guild_id", snowflake());
 
 	if (guild_id.val) {
@@ -1518,6 +1504,7 @@ void internal_shard::procces_event<event_name::VOICE_STATE_UPDATE>(nlohmann::jso
 			guild.m_voice_states.erase(it);
 			if(user_id == self_user().id()) {
 				guilds_connected_to_vc.erase(guild_id);
+				m_voice_connections.erase(guild_id);
 			}
 		}
 	} else {

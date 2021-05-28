@@ -119,17 +119,11 @@ private:
 
 	void doStuff(nlohmann::json, int);
 	void on_reconnect();
-
 	void rate_limit(std::chrono::system_clock::time_point tp);
-
 	void close_connection(int code);
-
 	void send_resume() const;
-
-	bool m_is_disconnected = false;
-
 	void request_guild_members(Guild& g) const;
-
+	
 	//dispatch
 	void m_opcode0(nlohmann::json, event_name, uint64_t);
 	//heartbeat
@@ -232,13 +226,11 @@ private:
 	// static reaction& add_reaction(std::vector<reaction>&, partial_emoji&, snowflake, snowflake);
 	// static reaction& remove_reaction(std::vector<reaction>&, partial_emoji&, snowflake, snowflake);
 
-	
-
 	template<typename msg_t, typename channel_t, typename map_t>
 	msg_t createMsgUpdate(channel_t&, const nlohmann::json&, map_t&&);
 
 	static void apply_presences(const nlohmann::json& presences,Guild&);
-
+	bool m_is_disconnected = false;
 	//HB stuff
 	heartbeat_context m_heartbeat_context;
 	//trace stuff
@@ -264,6 +256,7 @@ private:
 	//TODO: rename these
 	ska::bytell_hash_map<snowflake, cerwy::promise<nlohmann::json>> m_things_waiting_for_voice_endpoint;
 	ska::bytell_hash_map<snowflake, cerwy::promise<std::string>> m_things_waiting_for_voice_endpoint2;
+	ska::bytell_hash_map<snowflake, ref_count_ptr<discord_voice_connection_impl>> m_voice_connections;
 
 	intents m_intents = {};
 

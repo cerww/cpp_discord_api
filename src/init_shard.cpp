@@ -41,6 +41,7 @@ cerwy::eager_task<void> init_shard(const int shard_number, internal_shard& me, b
 		while (true) {
 			std::cerr << "recieving stuffs\n";
 			const auto [ec, n] = co_await m_socket.async_read(buffer, use_task_return_tuple2);
+			//const auto [ec, n] = std::tuple(boost::system::error_code(),2);
 
 			if (ec) {
 				std::cout << "init shard " << ec << ' ' << ec.message() << std::endl;
